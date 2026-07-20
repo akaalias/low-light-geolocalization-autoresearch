@@ -131,19 +131,27 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 
 .arch{margin:0 0 18px}
 .arch-h{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
-  text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 8px}
+  text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
 .arch-h .chg{color:var(--accent)}
-.arch-row{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px}
+.arch-row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:2px 8px}
+.ab2{width:152px;display:flex;flex-direction:column;align-items:center;
+  text-align:center;flex:none}
+.ab2 svg{display:block}
+.ab-n{font:700 11px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin-top:4px}
+.ab2.ch .ab-n{color:var(--accent)}
+.ab-tr{font:italic 10.5px var(--serif);color:var(--ochre);margin-top:1px}
+.ab-d{font-size:11px;line-height:1.4;color:var(--muted);margin-top:3px}
+.ab-arr{color:var(--faint);font-size:16px;flex:none;height:72px;
+  display:flex;align-items:center}
 .ab{border:1px solid var(--rule);background:#fff;border-radius:3px;
   box-shadow:0 1px 7px rgba(60,50,30,.08);padding:7px 12px 8px;
-  max-width:210px;min-width:110px}
-.ab-n{font:700 11px var(--serif);font-feature-settings:"smcp" 1;
-  text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin-bottom:3px}
-.ab-d{font-size:11.5px;line-height:1.45;color:#4a473e}
+  max-width:210px;min-width:110px;align-self:center}
+.ab .ab-n{margin:0 0 3px}
+.ab .ab-d{color:#4a473e;font-size:11.5px}
 .ab.ch{border-color:var(--accent);border-width:1.5px;background:#fdf5ef}
 .ab.ch .ab-n{color:var(--accent)}
 .ab.tr{border-style:dashed;box-shadow:none;background:transparent}
-.ab-arr{align-self:center;color:var(--faint);font-size:15px;flex:none}
 
 .score-head{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 4px}
@@ -185,9 +193,14 @@ pre.prompt{font:12px/1.5 var(--mono);white-space:pre-wrap;background:#fff;
 .thumbs{display:flex;flex-wrap:wrap;gap:12px}
 .thumbs figure{margin:0}
 .thumbs img{height:130px;display:block;border:1px solid var(--rule)}
-.thumbs.maps{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:12px}
+.thumbs.maps{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:14px}
 .thumbs.maps figure{min-width:0}
-.thumbs.maps img{height:auto;width:100%}
+.thumbs.maps a{display:block;aspect-ratio:1/1;overflow:hidden;
+  border:1px solid var(--rule)}
+.thumbs.maps img{width:100%;height:100%;object-fit:cover;border:none}
+.thumbs.maps figcaption{margin-top:5px;font-size:11.5px;line-height:1.45}
+.thumbs.maps figcaption b{color:var(--ink);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.05em;display:block}
 .thumbs figcaption{font:11px var(--serif);color:var(--faint);margin-top:3px}
 details.trywrap{margin:12px 0 0}
 details.trywrap>summary{cursor:pointer;color:var(--muted);font-weight:600;
@@ -484,8 +497,8 @@ def figures(artifacts_dir, metrics):
             rel = Path("..") / p.relative_to(REPO_ROOT)
             area = p.stem.replace("heatmap_", "")
             lo_hi = med_range.get(area)
-            stat = (f" — this run: median miss {lo_hi[0]:,.0f}–{lo_hi[1]:,.0f} m "
-                    f"depending on lighting" if lo_hi else "")
+            stat = (f"median miss {lo_hi[0]:,.0f}–{lo_hi[1]:,.0f} m across "
+                    f"lighting" if lo_hi else "")
             figs.append(f"<figure><a href='{rel}'><img src='{rel}' loading='lazy'></a>"
                         f"<figcaption><b>{esc(area)}</b>{stat}</figcaption></figure>")
         out.append(
@@ -554,12 +567,157 @@ def train_block(artifacts_dir):
     return "".join(rows)
 
 
+GLYPHS = ("frame", "cnn", "heatmap", "balance", "window", "patches",
+          "crosshair", "gauge", "pin", "target")
+
+# Keyword fallback for stages logged without an explicit "icon".
+GLYPH_KEYWORDS = (
+    ("frame", ("camera", "frame", "crop", "image")),
+    ("cnn", ("extractor", "cnn", "backbone", "encoder", "conv", "feature")),
+    ("window", ("window", "argmax", "anchor", "snap")),
+    ("heatmap", ("probability", "heat", "field", "logits", "cell")),
+    ("patches", ("patch",)),
+    ("balance", ("decode", "balance", "soft-argmax", "expected", "average")),
+    ("crosshair", ("position guess", "regress", "coordinate", "guess")),
+    ("gauge", ("confidence", "abstain")),
+    ("pin", ("output", "position fix", "lat")),
+    ("target", ("training", "loss", "signal", "augment")),
+)
+
+
+def _heat(x0, y0, n, cell, cx, cy, sigma, peak, color):
+    """Grid cells shaded by a Gaussian bump — the visual for probability mass."""
+    out = []
+    for gy in range(n):
+        for gx in range(n):
+            o = peak * math.exp(-((gx - cx) ** 2 + (gy - cy) ** 2) / (2 * sigma ** 2))
+            if o >= 0.06:
+                out.append(f"<rect x='{x0+gx*cell}' y='{y0+gy*cell}' width='{cell}' "
+                           f"height='{cell}' fill='{color}' fill-opacity='{o:.2f}'/>")
+    return "".join(out)
+
+
+def _gridlines(x0, y0, n, cell, faint):
+    s = []
+    for i in range(n + 1):
+        s.append(f"<line x1='{x0+i*cell}' y1='{y0}' x2='{x0+i*cell}' y2='{y0+n*cell}' "
+                 f"stroke='{faint}' stroke-width='0.75'/>")
+        s.append(f"<line x1='{x0}' y1='{y0+i*cell}' x2='{x0+n*cell}' y2='{y0+i*cell}' "
+                 f"stroke='{faint}' stroke-width='0.75'/>")
+    return "".join(s)
+
+
+def _crosshair(x, y, r, color, w=1.6):
+    return (f"<line x1='{x-r}' y1='{y}' x2='{x+r}' y2='{y}' stroke='{color}' stroke-width='{w}'/>"
+            f"<line x1='{x}' y1='{y-r}' x2='{x}' y2='{y+r}' stroke='{color}' stroke-width='{w}'/>"
+            f"<circle cx='{x}' cy='{y}' r='{r*0.55:.1f}' fill='none' stroke='{color}' stroke-width='{w}'/>"
+            f"<circle cx='{x}' cy='{y}' r='1.6' fill='{color}'/>")
+
+
+def glyph_svg(kind, changed):
+    """One pictorial stage glyph, 120x72. Ink normally, accent red if the
+    stage is what this experiment changed."""
+    col = "#8c2f1f" if changed else "#55534a"
+    faint = "#8c2f1f" if changed else "#d5d1c0"
+    fop = "0.35" if changed else "1"
+    st = f"stroke='{col}' fill='none' stroke-width='1.5'"
+    thin = f"stroke='{col}' fill='none' stroke-width='1'"
+    g = []
+    if kind == "frame":
+        g.append(f"<rect x='36' y='4' width='48' height='44' {st}/>")
+        for bx, by, bw, bh in ((42, 10, 9, 7), (55, 12, 11, 8), (44, 30, 7, 11),
+                               (64, 33, 12, 8)):
+            g.append(f"<rect x='{bx}' y='{by}' width='{bw}' height='{bh}' {thin}/>")
+        g.append(f"<line x1='36' y1='44' x2='84' y2='20' stroke='{col}' "
+                 f"stroke-width='1' opacity='0.45'/>")
+        for i in range(6):  # the six lighting renders, light -> night
+            g.append(f"<rect x='{36+i*8}' y='56' width='7' height='7' fill='#55534a' "
+                     f"fill-opacity='{0.08+i*0.15:.2f}' stroke='{faint}' "
+                     f"stroke-opacity='{fop}' stroke-width='0.75'/>")
+    elif kind == "cnn":
+        for x, y, w, h in ((18, 6, 22, 52), (48, 15, 16, 34), (72, 21, 11, 22)):
+            g.append(f"<rect x='{x}' y='{y}' width='{w}' height='{h}' {st}/>")
+        for x1, y1, x2, y2 in ((40, 6, 48, 15), (40, 58, 48, 49),
+                               (64, 15, 72, 21), (64, 49, 72, 43)):
+            g.append(f"<line x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}' "
+                     f"stroke='{col}' stroke-width='0.9' opacity='0.6'/>")
+        for i in range(5):
+            g.append(f"<circle cx='97' cy='{22+i*5}' r='1.8' fill='{col}'/>")
+    elif kind == "heatmap":
+        g.append(_gridlines(36, 8, 8, 6, faint))
+        g.append(_heat(36, 8, 8, 6, 5, 3, 1.2, 0.9, col))
+    elif kind == "balance":
+        g.append(_gridlines(36, 8, 8, 6, faint))
+        g.append(_heat(36, 8, 8, 6, 5, 3, 2.4, 0.5, col))
+        g.append(_crosshair(69, 29, 8, col))
+    elif kind == "window":
+        g.append(_gridlines(36, 8, 8, 6, faint))
+        g.append(_heat(36, 8, 8, 6, 5, 3, 2.4, 0.35, col))
+        g.append(f"<rect x='54' y='14' width='18' height='18' stroke='{col}' "
+                 f"fill='none' stroke-width='2'/>")
+        g.append(_crosshair(63, 23, 6, col, 1.3))
+    elif kind == "patches":
+        g.append(_gridlines(36, 8, 4, 12, faint))
+        for gy in range(4):
+            for gx in range(4):
+                cx, cy = 36 + gx * 12 + 6, 8 + gy * 12 + 6
+                g.append(f"<line x1='{cx}' y1='{cy}' x2='60' y2='32' stroke='{col}' "
+                         f"stroke-width='0.8' opacity='0.4'/>")
+                g.append(f"<circle cx='{cx}' cy='{cy}' r='1.4' fill='{col}'/>")
+        g.append(f"<circle cx='60' cy='32' r='3' fill='{col}'/>")
+    elif kind == "crosshair":
+        g.append(f"<rect x='36' y='8' width='48' height='48' {st} "
+                 f"stroke='{faint}' stroke-opacity='{fop}'/>")
+        g.append(_crosshair(64, 26, 9, col))
+    elif kind == "gauge":
+        g.append(f"<path d='M 34,52 A 26 26 0 0 1 86,52' {st}/>")
+        for ang in (150, 120, 90, 60, 30):
+            a = math.radians(ang)
+            x1, y1 = 60 + 23 * math.cos(a), 52 - 23 * math.sin(a)
+            x2, y2 = 60 + 26 * math.cos(a), 52 - 26 * math.sin(a)
+            g.append(f"<line x1='{x1:.1f}' y1='{y1:.1f}' x2='{x2:.1f}' y2='{y2:.1f}' "
+                     f"stroke='{col}' stroke-width='1'/>")
+        a = math.radians(55)
+        g.append(f"<line x1='60' y1='52' x2='{60+19*math.cos(a):.1f}' "
+                 f"y2='{52-19*math.sin(a):.1f}' stroke='{col}' stroke-width='1.8'/>")
+        g.append(f"<circle cx='60' cy='52' r='2.2' fill='{col}'/>")
+    elif kind == "pin":
+        g.append(f"<line x1='38' y1='54' x2='82' y2='54' stroke='{faint}' "
+                 f"stroke-opacity='{fop}' stroke-width='1'/>")
+        g.append(f"<path d='M 60,52 C 52,40 49,34 49,27 a 11 11 0 1 1 22,0 "
+                 f"c 0,7 -3,13 -11,25 Z' {st}/>")
+        g.append(f"<circle cx='60' cy='26' r='3.4' fill='{col}'/>")
+    elif kind == "target":
+        for r in (6, 13, 20):
+            g.append(f"<circle cx='54' cy='32' r='{r}' {thin}/>")
+        g.append(f"<line x1='96' y1='60' x2='63' y2='38' stroke='{col}' stroke-width='1.4'/>")
+        g.append(f"<path d='M 60,36 l 8,1.5 -3.5,7 Z' fill='{col}'/>")
+        g.append(f"<circle cx='54' cy='32' r='1.8' fill='{col}'/>")
+    else:
+        return None
+    return (f"<svg width='120' height='72' viewBox='0 0 120 72' role='img' "
+            f"aria-label='{esc(kind)}'>{''.join(g)}</svg>")
+
+
+def stage_glyph_kind(s):
+    icon = s.get("icon")
+    if icon in GLYPHS:
+        return icon
+    for text in (s.get("name", "").lower(),
+                 f"{s.get('name', '')} {s.get('detail', '')}".lower()):
+        for kind, words in GLYPH_KEYWORDS:
+            if any(w in text for w in words):
+                return kind
+    return None
+
+
 def arch_block(e):
-    """Uniform block diagram of the model's inference path, rendered from the
-    experiment's pre-registered `architecture` stages. Every experiment uses
-    the same left-to-right vocabulary (camera frame → … → output) and stages
-    the experiment changed are drawn in accent red — so two open detail rows
-    can be compared box-by-box."""
+    """Pictorial diagram of the model's inference path, rendered from the
+    experiment's pre-registered `architecture` stages. Every experiment draws
+    from the same fixed glyph vocabulary (camera frame → … → map pin) and
+    stages the experiment changed are drawn in accent red — so two open
+    detail rows can be compared glyph-by-glyph. Stages with no matching
+    glyph fall back to a labeled box."""
     try:
         arch = json.loads(e.get("arch_json") or "null")
     except (TypeError, json.JSONDecodeError):
@@ -567,23 +725,30 @@ def arch_block(e):
     stages = arch.get("stages") if isinstance(arch, dict) else None
     if not stages:
         return ""
-    boxes = []
+    parts = []
     for i, s in enumerate(stages):
         if i:
-            boxes.append(f"<div class='ab-arr'>{'+' if s.get('train_only') else '→'}</div>")
-        cls = ("ab" + (" ch" if s.get("changed") else "")
-               + (" tr" if s.get("train_only") else ""))
-        name = esc(s.get("name", "?"))
-        if s.get("train_only"):
-            name += " <span style='color:var(--faint);font-weight:400'>· training only</span>"
-        boxes.append(f"<div class='{cls}'><div class='ab-n'>{name}</div>"
-                     f"<div class='ab-d'>{esc(s.get('detail', ''))}</div></div>")
+            parts.append(f"<div class='ab-arr'>{'+' if s.get('train_only') else '→'}</div>")
+        changed = bool(s.get("changed"))
+        name, detail = esc(s.get("name", "?")), esc(s.get("detail", ""))
+        tr = ("<div class='ab-tr'>training only — not flown</div>"
+              if s.get("train_only") else "")
+        svg = glyph_svg(stage_glyph_kind(s), changed)
+        if svg:
+            parts.append(f"<div class='ab2{' ch' if changed else ''}'>{svg}"
+                         f"<div class='ab-n'>{name}</div>{tr}"
+                         f"<div class='ab-d'>{detail}</div></div>")
+        else:
+            cls = ("ab" + (" ch" if changed else "")
+                   + (" tr" if s.get("train_only") else ""))
+            parts.append(f"<div class='{cls}'><div class='ab-n'>{name}</div>{tr}"
+                         f"<div class='ab-d'>{detail}</div></div>")
     note = ("<span class='chg'>red = what this experiment changed</span>"
             if any(s.get("changed") for s in stages)
             else "the design this run used (nothing changed vs. its parent)")
     return (f"<div class='arch'><div class='arch-h'>How the model answers "
             f"“where am I?” — {note}</div>"
-            f"<div class='arch-row'>{''.join(boxes)}</div></div>")
+            f"<div class='arch-row'>{''.join(parts)}</div></div>")
 
 
 def prompt_block(e):
