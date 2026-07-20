@@ -1,0 +1,15 @@
+[
+  {
+    "area": "berlin",
+    "n_crops_per_epoch": 9600,
+    "resampled_per_epoch": true,
+    "passes_per_epoch": 8,
+    "gradient_steps": 9600,
+    "total_crops_seen": 76800,
+    "epochs": 8,
+    "device": "mps",
+    "train_seconds": 354.7,
+    "onnx_bytes": 394346,
+    "init": "from-scratch"
+  }
+]

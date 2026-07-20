@@ -1,0 +1,8 @@
+{
+  "title": "Relight v1 — ambient-compensated auto-exposure + golden/blue-hour grading (eval-set reset)",
+  "category": "relighting",
+  "hypothesis": "The v0 sensor model's uncompensated auto-exposure re-brightened every bucket up to the same target, making morning-through-evening nearly indistinguishable (user-observed). Scaling the exposure target with ambient (real AE under-exposes as light falls) plus golden-hour warmth and the existing blue-hour ramp should produce a visible day->dusk->night progression (measured tile brightness 0.56 -> 0.49 -> 0.41 -> 0.35 -> 0.27), giving the model genuinely distinct lighting domains; the naive baseline should stay in the center-guess regime.",
+  "method": "pipeline/relight.py: AE target = TARGET_MEAN * (0.25 + 0.75 * ambient^0.7); ambient color gains a Gaussian golden-hour warm tint peaking at ambient 0.5. All five areas re-rendered; baseline retrained (8 epochs, matching the loop default) and rescored. Deliberate frozen-pipeline revision during the bootstrap window, agreed with the human; marks an era boundary in the dashboard.",
+  "expected_outcome": "Primary worst-case median error ~2.5-3.5 km (not comparable to prior eras); darker dusk/evening buckets slightly harder than before.",
+  "init_strategy": "from-scratch"
+}

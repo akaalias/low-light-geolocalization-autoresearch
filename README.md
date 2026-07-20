@@ -75,17 +75,32 @@ iteration — reload to see the latest), or
 
 ### Running on RunPod (manual step, v1)
 
-Training is per-area independent; one GPU per experiment is plenty.
+Where iteration time goes: the agent-design phase is LLM-API-bound (a GPU
+won't speed it up), but training and scoring scale with hardware — and the
+gap grows as the loop raises epochs/crop counts. A pod also runs 24/7
+without occupying a laptop.
 
-1. Create a RunPod GPU pod (any CUDA image with Python ≥ 3.11), put your key
-   in `.env` as `RUNPOD_API_KEY` if you later script it (nothing reads it yet).
-2. `git clone` this repo onto the pod, run the Quickstart install, and
-   `rsync data/` up (or re-run fetch — it's credential-free).
-3. Run `./autoresearch/loop.sh` there with `claude` CLI authenticated
-   (`CLAUDE_BIN` env var if the binary lives elsewhere). `model/train.py`
-   auto-selects cuda > mps > cpu.
-4. `rsync` back `experiments.sqlite`, `runs/`, and push the git branch to
-   keep lineage local.
+**Recommended pod:** RTX 4090 (or 3090) secure cloud, the official RunPod
+PyTorch template, ≥ 16 vCPU, ~50 GB volume. Then:
+
+```bash
+# on the pod
+git clone <this-repo> && cd low-light-geolocalization-autoresearch
+pip install uv && uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python numpy pillow rasterio pystac-client torch onnx onnxruntime pyyaml
+for a in berlin prignitz munich frankfurt hamburg; do
+  .venv/bin/python -m pipeline.fetch --area $a      # credential-free, ~10 min total
+  .venv/bin/python -m pipeline.relight --area $a
+done
+npm install -g @anthropic-ai/claude-code            # the headless agent CLI
+export CLAUDE_CODE_OAUTH_TOKEN=<token from `claude setup-token` on your machine>
+./autoresearch/loop.sh 25
+```
+
+`model/train.py` auto-selects cuda > mps > cpu; nothing else changes.
+Afterwards `rsync` back `experiments.sqlite` + `runs/` and push the git
+branch so the lineage lives on your machine. (`RUNPOD_API_KEY` in `.env` is
+reserved for future scripted pod provisioning; nothing reads it yet.)
 
 ## Reference imagery (pipeline data v2) & licensing
 
