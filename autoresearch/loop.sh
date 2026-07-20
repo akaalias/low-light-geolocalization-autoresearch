@@ -29,8 +29,26 @@ best_metric() { [ -f "$STATE/best.json" ] && $PY -c "import json;print(json.load
 
 # Refuse to run on a dirty tree — lineage requires clean commits.
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "FATAL: working tree dirty; commit or stash first." >&2; exit 1
+  echo "FATAL: working tree dirty; commit or stash first." >&2
+  echo "(If a previous loop run was killed uncleanly, this is its leftover" >&2
+  echo " in-flight edit — discard it with: git checkout -- model/)" >&2
+  exit 1
 fi
+
+# Graceful exit: Ctrl-C / SIGTERM discards only the in-flight iteration.
+# Everything durable is already on disk — kept improvements are committed,
+# finished iterations are in experiments.sqlite, best is in state/best.json —
+# so a restart simply continues from the current best.
+cleanup_interrupt() {
+  echo ""
+  echo "Interrupted — discarding the in-flight iteration (all completed"
+  echo "iterations are already committed/logged). Safe to restart with:"
+  echo "  ./autoresearch/loop.sh"
+  git checkout -- model/ 2>/dev/null || true
+  rm -f runs/pending_experiment.json
+  exit 130
+}
+trap cleanup_interrupt INT TERM
 
 for i in $(seq 1 "$ITERATIONS"); do
   RUN_ID="$(date -u +%Y%m%d_%H%M%S)_iter$i"
