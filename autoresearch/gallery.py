@@ -145,6 +145,20 @@ table.cells td{border-bottom:1px solid var(--rule-soft);padding:4px 12px 4px 0}
 .gates .bad{color:var(--accent);font-weight:600}
 .provenance{font-size:11.5px;color:var(--faint);margin-top:14px;
   font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.04em}
+pre.prompt{font:12px/1.5 var(--mono);white-space:pre-wrap;background:#fff;
+  border-left:2px solid var(--rule);padding:12px 16px;margin:8px 0 0;
+  max-width:920px;max-height:420px;overflow:auto;color:#33312b;
+  box-shadow:0 1px 7px rgba(60,50,30,.08)}
+.figs-intro{font-size:13px;color:#4a473e;max-width:920px;margin:2px 0 8px}
+.figs-intro i{color:var(--faint)}
+#lightbox{position:fixed;inset:0;background:rgba(17,17,17,.92);z-index:50;
+  display:none;align-items:center;justify-content:center;cursor:zoom-out;
+  flex-direction:column;gap:10px}
+#lightbox.on{display:flex}
+#lightbox img{max-width:96vw;max-height:90vh;border:1px solid #444}
+#lightbox .lb-cap{color:#cbc8ba;font:13.5px var(--serif);font-style:italic}
+#lightbox .lb-hint{color:#77746a;font:11px var(--serif);
+  font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.06em}
 
 .figs{margin-top:16px}
 .figs-h{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
@@ -152,6 +166,7 @@ table.cells td{border-bottom:1px solid var(--rule-soft);padding:4px 12px 4px 0}
 .thumbs{display:flex;flex-wrap:wrap;gap:12px}
 .thumbs figure{margin:0}
 .thumbs img{height:130px;display:block;border:1px solid var(--rule)}
+.thumbs.maps img{height:240px}
 .thumbs figcaption{font:11px var(--serif);color:var(--faint);margin-top:3px}
 details.trywrap{margin:12px 0 0}
 details.trywrap>summary{cursor:pointer;color:var(--muted);font-weight:600;
@@ -225,6 +240,23 @@ window.addEventListener('load',function(){
     row.addEventListener('mouseenter',function(){mk.classList.add('big')});
     row.addEventListener('mouseleave',function(){mk.classList.remove('big')});
   });
+  // image lightbox: any figure image opens a full-screen modal
+  var lb=document.getElementById('lightbox'),
+      lbImg=lb.querySelector('img'), lbCap=lb.querySelector('.lb-cap');
+  document.body.addEventListener('click',function(ev){
+    var a=ev.target.closest('.thumbs a');
+    if(!a)return;
+    ev.preventDefault();ev.stopPropagation();
+    lbImg.src=a.getAttribute('href');
+    var cap=a.parentElement.querySelector('figcaption');
+    lbCap.textContent=cap?cap.textContent:'';
+    lb.classList.add('on');
+  });
+  lb.addEventListener('click',function(){lb.classList.remove('on');lbImg.src=''});
+  window.addEventListener('keydown',function(ev){
+    if(ev.key==='Escape'&&lb.classList.contains('on')){
+      lb.classList.remove('on');lbImg.src=''}
+  });
 });
 """
 
@@ -280,7 +312,7 @@ def chart_svg(exps):
     parts.append(f"<line x1='{ml}' x2='{W-mr}' y1='{y(TARGET_M):.1f}' y2='{y(TARGET_M):.1f}' "
                  f"stroke='#8c2f1f' stroke-width='1.5' stroke-dasharray='6 5'/>")
     parts.append(f"<text class='axis-lab' x='{W-mr}' y='{y(TARGET_M)-5:.1f}' "
-                 f"text-anchor='end' fill='#8c2f1f'>mission target — 20 m</text>")
+                 f"text-anchor='end' fill='#8c2f1f'>goal — locate the drone to within 20 m</text>")
 
     # Running-best step line follows keep/revert lineage: each kept dev
     # experiment SETS the best (a kept value that rises marks a deliberate
@@ -379,29 +411,50 @@ def gates_block(e, metrics):
             f"(proxy limit 250 ms)</div>")
 
 
-def figures(artifacts_dir):
+def figures(artifacts_dir, metrics):
     art = REPO_ROOT / (artifacts_dir or "")
     if not art.exists():
         return ""
     heat = sorted(art.glob("heatmaps/*.png"))
     samp = sorted(art.glob("samples/*.png"))
+    med_range = {}
+    for a in metrics.get("areas", []):
+        meds = [c["median_error_m"] for c in a.get("buckets", {}).values()
+                if c.get("median_error_m") is not None]
+        if meds:
+            med_range[a["area"]] = (min(meds), max(meds))
     out = []
     if heat:
         figs = []
         for p in heat:
             rel = Path("..") / p.relative_to(REPO_ROOT)
             area = p.stem.replace("heatmap_", "")
+            lo_hi = med_range.get(area)
+            stat = (f" — this run: median miss {lo_hi[0]:,.0f}–{lo_hi[1]:,.0f} m "
+                    f"depending on lighting" if lo_hi else "")
             figs.append(f"<figure><a href='{rel}'><img src='{rel}' loading='lazy'></a>"
-                        f"<figcaption>where it missed — {esc(area)} "
-                        f"(green &lt; 20 m · amber &lt; 50 m · red beyond)</figcaption></figure>")
-        out.append(f"<div class='figs-h'>Held-out error maps</div>"
-                   f"<div class='thumbs'>{''.join(figs)}</div>")
+                        f"<figcaption><b>{esc(area)}</b>{stat}</figcaption></figure>")
+        out.append(
+            "<div class='figs-h'>Where the model was tested — and how far off it was</div>"
+            "<div class='figs-intro'>Each map is one full test area. Every dot is one "
+            "held-out test location (all six lighting conditions overlaid): the model was "
+            "shown a 128 m crop centered there and asked for its position. Dot color = the "
+            "distance between its answer and the truth — <b style='color:#3c9c3c'>green ≤ 20 m "
+            "(at goal)</b>, <b style='color:#8a6a1e'>amber ≤ 50 m</b>, "
+            "<b style='color:#8c2f1f'>red beyond</b>. <i>A working model turns these maps "
+            "green; spatial clusters of red reveal which parts of an area confuse it.</i></div>"
+            f"<div class='thumbs maps'>{''.join(figs)}</div>")
     if samp:
         by_area = {}
         for p in samp:
             area = p.stem.split("_")[0]
             by_area.setdefault(area, []).append(p)
-        inner = []
+        inner = [
+            "<div class='figs-intro'>One example 256 m patch per area, rendered under the "
+            "six synthetic lighting conditions the model must handle. These illustrate the "
+            "<i>dataset</i>, not this experiment's performance — the actual training set is "
+            "thousands of distinct crops per area (see “training data” above), and these "
+            "renderings only change when the relighting method changes.</div>"]
         for area, ps in sorted(by_area.items()):
             figs = []
             for p in ps:
@@ -411,10 +464,43 @@ def figures(artifacts_dir):
                             f"<figcaption>{esc(area)} · {esc(bucket)}</figcaption></figure>")
             inner.append(f"<div class='figs-h'>{esc(area)}</div>"
                          f"<div class='thumbs'>{''.join(figs)}</div>")
-        out.append(f"<details class='trywrap'><summary>What the model trains on — "
-                   f"synthetic lighting conditions ({len(samp)} samples)</summary>"
-                   f"{''.join(inner)}</details>")
+        out.append(f"<details class='trywrap'><summary>What the six lighting conditions "
+                   f"look like (example patches — illustration, not the training set)"
+                   f"</summary>{''.join(inner)}</details>")
     return f"<div class='figs'>{''.join(out)}</div>" if out else ""
+
+
+def train_block(artifacts_dir):
+    """Summarize the actual training data used, from train_info.json."""
+    p = REPO_ROOT / (artifacts_dir or "") / "train_info.json"
+    if not p.exists():
+        return ""
+    try:
+        infos = json.loads(p.read_text())
+    except (OSError, json.JSONDecodeError):
+        return ""
+    if not infos:
+        return ""
+    parts = [f"{esc(i['area'])} <span class='num'>{i['n_train_crops']:,}</span> crops"
+             f" / {i['epochs']} epochs" for i in infos]
+    return (f"<div class='gates'><b>Training data this run:</b> {' · '.join(parts)}"
+            f"<br>crops are sampled fresh each run from the frozen train split "
+            f"(~45,000 distinct positions per area at 1 m/px, times random "
+            f"rotation), never from eval blocks — how many to use is the "
+            f"experiment's own choice</div>")
+
+
+def prompt_block(e):
+    """The exact prompt the headless agent was given for this experiment."""
+    prompt = e.get("agent_prompt")
+    if prompt:
+        return (f"<details class='trywrap'><summary>The exact prompt given to the "
+                f"headless agent</summary><pre class='prompt'>{esc(prompt)}</pre>"
+                f"</details>")
+    if e["kind"] == "holdout_check":
+        return ""
+    return ("<div class='provenance'>no headless prompt — designed interactively "
+            "during the bootstrap session</div>")
 
 
 def status_of(e):
@@ -463,6 +549,14 @@ from a permissively-licensed pretrained backbone.</dd>
 <dt>Model / Latency</dt><dd>Largest per-area exported model, and
 single-frame inference time on one CPU thread (a documented proxy for the
 flight computer, not a measurement of it).</dd>
+<dt>Training set</dt><dd>Each area offers ~45,000 distinct training
+positions (1 m/px, 128 m crops, times random rotation); how many crops an
+experiment actually samples per lighting condition is its own choice and is
+shown in the detail view. Training crops never overlap the eval blocks —
+enforced by the frozen split, not by convention.</dd>
+<dt>Agent prompt</dt><dd>Every loop experiment records the exact prompt its
+headless agent received — expandable in the detail view, so any experiment
+can be re-run or audited later.</dd>
 </dl>
 <div class="foot">Click any row — or any point in the chart — to see the
 experiment's pre-registered hypothesis, method and expected outcome, the
@@ -482,8 +576,23 @@ def render():
                  and e["primary_metric"] and e["primary_metric"] < FAIL),
                 None)
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    gap = (f"— <b class='num'>{best/TARGET_M:,.0f}×</b> above target"
-           if best and best > TARGET_M else "— <b>target reached</b>" if best else "")
+    best_size = next((e["model_bytes_max"] for e in reversed(exps)
+                      if e["kept"] and e["kind"] != "holdout_check"
+                      and e["model_bytes_max"]), None)
+    size_note = (f"currently <b class='num'>{best_size/1024:,.0f} KB</b>, hard limit "
+                 f"<b class='num'>4 MiB</b>" if best_size else "hard limit <b>4 MiB</b>")
+    if best is None:
+        status_line = "No scoreable model yet."
+    elif best <= TARGET_M:
+        status_line = (f"<b>Goal reached:</b> worst-case median miss "
+                       f"<b class='num'>{fmt_m(best)}</b> — at or under the 20 m goal.")
+    else:
+        status_line = (
+            f"Status: in its hardest area × lighting combination, the best model's "
+            f"<b>median miss is {fmt_m(best)}</b> — half its position estimates land "
+            f"farther than that from the drone's true location. The goal is a median "
+            f"miss of <b class='num'>≤ 20 m</b> in <i>every</i> combination — "
+            f"<b class='num'>{best/TARGET_M:,.0f}×</b> better than today.")
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta http-equiv="refresh" content="30">
@@ -494,9 +603,9 @@ def render():
   <div class="eyebrow">Alexis Rondeau · live research log</div>
   <h1>Can a drone find itself in the dark?</h1>
   <p class="sub">A 5-inch UAV loses GPS. All it has is a low-light camera and
-  a <b>~400 KB neural network</b> that has memorized what its flight area looks
-  like from above — by day, by dusk, and by night. It looks down at one frame
-  and answers: <b>where am I?</b> No stored maps, no internet, no GPS.</p>
+  a tiny neural network ({size_note}) that has memorized what its flight area
+  looks like from above — by day, by dusk, and by night. It looks down at one
+  frame and answers: <b>where am I?</b> No stored maps, no internet, no GPS.</p>
   <div class="intro">
   <p>An autonomous research loop (one headless coding agent per iteration)
   rewrites the model and its training code, one pre-registered experiment at a
@@ -506,8 +615,7 @@ def render():
   stays blind as the generalization check. Every model must fit the
   <b>ESP32-P4</b> flight computer: ≤ 4 MiB, within the latency budget, under
   ~2 W.</p>
-  <p>Currently the best model is off by <b class="num">{fmt_m(best)}</b>
-  {gap} of <b class="num">≤ 20 m</b> · {n_dev} experiment{'s' if n_dev != 1 else ''},
+  <p>{status_line} · {n_dev} experiment{'s' if n_dev != 1 else ''},
   {n_kept} kept.</p>
   </div>
   <div class="dash-meta">
@@ -568,14 +676,18 @@ def render():
 red = failed cell, ink = at target</div>
 {cells_table(metrics)}
 {gates_block(e, metrics)}
+{train_block(e['artifacts_dir'])}
 <div class="provenance">ts {esc(e['ts'][:19])} · commit {esc(e['git_commit'][:12])} ·
 parent {esc((e['parent_commit'] or '')[:12]) or '—'} · artifacts {esc(e['artifacts_dir'] or '—')}</div>
+{prompt_block(e)}
 </div>
 </div>
-{figures(e['artifacts_dir'])}
+{figures(e['artifacts_dir'], metrics)}
 </div></td></tr>""")
 
     body.append(f"</tbody></table>{HELP}</div>")
+    body.append("<div id='lightbox'><img alt=''><div class='lb-cap'></div>"
+                "<div class='lb-hint'>click anywhere or press Esc to close</div></div>")
     body.append("<div id='tip'></div></body></html>")
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text("\n".join(body))

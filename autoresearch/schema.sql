@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS experiments (
     model_bytes_max INTEGER,          -- largest per-area ONNX
     latency_ms_host_proxy REAL,       -- worst per-area host latency proxy
     metrics_json TEXT,                -- full score.py output (per-area/bucket)
-    artifacts_dir TEXT                -- runs/<id>/ path with models/heatmaps/samples
+    artifacts_dir TEXT,               -- runs/<id>/ path with models/heatmaps/samples
+    agent_prompt TEXT                 -- exact prompt given to the headless agent
 );
 
 CREATE TABLE IF NOT EXISTS area_results (

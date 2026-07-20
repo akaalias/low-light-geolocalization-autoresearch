@@ -30,6 +30,10 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path or DB_PATH)
     with open(REPO_ROOT / "autoresearch" / "schema.sql") as f:
         conn.executescript(f.read())
+    # Migrate DBs created before a column was added to the schema.
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(experiments)")]
+    if "agent_prompt" not in cols:
+        conn.execute("ALTER TABLE experiments ADD COLUMN agent_prompt TEXT")
     return conn
 
 
@@ -41,6 +45,7 @@ def git_rev(ref: str) -> str:
 def log_experiment(metrics_path: Path, design: dict, result: str,
                    conclusion: str, git_commit: str, parent_commit: str | None,
                    artifacts_dir: str, kept: int | None, kind: str,
+                   agent_prompt: str | None = None,
                    db_path: Path | None = None) -> int:
     with open(metrics_path) as f:
         metrics = json.load(f)
@@ -52,8 +57,8 @@ def log_experiment(metrics_path: Path, design: dict, result: str,
            (ts, git_commit, parent_commit, kind, title, category, hypothesis,
             method, expected_outcome, result, conclusion, init_strategy,
             primary_metric, kept, model_bytes_max, latency_ms_host_proxy,
-            metrics_json, artifacts_dir)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            metrics_json, artifacts_dir, agent_prompt)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (datetime.datetime.now(datetime.timezone.utc).isoformat(),
          git_commit, parent_commit, kind,
          design.get("title", "(untitled)"), design.get("category"),
@@ -62,7 +67,7 @@ def log_experiment(metrics_path: Path, design: dict, result: str,
          design.get("init_strategy"),
          metrics["primary_worst_median_error_m"], kept,
          max(sizes) if sizes else None, max(lats) if lats else None,
-         json.dumps(metrics), artifacts_dir))
+         json.dumps(metrics), artifacts_dir, agent_prompt))
     exp_id = cur.lastrowid
     for a in metrics["areas"]:
         for bucket, c in a.get("buckets", {}).items():
@@ -88,6 +93,8 @@ def main():
     ap.add_argument("--kept", type=int, default=None)
     ap.add_argument("--kind", default="development",
                     choices=["development", "holdout_check"])
+    ap.add_argument("--prompt-file", default=None,
+                    help="file holding the exact prompt given to the headless agent")
     args = ap.parse_args()
 
     try:
@@ -95,11 +102,15 @@ def main():
     except (OSError, json.JSONDecodeError) as e:
         design = {"title": "(missing/invalid experiment.json)", "hypothesis": str(e)}
 
+    prompt = None
+    if args.prompt_file and Path(args.prompt_file).exists():
+        prompt = Path(args.prompt_file).read_text().strip()
+
     exp_id = log_experiment(
         Path(args.metrics), design, args.result, args.conclusion,
         git_rev(args.git_commit),
         git_rev(args.parent_commit) if args.parent_commit else None,
-        args.artifacts_dir, args.kept, args.kind)
+        args.artifacts_dir, args.kept, args.kind, prompt)
     print(exp_id)
 
 

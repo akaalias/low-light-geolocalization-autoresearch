@@ -125,12 +125,13 @@ def render_heatmap(area, data_dir, points, out_path: Path):
     if scale < 1.0:
         base = base.resize((int(base.width * scale), int(base.height * scale)),
                            Image.BILINEAR)
-    base = Image.eval(base, lambda p: p // 2)  # dim for contrast
+    base = Image.eval(base, lambda p: p * 2 // 3)  # dim slightly for contrast
     draw = ImageDraw.Draw(base)
+    r = 5
     for cx, cy, e in points:
         color = (60, 220, 60) if e < 20 else (240, 200, 40) if e < 50 else (230, 60, 60)
         x, y = cx * scale, cy * scale
-        draw.ellipse([x - 3, y - 3, x + 3, y + 3], fill=color)
+        draw.ellipse([x - r, y - r, x + r, y + r], fill=color)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     base.save(out_path)
 

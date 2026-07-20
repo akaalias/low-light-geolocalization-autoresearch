@@ -22,7 +22,10 @@ from PIL import Image
 
 from pipeline.common import CROP_PX, stable_hash
 
-BLOCK_PX = 144
+# 360 px blocks: large enough that the no-leakage buffer around eval blocks
+# doesn't consume the train area (at 1 m/px this yields ~45k train and ~15k
+# eval positions per ~7 km area, ~26% eval).
+BLOCK_PX = 360
 STRIDE_PX = 24
 EVAL_FRACTION_MOD = 5  # exactly 1 in 5 blocks is eval (diagonal lattice)
 # Window big enough to rotate CROP_PX without corner voids: ceil(128 * sqrt(2))

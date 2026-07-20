@@ -41,9 +41,12 @@ for i in $(seq 1 "$ITERATIONS"); do
 
   # 1. Agent designs ONE experiment: pre-registers hypothesis/method/expected
   #    outcome in runs/pending_experiment.json, then edits model/ accordingly.
+  # Snapshot the exact prompt handed to the headless agent — part of the
+  # experiment record (§7 lineage) even when SKIP_AGENT skips the call.
+  cp autoresearch/prompt.md "$RUN_DIR/prompt.md"
   if [ "${SKIP_AGENT:-0}" != "1" ]; then
     rm -f runs/pending_experiment.json
-    "$CLAUDE_BIN" -p "$(cat autoresearch/prompt.md)" \
+    "$CLAUDE_BIN" -p "$(cat "$RUN_DIR/prompt.md")" \
       --permission-mode acceptEdits \
       --allowedTools "Read,Edit,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
       || { echo "agent invocation failed; skipping iteration"; continue; }
@@ -98,7 +101,8 @@ $(cat "$RUN_DIR/experiment.json")" || true
   $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
     --experiment-file "$RUN_DIR/experiment.json" \
     --result "$RESULT" --conclusion "$CONCLUSION" \
-    --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept "$KEEP"
+    --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept "$KEEP" \
+    --prompt-file "$RUN_DIR/prompt.md"
 
   # 5. Periodic read-only holdout check (§5) — logged, never drives keep/revert.
   KEPT_COUNT="$(cat "$STATE/kept_count" 2>/dev/null || echo 0)"

@@ -1,0 +1,8 @@
+{
+  "title": "Split rebalance — 360 m blocks so the no-leakage buffer stops eating the train area",
+  "category": "other",
+  "hypothesis": "With 144 m blocks, the rotation-window buffer around eval blocks rejected most train positions (~11k train vs ~15.6k eval per area — 59% of usable positions were eval). Enlarging blocks to 360 m should cut buffer frequency and roughly quadruple train positions (~45k per area) without weakening the leakage guarantee; the naive baseline's score should stay in the center-guess regime since 3 epochs on 4.8k crops still cannot memorize a 7 km area.",
+  "method": "pipeline/dataset.py BLOCK_PX 144 -> 360 (frozen-pipeline data revision during bootstrap, before Phase 2 starts; eval sets change, so this is a new comparison baseline). Baseline model and training unchanged.",
+  "expected_outcome": "Train positions ~45k/area (26% eval); primary worst-case median error again ~2.5-3 km with full coverage.",
+  "init_strategy": "from-scratch"
+}
