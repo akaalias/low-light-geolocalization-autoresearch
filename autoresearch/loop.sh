@@ -50,7 +50,34 @@ cleanup_interrupt() {
 }
 trap cleanup_interrupt INT TERM
 
+# Graceful stop request: type "exit" (or quit/stop) + Enter while the loop is
+# running to finish the CURRENT iteration completely (train, score, log,
+# keep/revert) and then stop. Also triggered by: touch state/stop
+# (useful from another terminal or when running under nohup).
+STOP_FLAG="$STATE/stop"
+rm -f "$STOP_FLAG"
+WATCHER_PID=""
+if [ -t 0 ]; then
+  ( while IFS= read -r line; do
+      case "$line" in
+        exit|quit|stop|q)
+          touch "$STOP_FLAG"
+          echo ">>> stop requested — will exit gracefully after the current iteration" ;;
+      esac
+    done ) &
+  WATCHER_PID=$!
+  echo "Type 'exit' + Enter to stop gracefully after the current iteration"
+  echo "(Ctrl-C aborts the in-flight iteration immediately)."
+fi
+cleanup_watcher() { [ -n "$WATCHER_PID" ] && kill "$WATCHER_PID" 2>/dev/null || true; }
+trap cleanup_watcher EXIT
+
 for i in $(seq 1 "$ITERATIONS"); do
+  if [ -f "$STOP_FLAG" ]; then
+    rm -f "$STOP_FLAG"
+    echo "Graceful stop: $((i-1))/$ITERATIONS iterations completed and logged."
+    break
+  fi
   RUN_ID="$(date -u +%Y%m%d_%H%M%S)_iter$i"
   RUN_DIR="runs/$RUN_ID"
   mkdir -p "$RUN_DIR"
@@ -67,6 +94,7 @@ for i in $(seq 1 "$ITERATIONS"); do
     "$CLAUDE_BIN" -p "$(cat "$RUN_DIR/prompt.md")" \
       --permission-mode acceptEdits \
       --allowedTools "Read,Edit,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
+      </dev/null \
       || { echo "agent invocation failed; skipping iteration"; continue; }
   fi
   [ -f runs/pending_experiment.json ] && mv runs/pending_experiment.json "$RUN_DIR/experiment.json"
