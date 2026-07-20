@@ -356,8 +356,7 @@ def exp4():
             cy = IC - gs / 2 + (i + 0.5) * gs / 8 + oy
             b.append(f"<circle cx='{cx:.1f}' cy='{cy:.1f}' r='1.3' fill='{ACC}'/>")
     b.append(cap(gx + gs / 2, IC + 72, "64 per-patch coordinates",
-                 "1×1 conv + σ: each patch names the map spot it shows (8×8×2)",
-                 name_color=ACC))
+                 "1×1 conv + σ (8×8×2)", name_color=ACC))
     tx = gx + gs + 200
     b.append(converge(gx, gs, tx, ACC, cells="all"))
     b.append(cap((gx + gs + tx) / 2, IC - 54, "mean of 64 answers",
@@ -374,11 +373,11 @@ def exp4():
     b.append(f"<path d='M {ex},{IC + 20} l -3,6 h 6 Z' fill='{FAINT}'/>")
     b.append(txt((cx0 + ex) / 2, 224, "may abstain instead of guessing", 8.5, FAINT,
                  style="font-style='italic'"))
-    b.append(leader(gx + gs - 12, IC + 54, gx + gs + 24, LOSS_Y - 18, ACC))
-    b.append(txt(gx + gs + 32, LOSS_Y - 12,
-                 "smooth-L1: each patch vs its OWN true coordinate", 10, ACC, 600, "start"))
-    b.append(txt(gx + gs + 32, LOSS_Y,
-                 "crop center + rotated offset → 64× denser supervision", 9.5, ACC, 400, "start"))
+    b.append(leader(gx + gs / 2, IC + 92, gx + gs / 2, LOSS_Y - 20, ACC))
+    b.append(txt(gx + gs / 2, LOSS_Y - 12,
+                 "smooth-L1: each patch vs its OWN true coordinate", 10, ACC, 600))
+    b.append(txt(gx + gs / 2, LOSS_Y,
+                 "crop center + rotated offset → 64× denser supervision", 9.5, ACC))
     return svgwrap(340, "".join(b))
 
 
