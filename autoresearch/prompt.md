@@ -40,18 +40,27 @@ you only design the experiment and edit the code.
 
    `architecture_svg` is the **technical architecture diagram** of the model
    you are testing — a proper ML-paper figure of the design, drawn by you,
-   shown at the top of this experiment's gallery entry. Draw the actual
-   architecture (ops with parameters, e.g. “Conv 3×3, s2, 16ch”; every data
-   edge annotated with its tensor shape, e.g. 128×128×3 → 8×8×128 → 1024),
-   not a metaphor. Style contract, so all experiments' figures read as one
-   paper: viewBox width 980 (height as needed, ~240–360); transparent
-   background; ink #111111, secondary #6b6a60, annotations #9b998c;
-   **#8c2f1f (red) reserved for exactly what this experiment changed**;
-   training-only parts (losses, targets, samplers) dashed in #8a6a1e in a
-   lane below the inference path; font-family Palatino,Georgia,serif,
-   labels ≤ 12px; stroke-width 1.5 for blocks, 1 for arrows; no fills
-   beyond faint tints, no gradients, no icons, no emoji. Inference flows
-   left → right from camera frame to (u, v, conf).
+   shown at the top of this experiment's gallery entry. **Draw tensors and
+   operations as the things they are — NOT as labeled boxes:** the input
+   image as a pixel-textured square; conv feature maps as pseudo-3D slabs
+   that shrink spatially and deepen in channels; 1-D vectors as thin
+   vertical tick-bars; fully-connected layers as fans of thin crossing
+   lines between bars; spatial fields/grids as actually-drawn grids with
+   shaded cells; decodes/aggregations as thin lines converging from cells
+   onto a point; samplers/targets as small pictorial glyphs. Captions sit
+   UNDER each element (name ≤10.5px weight 600, sub-note ≤9.5px); tensor
+   shapes annotate the flow in small italics (128×128×3 → 8²×128 → 1024).
+   Losses/targets/samplers live in a lane below the inference path,
+   annotated with slanted dashed leader lines to small text — no boxes
+   around them. Style contract, so all experiments' figures read as one
+   paper: viewBox width 980 (height ~300–360); transparent background; ink
+   #111111, captions #6b6a60, annotations/arrows #9b998c; **#8c2f1f (red)
+   reserved for exactly what this experiment changed**; training-only
+   elements in #8a6a1e (or red if changed); font-family
+   Palatino,Georgia,serif; stroke-width ≈1.2 elements, 1 arrows; fills only
+   faint tints (opacity ≤ .12); no gradients, no icons, no emoji. Inference
+   flows left → right from camera frame to (u, v, conf). Lay elements out
+   on a running x-cursor with generous spacing so nothing overlaps.
 
    `eli5` and `architecture` feed the human-facing gallery. `architecture.stages`
    is the model's inference path left-to-right, camera frame → (lat, lon,
