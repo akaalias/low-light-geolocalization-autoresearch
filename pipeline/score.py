@@ -116,13 +116,21 @@ def score_area(area: str, model_dir: Path, data_dir: Path, heatmap_dir: Path | N
     return result
 
 
+HEATMAP_MAX_PX = 1600
+
+
 def render_heatmap(area, data_dir, points, out_path: Path):
     base = Image.open(area_dir(area, data_dir) / "relight" / "midday.png").convert("RGB")
+    scale = min(1.0, HEATMAP_MAX_PX / max(base.size))
+    if scale < 1.0:
+        base = base.resize((int(base.width * scale), int(base.height * scale)),
+                           Image.BILINEAR)
     base = Image.eval(base, lambda p: p // 2)  # dim for contrast
     draw = ImageDraw.Draw(base)
     for cx, cy, e in points:
         color = (60, 220, 60) if e < 20 else (240, 200, 40) if e < 50 else (230, 60, 60)
-        draw.ellipse([cx - 3, cy - 3, cx + 3, cy + 3], fill=color)
+        x, y = cx * scale, cy * scale
+        draw.ellipse([x - 3, y - 3, x + 3, y + 3], fill=color)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     base.save(out_path)
 

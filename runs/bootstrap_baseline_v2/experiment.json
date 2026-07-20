@@ -1,0 +1,8 @@
+{
+  "title": "Data v2 baseline — same TinyLocNet on 1 m/px DOP imagery, all 4 dev areas",
+  "category": "other",
+  "hypothesis": "Switching reference imagery from 10 m Sentinel-2 to 1 m open DOP orthophotos (UAV-scale crops, 128 m footprint) resets the task: the naive baseline should again land near the center-guess bound (~2.5-3 km for ~7 km boxes) since 3 epochs on 4.8k crops cannot memorize a 7 km area at 1 m detail, but the harness must run unchanged across all four development areas, proving the registry-driven fetch and GSD-aware relighting are bbox- and source-generic.",
+  "method": "Frozen pipeline data v2 (pipeline/sources.yaml registry: BB-BE/BY/HE/HH DOP WMS at 1 m/px, Sentinel-2 fallback; GSD-aware relighting with meter-denominated lamp density and glow). Unchanged TinyLocNet + training procedure, 3 epochs, 800 crops/bucket, per-area models for berlin/prignitz/munich/frankfurt.",
+  "expected_outcome": "Primary worst-case median error 2-3.5 km; gates pass; establishes the §6 starting best for the Phase 2 loop on the real 4-area metric.",
+  "init_strategy": "from-scratch"
+}

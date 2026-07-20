@@ -1,6 +1,7 @@
 areas.yaml
 pipeline/common.py
 pipeline/fetch.py
+pipeline/sources.yaml
 pipeline/relight.py
 pipeline/dataset.py
 pipeline/score.py

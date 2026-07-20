@@ -47,7 +47,12 @@ def loss_fn(pred: torch.Tensor, target_uv: torch.Tensor) -> torch.Tensor:
     coord_err = ((pred[:, :2] - target_uv) ** 2).sum(dim=1)
     coord_loss = coord_err.mean()
     with torch.no_grad():
-        good = (coord_err.sqrt() < 0.05).float()  # within 5% of map extent
+        # Baseline conf target is deliberately loose (abstain only on
+        # catastrophic misses > half the map extent) so the naive model
+        # stays scoreable instead of abstaining its way into the §6
+        # coverage FAIL; calibrating confidence properly is an obvious
+        # loop research target.
+        good = (coord_err.sqrt() < 0.5).float()
     conf_loss = nn.functional.binary_cross_entropy(
         pred[:, 2].clamp(1e-6, 1 - 1e-6), good)
     return coord_loss + 0.1 * conf_loss

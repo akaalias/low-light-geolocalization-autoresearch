@@ -24,8 +24,9 @@ LIGHTING_BUCKETS = {
     "night": 0.012,
 }
 
-GSD_M = 10.0  # ground sample distance of the reference raster, meters/pixel
-CROP_PX = 128  # model input crop size (1.28 km footprint at 10 m/px)
+# Ground sample distance is per-area (meta.json "gsd_m") — set by the imagery
+# source registry (pipeline/sources.yaml), 1 m/px for DOP-covered regions.
+CROP_PX = 128  # model input crop size (128 m footprint at 1 m/px ≈ UAV @ 100 m AGL)
 
 
 def stable_hash(s: str) -> int:
