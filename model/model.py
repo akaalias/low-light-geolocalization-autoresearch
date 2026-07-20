@@ -16,6 +16,14 @@ Gaussian-smoothed cell targets plus an expected-coordinate L2 term. Unlike
 hard cell classification + offset regression (archived exp 5, reverted),
 there is no argmax quantization and no decoupled head — the decode used at
 inference is exactly what the loss optimizes.
+
+Exp 10: the field head reads a spatial layout code alongside the GAP
+descriptor. GAP alone is a bag-of-textures — it destroys WHERE features sit
+in the crop, which is what distinguishes lookalike districts. A 1x1 conv
+squeezes the 8x8x128 feature map to 8 channels; the flattened 512-d layout
+code is concatenated with the 128-d GAP vector before the logits FC, making
+the head a low-rank linear read of the full feature map (a strict superset
+of the old GAP-only head).
 """
 
 import numpy as np
@@ -33,10 +41,11 @@ def _grid_centers(k: int) -> tuple[torch.Tensor, torch.Tensor]:
 
 
 class TinyLocNet(nn.Module):
-    """~230k-param CNN: strided conv stack -> GAP -> map-cell probability field
-    -> soft-argmax (u, v), plus a separate sigmoid conf head."""
+    """~757k-param CNN: strided conv stack -> {GAP descriptor + 1x1-squeezed
+    spatial layout code} -> map-cell probability field -> soft-argmax (u, v),
+    plus a separate sigmoid conf head."""
 
-    def __init__(self, grid_k: int = GRID_K):
+    def __init__(self, grid_k: int = GRID_K, layout_ch: int = 8):
         super().__init__()
         self.grid_k = grid_k
         chans = [3, 16, 32, 64, 128]
@@ -45,15 +54,20 @@ class TinyLocNet(nn.Module):
             layers += [nn.Conv2d(cin, cout, 3, stride=2, padding=1),
                        nn.BatchNorm2d(cout), nn.ReLU(inplace=True)]
         self.features = nn.Sequential(*layers)
-        self.loc_logits = nn.Linear(chans[-1], grid_k * grid_k)
+        fmap_hw = 128 // 2 ** (len(chans) - 1)  # 8 for the frozen 128 px input
+        self.layout_squeeze = nn.Conv2d(chans[-1], layout_ch, 1)
+        self.loc_logits = nn.Linear(chans[-1] + layout_ch * fmap_hw * fmap_hw,
+                                    grid_k * grid_k)
         self.conf_head = nn.Linear(chans[-1], 1)
         cell_u, cell_v = _grid_centers(grid_k)
         self.register_buffer("cell_u", cell_u)
         self.register_buffer("cell_v", cell_v)
 
     def forward(self, x, return_logits: bool = False):
-        f = self.features(x).mean(dim=(2, 3))
-        logits = self.loc_logits(f)
+        fmap = self.features(x)
+        f = fmap.mean(dim=(2, 3))
+        layout = self.layout_squeeze(fmap).flatten(1)
+        logits = self.loc_logits(torch.cat([f, layout], dim=1))
         p = torch.softmax(logits, dim=1)
         u = (p * self.cell_u).sum(dim=1, keepdim=True)
         v = (p * self.cell_v).sum(dim=1, keepdim=True)
