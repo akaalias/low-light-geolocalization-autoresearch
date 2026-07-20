@@ -52,7 +52,11 @@ you only design the experiment and edit the code.
    shapes annotate the flow in small italics (128×128×3 → 8²×128 → 1024).
    Losses/targets/samplers live in a lane below the inference path,
    annotated with slanted dashed leader lines to small text — no boxes
-   around them. Style contract, so all experiments' figures read as one
+   around them. Draw the two FROZEN endpoints — the camera-frame input and
+   the (u, v, conf) output — entirely in #9b998c with a small italic
+   “frozen contract” tag: they are fixed by the harness and outside your
+   search space. Everything between them is your design: draw it in ink,
+   with red only on what THIS experiment changes. Style contract, so all experiments' figures read as one
    paper: viewBox width 980 (height ~300–360); transparent background; ink
    #111111, captions #6b6a60, annotations/arrows #9b998c; **#8c2f1f (red)
    reserved for exactly what this experiment changed**; training-only
