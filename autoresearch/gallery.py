@@ -61,6 +61,7 @@ a:hover{border-bottom-color:var(--accent)}
   border:1.5px solid var(--ochre);background:transparent}
 .bar{width:16px;height:0;border-top:2px solid var(--ink);display:inline-block}
 .bar.dash{border-top-style:dashed;border-top-color:var(--accent)}
+.vrule{width:0;height:12px;border-left:1px dashed var(--faint);display:inline-block}
 .x{color:var(--accent);font-weight:700}
 #updated{color:var(--faint);font-style:italic;margin-left:auto}
 
@@ -314,24 +315,42 @@ def chart_svg(exps):
     parts.append(f"<text class='axis-lab' x='{W-mr}' y='{y(TARGET_M)-5:.1f}' "
                  f"text-anchor='end' fill='#8c2f1f'>goal — locate the drone to within 20 m</text>")
 
-    # Running-best step line follows keep/revert lineage: each kept dev
-    # experiment SETS the best (a kept value that rises marks a deliberate
-    # reset, e.g. a data-era change).
-    best, pts = None, []
+    # Running-best step line, one segment per evaluation era. Within an era
+    # the line only ever steps DOWN (the loop keeps only improvements). A
+    # kept experiment that scores worse than the running best is, by loop
+    # semantics, impossible — so it marks a deliberate eval-set change
+    # (bootstrap data revisions): the line BREAKS there and restarts, and a
+    # vertical rule labels the discontinuity.
+    best = None
+    segments, cur, resets = [], [], []
     for i, e in enumerate(exps):
         if e["kind"] == "holdout_check":
             continue
         v = e["primary_metric"]
-        if v and v < FAIL and e["kept"]:
-            if best is not None:
-                pts.append((x(i), y(best)))
+        if not v or v >= FAIL or not e["kept"]:
+            continue
+        if best is None:
+            best, cur = v, [(x(i), y(v))]
+        elif v < best:
+            cur.append((x(i), y(best)))
             best = v
-            pts.append((x(i), y(best)))
-    if best is not None:
-        pts.append((x(n - 1), y(best)))
-    if len(pts) > 1:
-        d = "M" + " L".join(f"{px:.1f},{py:.1f}" for px, py in pts)
-        parts.append(f"<path d='{d}' fill='none' stroke='#111' stroke-width='2'/>")
+            cur.append((x(i), y(v)))
+        else:  # eval-set reset — new ruler, new segment
+            segments.append(cur)
+            resets.append(x(i))
+            best, cur = v, [(x(i), y(v))]
+    if cur:
+        cur.append((x(n - 1), y(best)))
+        segments.append(cur)
+    for k, rx in enumerate(resets):
+        parts.append(f"<line x1='{rx:.1f}' x2='{rx:.1f}' y1='{mt}' y2='{H-mb}' "
+                     f"stroke='#9b998c' stroke-width='1' stroke-dasharray='3 4'/>")
+        parts.append(f"<text class='axis-lab' x='{rx+5:.1f}' y='{mt+11+k*13}'>"
+                     f"eval set changed</text>")
+    for seg in segments:
+        if len(seg) > 1:
+            d = "M" + " L".join(f"{px:.1f},{py:.1f}" for px, py in seg)
+            parts.append(f"<path d='{d}' fill='none' stroke='#111' stroke-width='2'/>")
 
     for i, e in enumerate(exps):
         v = e["primary_metric"]
@@ -481,13 +500,23 @@ def train_block(artifacts_dir):
         return ""
     if not infos:
         return ""
-    parts = [f"{esc(i['area'])} <span class='num'>{i['n_train_crops']:,}</span> crops"
-             f" / {i['epochs']} epochs" for i in infos]
-    return (f"<div class='gates'><b>Training data this run:</b> {' · '.join(parts)}"
-            f"<br>crops are sampled fresh each run from the frozen train split "
-            f"(~45,000 distinct positions per area at 1 m/px, times random "
-            f"rotation), never from eval blocks — how many to use is the "
-            f"experiment's own choice</div>")
+    rows = ["<table class='cells' style='margin-top:12px'>"
+            "<tr><th>training data</th><th>crops</th><th>epochs</th>"
+            "<th>train time</th><th>device</th></tr>"]
+    for i in infos:
+        secs = i.get("train_seconds")
+        rows.append(
+            f"<tr><td class='smcp'>{esc(i['area'])}</td>"
+            f"<td class='num'>{i['n_train_crops']:,}</td>"
+            f"<td class='num'>{i['epochs']}</td>"
+            f"<td class='num'>{f'{secs:,.0f} s' if secs is not None else '—'}</td>"
+            f"<td class='mono'>{esc(i.get('device', '—'))}</td></tr>")
+    rows.append("</table>")
+    rows.append("<div class='score-sub' style='margin-top:6px'>crops are sampled "
+                "fresh each run from the frozen train split (~45,000 distinct "
+                "positions per area, times random rotation), never from eval "
+                "blocks; how many to use is the experiment's own choice</div>")
+    return "".join(rows)
 
 
 def prompt_block(e):
@@ -537,6 +566,12 @@ down to the 20% floor above.</dd>
 best code, run one focused experiment, <b>keep</b> the change (git commit)
 only if the worst-case error improves — otherwise <b>revert</b> it. The
 step line in the chart is the running best.</dd>
+<dt>Eval-set reset (┆)</dt><dd>During the bootstrap phase the frozen
+evaluation data itself was revised twice (10 m satellite → 1 m orthophotos;
+then a split rebalance). Scores on different eval sets are measurements on
+different rulers and must not be compared — the dashed vertical rule marks
+the break, and the running-best line restarts there instead of pretending
+continuity. From Phase 2 on, the eval set does not change.</dd>
 <dt>Holdout (○)</dt><dd>Hamburg is the blind fifth area: structurally
 different (port, river, spread-out), never seen by the loop, scored only as
 a periodic read-only check. If its error diverges from the four development
@@ -602,10 +637,12 @@ def render():
 <header class="dash-head">
   <div class="eyebrow">Alexis Rondeau · live research log</div>
   <h1>Can a drone find itself in the dark?</h1>
-  <p class="sub">A 5-inch UAV loses GPS. All it has is a low-light camera and
-  a tiny neural network ({size_note}) that has memorized what its flight area
-  looks like from above — by day, by dusk, and by night. It looks down at one
-  frame and answers: <b>where am I?</b> No stored maps, no internet, no GPS.</p>
+  <p class="sub">A 5-inch UAV built to fly <b>without a GPS module at all</b>.
+  In place of satellite navigation it carries a low-light camera and a tiny
+  neural network ({size_note}) that has memorized what its flight area looks
+  like from above — by day, by dusk, and by night. It looks down at one frame
+  and answers: <b>where am I?</b> No satellites to jam or lose, no stored
+  maps, no internet.</p>
   <div class="intro">
   <p>An autonomous research loop (one headless coding agent per iteration)
   rewrites the model and its training code, one pre-registered experiment at a
@@ -625,6 +662,7 @@ def render():
     <span class="k" title="Mission target: worst cell at or below 20 m."><span class="bar dash"></span>Target 20 m</span>
     <span class="k" title="Violated a deployment gate (model size, latency, or abstained too much) — scored as failure regardless of accuracy."><span class="x">×</span>Gated fail</span>
     <span class="k" title="Blind Hamburg check — logged for honesty, never used to decide keep/revert."><span class="ring"></span>Holdout check</span>
+    <span class="k" title="The frozen evaluation data itself was revised (bootstrap phase only). Scores before and after are measured on different test sets and cannot be compared; the running-best line restarts."><span class="vrule"></span>Eval-set reset</span>
     <span id="updated">updated {now}</span>
   </div>
 </header>
