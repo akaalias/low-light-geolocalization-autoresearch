@@ -24,21 +24,12 @@ you only design the experiment and edit the code.
      "init_strategy": "from-scratch | pretrained:<name>",
      "eli5": "2-4 sentences for a smart non-ML reader: what you changed and why it might help, in everyday language — analogies welcome, zero jargon",
      "architecture": {"stages": [
-       {"name": "Camera frame", "detail": "128×128 px crop, one of 6 lighting renders", "changed": false, "icon": "frame"},
-       {"name": "Feature extractor", "detail": "plain-language description", "changed": false, "icon": "cnn"},
-       {"name": "…", "detail": "…", "changed": true, "icon": "…"}
+       {"name": "Camera frame", "detail": "128×128 px crop, one of 6 lighting renders", "changed": false},
+       {"name": "Feature extractor", "detail": "plain-language description", "changed": false},
+       {"name": "…", "detail": "…", "changed": true}
      ]}
    }
    ```
-
-   Each stage's `icon` picks the pictorial glyph the gallery draws for it —
-   choose the closest: `frame` (camera crop), `cnn` (conv feature funnel),
-   `heatmap` (probability field over the map grid), `balance`
-   (weighted-average decode), `window` (local-window decode), `patches`
-   (per-patch predictions), `crosshair` (direct coordinate output), `gauge`
-   (confidence), `pin` (final position), `target` (training signal). Omit
-   `icon` for a mechanism none of these depict — the gallery falls back to a
-   labeled box.
 
    `eli5` and `architecture` feed the human-facing gallery. `architecture.stages`
    is the model's inference path left-to-right, camera frame → (lat, lon,

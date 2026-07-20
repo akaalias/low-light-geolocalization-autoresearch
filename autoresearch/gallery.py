@@ -17,6 +17,7 @@ import json
 import math
 from pathlib import Path
 
+from autoresearch import workedexample
 from autoresearch.db import REPO_ROOT, connect
 
 OUT = REPO_ROOT / "gallery" / "index.html"
@@ -129,29 +130,34 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 .eb-eli{border-left-color:var(--ink);background:#fbf8ea}
 .eb-eli p{font-size:14.5px}
 
-.arch{margin:0 0 18px}
+.arch{margin:0 0 20px}
 .arch-h{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
 .arch-h .chg{color:var(--accent)}
-.arch-row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:2px 8px}
-.ab2{width:152px;display:flex;flex-direction:column;align-items:center;
-  text-align:center;flex:none}
-.ab2 svg{display:block}
-.ab-n{font:700 11px var(--serif);font-feature-settings:"smcp" 1;
-  text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin-top:4px}
-.ab2.ch .ab-n{color:var(--accent)}
-.ab-tr{font:italic 10.5px var(--serif);color:var(--ochre);margin-top:1px}
-.ab-d{font-size:11px;line-height:1.4;color:var(--muted);margin-top:3px}
-.ab-arr{color:var(--faint);font-size:16px;flex:none;height:72px;
-  display:flex;align-items:center}
-.ab{border:1px solid var(--rule);background:#fff;border-radius:3px;
-  box-shadow:0 1px 7px rgba(60,50,30,.08);padding:7px 12px 8px;
-  max-width:210px;min-width:110px;align-self:center}
-.ab .ab-n{margin:0 0 3px}
-.ab .ab-d{color:#4a473e;font-size:11.5px}
-.ab.ch{border-color:var(--accent);border-width:1.5px;background:#fdf5ef}
-.ab.ch .ab-n{color:var(--accent)}
-.ab.tr{border-style:dashed;box-shadow:none;background:transparent}
+.wex-row{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:flex-start}
+.wex-row figure{margin:0;flex:none}
+.wex-row a{border-bottom:none}
+.wex-frame img{width:230px;height:230px;display:block;border:1px solid var(--rule)}
+.wex-map img{width:340px;height:auto;display:block;border:1px solid var(--rule)}
+.wex-row figcaption{font-size:11.5px;color:var(--muted);line-height:1.5;
+  margin-top:6px}
+.wex-frame figcaption{max-width:230px}
+.wex-map figcaption{max-width:340px}
+.wex-row figcaption b{color:var(--ink);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.05em}
+.wex-arr{color:var(--faint);font-size:18px;height:230px;display:flex;
+  align-items:center;flex:none}
+.wex-stats{display:flex;flex-direction:column;gap:16px;padding:14px 0 0 10px}
+.wex-num{font-size:27px;line-height:1.1;color:var(--ink)}
+.wex-lab{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:2px}
+.wex-pipe{font-size:12.5px;color:var(--muted);line-height:1.7;margin-top:12px;
+  max-width:1240px}
+.wex-pipe b{color:var(--ink);font-weight:600;font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.05em;font-size:11.5px}
+.wex-pipe b.chg{color:var(--accent)}
+.wex-pipe .pd{color:#7a4438}
+.wex-pipe .sep{color:var(--faint)}
 
 .score-head{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 4px}
@@ -278,7 +284,7 @@ window.addEventListener('load',function(){
   var lb=document.getElementById('lightbox'),
       lbImg=lb.querySelector('img'), lbCap=lb.querySelector('.lb-cap');
   document.body.addEventListener('click',function(ev){
-    var a=ev.target.closest('.thumbs a');
+    var a=ev.target.closest('.thumbs a,.wex-row a');
     if(!a)return;
     ev.preventDefault();ev.stopPropagation();
     lbImg.src=a.getAttribute('href');
@@ -567,188 +573,68 @@ def train_block(artifacts_dir):
     return "".join(rows)
 
 
-GLYPHS = ("frame", "cnn", "heatmap", "balance", "window", "patches",
-          "crosshair", "gauge", "pin", "target")
-
-# Keyword fallback for stages logged without an explicit "icon".
-GLYPH_KEYWORDS = (
-    ("frame", ("camera", "frame", "crop", "image")),
-    ("cnn", ("extractor", "cnn", "backbone", "encoder", "conv", "feature")),
-    ("window", ("window", "argmax", "anchor", "snap")),
-    ("heatmap", ("probability", "heat", "field", "logits", "cell")),
-    ("patches", ("patch",)),
-    ("balance", ("decode", "balance", "soft-argmax", "expected", "average")),
-    ("crosshair", ("position guess", "regress", "coordinate", "guess")),
-    ("gauge", ("confidence", "abstain")),
-    ("pin", ("output", "position fix", "lat")),
-    ("target", ("training", "loss", "signal", "augment")),
-)
-
-
-def _heat(x0, y0, n, cell, cx, cy, sigma, peak, color):
-    """Grid cells shaded by a Gaussian bump — the visual for probability mass."""
-    out = []
-    for gy in range(n):
-        for gx in range(n):
-            o = peak * math.exp(-((gx - cx) ** 2 + (gy - cy) ** 2) / (2 * sigma ** 2))
-            if o >= 0.06:
-                out.append(f"<rect x='{x0+gx*cell}' y='{y0+gy*cell}' width='{cell}' "
-                           f"height='{cell}' fill='{color}' fill-opacity='{o:.2f}'/>")
-    return "".join(out)
-
-
-def _gridlines(x0, y0, n, cell, faint):
-    s = []
-    for i in range(n + 1):
-        s.append(f"<line x1='{x0+i*cell}' y1='{y0}' x2='{x0+i*cell}' y2='{y0+n*cell}' "
-                 f"stroke='{faint}' stroke-width='0.75'/>")
-        s.append(f"<line x1='{x0}' y1='{y0+i*cell}' x2='{x0+n*cell}' y2='{y0+i*cell}' "
-                 f"stroke='{faint}' stroke-width='0.75'/>")
-    return "".join(s)
-
-
-def _crosshair(x, y, r, color, w=1.6):
-    return (f"<line x1='{x-r}' y1='{y}' x2='{x+r}' y2='{y}' stroke='{color}' stroke-width='{w}'/>"
-            f"<line x1='{x}' y1='{y-r}' x2='{x}' y2='{y+r}' stroke='{color}' stroke-width='{w}'/>"
-            f"<circle cx='{x}' cy='{y}' r='{r*0.55:.1f}' fill='none' stroke='{color}' stroke-width='{w}'/>"
-            f"<circle cx='{x}' cy='{y}' r='1.6' fill='{color}'/>")
-
-
-def glyph_svg(kind, changed):
-    """One pictorial stage glyph, 120x72. Ink normally, accent red if the
-    stage is what this experiment changed."""
-    col = "#8c2f1f" if changed else "#55534a"
-    faint = "#8c2f1f" if changed else "#d5d1c0"
-    fop = "0.35" if changed else "1"
-    st = f"stroke='{col}' fill='none' stroke-width='1.5'"
-    thin = f"stroke='{col}' fill='none' stroke-width='1'"
-    g = []
-    if kind == "frame":
-        g.append(f"<rect x='36' y='4' width='48' height='44' {st}/>")
-        for bx, by, bw, bh in ((42, 10, 9, 7), (55, 12, 11, 8), (44, 30, 7, 11),
-                               (64, 33, 12, 8)):
-            g.append(f"<rect x='{bx}' y='{by}' width='{bw}' height='{bh}' {thin}/>")
-        g.append(f"<line x1='36' y1='44' x2='84' y2='20' stroke='{col}' "
-                 f"stroke-width='1' opacity='0.45'/>")
-        for i in range(6):  # the six lighting renders, light -> night
-            g.append(f"<rect x='{36+i*8}' y='56' width='7' height='7' fill='#55534a' "
-                     f"fill-opacity='{0.08+i*0.15:.2f}' stroke='{faint}' "
-                     f"stroke-opacity='{fop}' stroke-width='0.75'/>")
-    elif kind == "cnn":
-        for x, y, w, h in ((18, 6, 22, 52), (48, 15, 16, 34), (72, 21, 11, 22)):
-            g.append(f"<rect x='{x}' y='{y}' width='{w}' height='{h}' {st}/>")
-        for x1, y1, x2, y2 in ((40, 6, 48, 15), (40, 58, 48, 49),
-                               (64, 15, 72, 21), (64, 49, 72, 43)):
-            g.append(f"<line x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}' "
-                     f"stroke='{col}' stroke-width='0.9' opacity='0.6'/>")
-        for i in range(5):
-            g.append(f"<circle cx='97' cy='{22+i*5}' r='1.8' fill='{col}'/>")
-    elif kind == "heatmap":
-        g.append(_gridlines(36, 8, 8, 6, faint))
-        g.append(_heat(36, 8, 8, 6, 5, 3, 1.2, 0.9, col))
-    elif kind == "balance":
-        g.append(_gridlines(36, 8, 8, 6, faint))
-        g.append(_heat(36, 8, 8, 6, 5, 3, 2.4, 0.5, col))
-        g.append(_crosshair(69, 29, 8, col))
-    elif kind == "window":
-        g.append(_gridlines(36, 8, 8, 6, faint))
-        g.append(_heat(36, 8, 8, 6, 5, 3, 2.4, 0.35, col))
-        g.append(f"<rect x='54' y='14' width='18' height='18' stroke='{col}' "
-                 f"fill='none' stroke-width='2'/>")
-        g.append(_crosshair(63, 23, 6, col, 1.3))
-    elif kind == "patches":
-        g.append(_gridlines(36, 8, 4, 12, faint))
-        for gy in range(4):
-            for gx in range(4):
-                cx, cy = 36 + gx * 12 + 6, 8 + gy * 12 + 6
-                g.append(f"<line x1='{cx}' y1='{cy}' x2='60' y2='32' stroke='{col}' "
-                         f"stroke-width='0.8' opacity='0.4'/>")
-                g.append(f"<circle cx='{cx}' cy='{cy}' r='1.4' fill='{col}'/>")
-        g.append(f"<circle cx='60' cy='32' r='3' fill='{col}'/>")
-    elif kind == "crosshair":
-        g.append(f"<rect x='36' y='8' width='48' height='48' {st} "
-                 f"stroke='{faint}' stroke-opacity='{fop}'/>")
-        g.append(_crosshair(64, 26, 9, col))
-    elif kind == "gauge":
-        g.append(f"<path d='M 34,52 A 26 26 0 0 1 86,52' {st}/>")
-        for ang in (150, 120, 90, 60, 30):
-            a = math.radians(ang)
-            x1, y1 = 60 + 23 * math.cos(a), 52 - 23 * math.sin(a)
-            x2, y2 = 60 + 26 * math.cos(a), 52 - 26 * math.sin(a)
-            g.append(f"<line x1='{x1:.1f}' y1='{y1:.1f}' x2='{x2:.1f}' y2='{y2:.1f}' "
-                     f"stroke='{col}' stroke-width='1'/>")
-        a = math.radians(55)
-        g.append(f"<line x1='60' y1='52' x2='{60+19*math.cos(a):.1f}' "
-                 f"y2='{52-19*math.sin(a):.1f}' stroke='{col}' stroke-width='1.8'/>")
-        g.append(f"<circle cx='60' cy='52' r='2.2' fill='{col}'/>")
-    elif kind == "pin":
-        g.append(f"<line x1='38' y1='54' x2='82' y2='54' stroke='{faint}' "
-                 f"stroke-opacity='{fop}' stroke-width='1'/>")
-        g.append(f"<path d='M 60,52 C 52,40 49,34 49,27 a 11 11 0 1 1 22,0 "
-                 f"c 0,7 -3,13 -11,25 Z' {st}/>")
-        g.append(f"<circle cx='60' cy='26' r='3.4' fill='{col}'/>")
-    elif kind == "target":
-        for r in (6, 13, 20):
-            g.append(f"<circle cx='54' cy='32' r='{r}' {thin}/>")
-        g.append(f"<line x1='96' y1='60' x2='63' y2='38' stroke='{col}' stroke-width='1.4'/>")
-        g.append(f"<path d='M 60,36 l 8,1.5 -3.5,7 Z' fill='{col}'/>")
-        g.append(f"<circle cx='54' cy='32' r='1.8' fill='{col}'/>")
-    else:
-        return None
-    return (f"<svg width='120' height='72' viewBox='0 0 120 72' role='img' "
-            f"aria-label='{esc(kind)}'>{''.join(g)}</svg>")
-
-
-def stage_glyph_kind(s):
-    icon = s.get("icon")
-    if icon in GLYPHS:
-        return icon
-    for text in (s.get("name", "").lower(),
-                 f"{s.get('name', '')} {s.get('detail', '')}".lower()):
-        for kind, words in GLYPH_KEYWORDS:
-            if any(w in text for w in words):
-                return kind
-    return None
-
-
 def arch_block(e):
-    """Pictorial diagram of the model's inference path, rendered from the
-    experiment's pre-registered `architecture` stages. Every experiment draws
-    from the same fixed glyph vocabulary (camera frame → … → map pin) and
-    stages the experiment changed are drawn in accent red — so two open
-    detail rows can be compared glyph-by-glyph. Stages with no matching
-    glyph fall back to a labeled box."""
+    """One REAL worked example — the same held-out night crop for every
+    experiment, run through the run's actual exported ONNX model — plus a
+    one-line pipeline sentence from the pre-registered architecture stages
+    (changed stages in accent red). Replaces an earlier icon strip: real
+    model output shows mechanism differences icons cannot."""
+    if e["kind"] == "holdout_check":
+        return ""
     try:
         arch = json.loads(e.get("arch_json") or "null")
     except (TypeError, json.JSONDecodeError):
         arch = None
     stages = arch.get("stages") if isinstance(arch, dict) else None
-    if not stages:
-        return ""
-    parts = []
-    for i, s in enumerate(stages):
-        if i:
-            parts.append(f"<div class='ab-arr'>{'+' if s.get('train_only') else '→'}</div>")
-        changed = bool(s.get("changed"))
-        name, detail = esc(s.get("name", "?")), esc(s.get("detail", ""))
-        tr = ("<div class='ab-tr'>training only — not flown</div>"
-              if s.get("train_only") else "")
-        svg = glyph_svg(stage_glyph_kind(s), changed)
-        if svg:
-            parts.append(f"<div class='ab2{' ch' if changed else ''}'>{svg}"
-                         f"<div class='ab-n'>{name}</div>{tr}"
-                         f"<div class='ab-d'>{detail}</div></div>")
+
+    segs = []
+    for s in (stages or []):
+        chg = bool(s.get("changed"))
+        seg = f"<b{" class='chg'" if chg else ''}>{esc(s.get('name', '?'))}</b>"
+        if chg and s.get("detail"):
+            seg += f" <span class='pd'>— {esc(s['detail'])}</span>"
+        sep = (" <span class='sep'>&nbsp;+&nbsp;</span> " if s.get("train_only")
+               else " <span class='sep'>→</span> ")
+        segs.append((sep, seg))
+    pipe = "".join((sep if i else "") + seg for i, (sep, seg) in enumerate(segs))
+
+    info = workedexample.ensure(e["artifacts_dir"])
+    fig = ""
+    if info:
+        rd = Path("..") / (e["artifacts_dir"] or "")
+        fr, mp = rd / info["frame"], rd / info["map"]
+        if info.get("has_field"):
+            fstat = (f"red glow = its <b>actual internal probability field</b> "
+                     f"recovered from the deployed model — the sharpest cell holds "
+                     f"<span class='num'>{info['peak_pct']}%</span> of the probability mass "
+                     f"(a uniform “no idea” field would be {info['uniform_pct']}%)")
         else:
-            cls = ("ab" + (" ch" if changed else "")
-                   + (" tr" if s.get("train_only") else ""))
-            parts.append(f"<div class='{cls}'><div class='ab-n'>{name}</div>{tr}"
-                         f"<div class='ab-d'>{detail}</div></div>")
-    note = ("<span class='chg'>red = what this experiment changed</span>"
-            if any(s.get("changed") for s in stages)
-            else "the design this run used (nothing changed vs. its parent)")
-    return (f"<div class='arch'><div class='arch-h'>How the model answers "
-            f"“where am I?” — {note}</div>"
-            f"<div class='arch-row'>{''.join(parts)}</div></div>")
+            fstat = ("this design points at a coordinate directly — it has no "
+                     "internal probability field to show")
+        fig = f"""<div class='wex-row'>
+<figure class='wex-frame'><a href='{fr}'><img src='{fr}' loading='lazy'></a>
+<figcaption><b>what the camera saw</b> — a real held-out 128 m crop,
+{esc(info['area'])} at {esc(info['bucket'])}; its true spot is the ○ on the map.
+Every experiment is shown this same crop.</figcaption></figure>
+<div class='wex-arr'>→</div>
+<figure class='wex-map'><a href='{mp}'><img src='{mp}' loading='lazy'></a>
+<figcaption><b>what this model actually computed</b> — {fstat}.
+○ true location · × its answer.</figcaption></figure>
+<div class='wex-stats'>
+<div><div class='wex-num num'>{fmt_m(info['miss_m'])}</div>
+<div class='wex-lab'>miss, this crop</div></div>
+<div><div class='wex-num num'>{info['conf']:.2f}</div>
+<div class='wex-lab'>self-reported confidence</div></div>
+</div></div>"""
+    if not fig and not pipe:
+        return ""
+    head = ("One real test, end to end" if fig else "The pipeline this run used")
+    note = (" — <span class='chg'>red = what this experiment changed</span>"
+            if stages and any(s.get("changed") for s in stages) else "")
+    pipe_html = f"<div class='wex-pipe'>{pipe}</div>" if pipe else ""
+    return (f"<div class='arch'><div class='arch-h'>{head}{note}</div>"
+            f"{fig}{pipe_html}</div>")
+
 
 
 def prompt_block(e):
@@ -827,13 +713,16 @@ can be re-run or audited later.</dd>
 <dt>In plain words</dt><dd>Each experiment's own jargon-free explanation of
 what it tried, pre-registered alongside the technical design — read this
 first if the title looks like alphabet soup.</dd>
-<dt>Architecture strip</dt><dd>The block diagram at the top of each detail
-view shows the model's answer pipeline left to right, camera frame →
-(lat, lon, confidence). Every experiment uses the same box vocabulary;
-<b style="color:var(--accent)">red boxes</b> are the stages that experiment
-changed, and a dashed box is a training-time-only change (loss,
-augmentation) that isn't part of the deployed path. To compare two
-experiments, open both rows and compare strips box-by-box.</dd>
+<dt>One real test</dt><dd>The figure at the top of each detail view is not
+an illustration: the same held-out Berlin night crop is fed to that
+experiment's actual exported model, and the red glow on the map is the
+probability field recovered from the deployed ONNX artifact itself —
+with the true location (○), the model's answer (×), and the real miss
+distance. Because every experiment sees the identical crop, any difference
+between two figures is the mechanism change, not the example. The pipeline
+sentence beneath names the stages; <b style="color:var(--accent)">red</b>
+marks what that experiment changed (a “+” stage is training-only and never
+flies).</dd>
 </dl>
 <div class="foot">Click any row — or any point in the chart — to see the
 experiment's pre-registered hypothesis, method and expected outcome, the
