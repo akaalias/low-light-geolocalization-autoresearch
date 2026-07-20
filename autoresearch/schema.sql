@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS experiments (
     agent_model TEXT,                 -- LLM model id that ran the headless agent
     duration_s REAL,                  -- wall time of the whole iteration (agent+train+score)
     eli5 TEXT,                        -- pre-registered plain-language explanation (no jargon)
-    arch_json TEXT                    -- pre-registered {"stages":[...]} inference-path diagram
+    arch_json TEXT,                   -- pre-registered {"stages":[...]} inference-path summary
+    arch_svg TEXT                     -- pre-registered technical architecture diagram (SVG)
 );
 
 CREATE TABLE IF NOT EXISTS area_results (

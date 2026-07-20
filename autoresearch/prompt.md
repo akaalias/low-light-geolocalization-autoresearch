@@ -12,6 +12,12 @@ you only design the experiment and edit the code.
    Note which hypotheses were supported/refuted. Do not repeat a refuted
    experiment without a materially new angle.
 
+   **Plateau rule:** if three or more consecutive experiments were reverted,
+   do not attempt another variation of the last refuted mechanism. Either
+   pick a design family absent from the history (dispatcher + lighting
+   specialists, pretrained init, learned relighting, training-scale, …) or
+   attack the bottleneck the refuted hypotheses jointly point at.
+
 2. **Design ONE focused experiment** — proper experiment design, pre-registered
    before you touch code. Write it to `runs/pending_experiment.json`:
    ```json
@@ -27,9 +33,25 @@ you only design the experiment and edit the code.
        {"name": "Camera frame", "detail": "128×128 px crop, one of 6 lighting renders", "changed": false},
        {"name": "Feature extractor", "detail": "plain-language description", "changed": false},
        {"name": "…", "detail": "…", "changed": true}
-     ]}
+     ]},
+     "architecture_svg": "<svg viewBox='0 0 980 300' …>…</svg>"
    }
    ```
+
+   `architecture_svg` is the **technical architecture diagram** of the model
+   you are testing — a proper ML-paper figure of the design, drawn by you,
+   shown at the top of this experiment's gallery entry. Draw the actual
+   architecture (ops with parameters, e.g. “Conv 3×3, s2, 16ch”; every data
+   edge annotated with its tensor shape, e.g. 128×128×3 → 8×8×128 → 1024),
+   not a metaphor. Style contract, so all experiments' figures read as one
+   paper: viewBox width 980 (height as needed, ~240–360); transparent
+   background; ink #111111, secondary #6b6a60, annotations #9b998c;
+   **#8c2f1f (red) reserved for exactly what this experiment changed**;
+   training-only parts (losses, targets, samplers) dashed in #8a6a1e in a
+   lane below the inference path; font-family Palatino,Georgia,serif,
+   labels ≤ 12px; stroke-width 1.5 for blocks, 1 for arrows; no fills
+   beyond faint tints, no gradients, no icons, no emoji. Inference flows
+   left → right from camera frame to (u, v, conf).
 
    `eli5` and `architecture` feed the human-facing gallery. `architecture.stages`
    is the model's inference path left-to-right, camera frame → (lat, lon,
