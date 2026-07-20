@@ -40,7 +40,16 @@ LAMP_COLOR = np.array([1.00, 0.72, 0.42], dtype=np.float32)           # warm lam
 # saturated lakes.
 LAMP_DENSITY_PER_M2 = 0.0004
 GLOW_SIGMA_M = 16.0            # light-pool radius on the ground
-TARGET_MEAN = 0.35             # auto-exposure target (linear)
+TARGET_MEAN = 0.35             # auto-exposure target at full daylight (linear)
+# Real auto-exposure deliberately under-exposes as light falls (protecting
+# highlights / limiting gain): the effective target scales with ambient, so
+# dusk renders visibly dimmer than noon even before the gain cap binds.
+AE_FLOOR, AE_SLOPE, AE_GAMMA = 0.25, 0.75, 0.7
+# Golden-hour warmth: strongest when the sun is low (mid-low ambient),
+# negligible at noon; below that the ambient blend hands over to blue hour
+# and then cool moonlight (AMBIENT_NIGHT_COLOR).
+GOLDEN_TINT = np.array([0.12, -0.02, -0.18], dtype=np.float32)
+GOLDEN_MU, GOLDEN_SIGMA = 0.5, 0.22
 MAX_GAIN = 32.0
 READ_NOISE = 0.012
 SHOT_NOISE_K = 0.030
@@ -77,7 +86,9 @@ def relight(ref: np.ndarray, ambient: float, gsd: float, seed: int) -> np.ndarra
     lin = (ref.astype(np.float32) / 255.0) ** 2.2
 
     night_w = np.float32(1.0 - ambient)
-    amb_color = AMBIENT_DAY_COLOR * ambient + AMBIENT_NIGHT_COLOR * night_w
+    warm = float(np.exp(-((ambient - GOLDEN_MU) ** 2) / (2 * GOLDEN_SIGMA ** 2)))
+    amb_color = (AMBIENT_DAY_COLOR * ambient + AMBIENT_NIGHT_COLOR * night_w) \
+        * (1.0 + warm * GOLDEN_TINT)
     scene = lin * np.float32(ambient) * amb_color[None, None, :]
     del lin
 
@@ -86,9 +97,10 @@ def relight(ref: np.ndarray, ambient: float, gsd: float, seed: int) -> np.ndarra
     scene += lamp[..., None] * LAMP_COLOR[None, None, :] * np.float32(0.55)
     del lamp
 
-    # Sensor: auto-gain toward target exposure, capped (starlight sensors are
-    # good, not magic); noise grows with applied gain.
-    gain = float(np.clip(TARGET_MEAN / max(float(scene.mean()), 1e-6), 1.0, MAX_GAIN))
+    # Sensor: auto-gain toward an ambient-compensated target exposure, capped
+    # (starlight sensors are good, not magic); noise grows with applied gain.
+    ae_target = TARGET_MEAN * (AE_FLOOR + AE_SLOPE * float(ambient) ** AE_GAMMA)
+    gain = float(np.clip(ae_target / max(float(scene.mean()), 1e-6), 1.0, MAX_GAIN))
     scene *= np.float32(gain)
     noise_scale = np.float32(np.sqrt(gain / MAX_GAIN))
     shot = rng.standard_normal(scene.shape, dtype=np.float32)
