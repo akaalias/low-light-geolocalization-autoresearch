@@ -36,11 +36,14 @@ uv pip install --python .venv/bin/python numpy pillow rasterio pystac-client tor
 .venv/bin/python -m autoresearch.gallery                  # open gallery/index.html
 ```
 
-Bootstrap proving run (commit `15b43a2`): berlin + prignitz through the
-unmodified pipeline, naive TinyLocNet baseline → **2926 m** worst-case median
-error (target ≤ 20 m; a center-guess on a 7 km box is ~2.9 km, i.e. the
-baseline has learned almost nothing — deliberately). All deployment gates
-passed. Logged as experiment #1 in `experiments.sqlite`.
+Bootstrap proving runs: experiment #1 (commit `15b43a2`) ran berlin +
+prignitz on 10 m Sentinel-2 data → 2926 m. Experiment #3 (commit `c0a1bdf`,
+pipeline **data v2**) re-proved the harness on 1 m/px DOP imagery across all
+four development areas → **2765.67 m** worst-case median error, coverage 1.0
+in all 24 area×bucket cells (target ≤ 20 m; a center-guess on a ~7 km box is
+~2.8 km — the baseline is deliberately naive). All deployment gates passed.
+The §6 anti-abstention gate was exercised for real en route: two confidence
+calibrations collapsed dark-bucket coverage and were correctly scored FAIL.
 
 ## Phase 2 — running the autoresearch loop (run this yourself, separately)
 
