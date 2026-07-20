@@ -27,12 +27,15 @@ STATE="state"; mkdir -p "$STATE" runs
 
 best_metric() { [ -f "$STATE/best.json" ] && $PY -c "import json;print(json.load(open('$STATE/best.json'))['primary'])" || echo 1e18; }
 
-# Refuse to run on a dirty tree — lineage requires clean commits.
+# A dirty tree would blur lineage (a kept commit must contain exactly one
+# experiment's change) — but the loop itself leaves state/ modified, so
+# instead of aborting, checkpoint pending TRACKED changes into their own
+# commit and start every iteration from a clean, attributable tree.
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "FATAL: working tree dirty; commit or stash first." >&2
-  echo "(If a previous loop run was killed uncleanly, this is its leftover" >&2
-  echo " in-flight edit — discard it with: git checkout -- model/)" >&2
-  exit 1
+  echo "Working tree dirty — committing pending changes as a pre-loop checkpoint."
+  git add -u
+  git commit -q -m "Pre-loop checkpoint: pending working-tree changes" || {
+    echo "FATAL: checkpoint commit failed; commit or stash manually." >&2; exit 1; }
 fi
 
 # Graceful exit: Ctrl-C / SIGTERM discards only the in-flight iteration.
