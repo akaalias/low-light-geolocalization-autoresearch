@@ -3,6 +3,12 @@
 Baseline: sample train-split crops from all six relight buckets with random
 rotation augmentation, train TinyLocNet briefly, export ONNX.
 
+Training scale (exp 7): 6,000 of the ~45k enumerable train locations per
+bucket (was 800 / ~1.8%, which left a quarter of the 32x32 field cells with
+zero training example in any given lighting bucket). The training tensor is
+held as uint8 and converted to float per minibatch — 36k float32 crops would
+be ~7 GB; uint8 is ~1.8 GB.
+
 Usage: python -m model.train --area berlin --out-dir runs/<id> [--epochs 2]
 """
 
@@ -33,7 +39,7 @@ def load_training_tensors(area: str, data_dir: Path, max_crops_per_bucket: int, 
             angle = float(rng.uniform(0, 360))  # heading augmentation
             xs.append(extract_crop(img, c["cx"], c["cy"], angle))
             ys.append(crop_center_norm(meta, c["cx"], c["cy"]))
-    x = torch.from_numpy(np.stack(xs)).permute(0, 3, 1, 2).contiguous().float() / 255.0
+    x = torch.from_numpy(np.stack(xs))  # uint8 NxHxWx3; float-converted per batch
     y = torch.tensor(ys, dtype=torch.float32)
     return x, y
 
@@ -55,7 +61,8 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         losses = []
         for i in range(0, n, 64):
             idx = perm[i:i + 64]
-            xb, yb = x[idx].to(device), y[idx].to(device)
+            xb = x[idx].to(device).permute(0, 3, 1, 2).contiguous().float().div_(255.0)
+            yb = y[idx].to(device)
             out, logits = model(xb, return_logits=True)
             loss = loss_fn(out, logits, yb)
             opt.zero_grad(); loss.backward(); opt.step()
@@ -83,7 +90,7 @@ def main():
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--data-dir", default=None)
     ap.add_argument("--epochs", type=int, default=2)
-    ap.add_argument("--max-crops-per-bucket", type=int, default=800)
+    ap.add_argument("--max-crops-per-bucket", type=int, default=6000)
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
     data_dir = Path(args.data_dir) if args.data_dir else DATA_DIR
