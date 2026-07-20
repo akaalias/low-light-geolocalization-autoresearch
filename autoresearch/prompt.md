@@ -65,6 +65,12 @@ you only design the experiment and edit the code.
    faint tints (opacity ≤ .12); no gradients, no icons, no emoji. Inference
    flows left → right from camera frame to (u, v, conf). Lay elements out
    on a running x-cursor with generous spacing so nothing overlaps.
+   Consecutive conv layers must be tied by kernel-projection lines (small
+   kernel square on one face, faint lines converging to a cell on the
+   next) so the encoder reads as one computation, not boxes in a row.
+   `archive/arch_svg_reference.py` is the concrete reference implementation
+   of this entire visual language — read it and reuse its helper geometry
+   for any stage that already has one.
 
    `eli5` and `architecture` feed the human-facing gallery. `architecture.stages`
    is the model's inference path left-to-right, camera frame → (lat, lon,

@@ -179,31 +179,32 @@ def kernel_proj(x1, s1, x2, s2, color):
 
 
 def conv_group(x0, colors=None, prev=None):
-    """The shared encoder: five shrinking/deepening slabs, consecutive layers
-    tied together by kernel-projection lines. prev=(x, s, color) optionally
-    projects from the input image into the first slab."""
-    sizes = [(62, 2), (46, 7), (34, 11), (24, 15), (17, 21)]
+    """The shared encoder: the four conv OUTPUT tensors as slabs (64²×16 →
+    8²×128); each of the 4 convs is a kernel projection — the first from the
+    input image itself (prev=(x, s, color))."""
+    sizes = [(46, 7), (34, 11), (24, 15), (17, 21)]
     out, x, faces = [], x0, []
     for i, (s, d) in enumerate(sizes):
-        g, w = slab(x, s, d, (colors or [INK] * 5)[i])
+        g, w = slab(x, s, d, (colors or [INK] * 4)[i])
         out.append(g)
         faces.append((x, s))
-        x += w + 13
-    x -= 13
+        x += w + 15
+    x -= 15
     if prev:
         out.append(kernel_proj(prev[0], prev[1], faces[0][0], faces[0][1], prev[2]))
     for (x1, s1), (x2, s2) in zip(faces, faces[1:]):
         out.append(kernel_proj(x1, s1, x2, s2, MUT))
     xc = (x0 + x) / 2
     out.append(cap(xc, IC + 58, "convolutional encoder", "Conv 3×3, stride 2 ×4 · BN + ReLU"))
-    out.append(txt(x0 + 31, IC - 44, "128²×3", 9, FAINT))
+    out.append(txt(x0 + 23, IC - 36, "64²×16", 9, FAINT))
     out.append(txt(x - 20, IC - 32, "8²×128", 9, FAINT))
     return "".join(out), x
 
 
 def frame_part():
     g, w = imgsq(26, 54, FAINT)
-    out = (g + txt(53, IC + 48, "camera frame", 10.5, MUT, 600)
+    out = (g + txt(53, IC - 40, "128²×3", 9, FAINT)
+           + txt(53, IC + 48, "camera frame", 10.5, MUT, 600)
            + txt(53, IC + 60, "one night exposure", 9.5, FAINT)
            + txt(53, IC + 73, "frozen contract", 8.5, FAINT,
                  style="font-style='italic'"))
@@ -335,37 +336,49 @@ def exp3():
 def exp4():
     b = [lanes(340)]
     g, x = frame_part(); b.append(g)
-    b.append(harrow(x + 6, x + 30, IC)); x += 32
+    b.append(harrow(x + 6, x + 30, IC)); x += 36
     g, x = conv_group(x, prev=(26, 54, FAINT)); b.append(g)
-    b.append(harrow(x + 8, x + 30, IC)); x += 34
+    b.append(harrow(x + 8, x + 34, IC)); x += 38
     dil_x = x
     g, w = slab(x, 17, 21, ACC); b.append(g)
-    b.append(cap(x + 19, IC + 48, "dilated conv 3×3, d2", "~95 px context per cell",
-                 name_color=ACC))
-    x += w + 34
-    b.append(harrow(x - 30, x - 4, IC))
+    b.append(cap(dil_x + 19, IC + 48, "dilated conv 3×3, d2",
+                 "~95 px context per cell", name_color=ACC))
+    x += w + 40
+    b.append(harrow(dil_x + w + 6, x - 6, IC))
     gx = x
-    g, gs = gridsq(gx, 72, 8, ACC)
+    g, gs = gridsq(gx, 96, 8, ACC)
     b.append(g)
-    rnd = [(i * 37 + j * 53) % 360 for i in range(8) for j in range(8)]
     for i in range(8):
         for j in range(8):
-            cx = gx + (j + 0.5) * gs / 8
-            cy = IC - gs / 2 + (i + 0.5) * gs / 8
-            a = math.radians(rnd[i * 8 + j])
-            b.append(f"<line x1='{cx:.1f}' y1='{cy:.1f}' x2='{cx + 3.4 * math.cos(a):.1f}' "
-                     f"y2='{cy + 3.4 * math.sin(a):.1f}' stroke='{ACC}' stroke-width='0.8'/>")
-            b.append(f"<circle cx='{cx:.1f}' cy='{cy:.1f}' r='0.8' fill='{ACC}'/>")
-    b.append(cap(gx + 36, IC + 82, "64 per-patch coordinates",
-                 "every patch names the spot it shows (8×8×2)", name_color=ACC))
-    tx = gx + gs + 92
-    b.append(converge(gx, 72, tx, ACC, cells="all"))
-    b.append(cap((gx + gs + tx) / 2 + 4, IC - 54, "mean of 64 answers", None, name_color=ACC))
+            ox = ((i * 37 + j * 53) % 9 - 4) * 0.9
+            oy = ((i * 61 + j * 29) % 9 - 4) * 0.9
+            cx = gx + (j + 0.5) * gs / 8 + ox
+            cy = IC - gs / 2 + (i + 0.5) * gs / 8 + oy
+            b.append(f"<circle cx='{cx:.1f}' cy='{cy:.1f}' r='1.3' fill='{ACC}'/>")
+    b.append(cap(gx + gs / 2, IC + 72, "64 per-patch coordinates",
+                 "1×1 conv + σ: each patch names the map spot it shows (8×8×2)",
+                 name_color=ACC))
+    tx = gx + gs + 200
+    b.append(converge(gx, gs, tx, ACC, cells="all"))
+    b.append(cap((gx + gs + tx) / 2, IC - 54, "mean of 64 answers",
+                 "one committee answer from 64 votes", name_color=ACC))
     b.append(output_part(tx + 18))
-    b.append(conf_branch(dil_x + 15, tx + 18))
-    b.append(loss_note(gx + 36, IC + 100, 470,
-                       ("smooth-L1: each patch vs its OWN true coordinate",
-                        "crop center + rotated offset → 64× denser supervision"), ACC))
+    # confidence branch, anchored under the dilated-context stage
+    cx0 = dil_x + 19
+    ex = tx + 46
+    b.append(leader(cx0, IC + 66, cx0, 216, FAINT))
+    b.append(gauge(cx0, 230, MUT))
+    b.append(txt(cx0, 248, "confidence 0–1", 9, MUT))
+    b.append(f"<path d='M {cx0 + 18},230 H {ex} V {IC + 26}' fill='none' "
+             f"stroke='{FAINT}' stroke-width='0.8'/>")
+    b.append(f"<path d='M {ex},{IC + 20} l -3,6 h 6 Z' fill='{FAINT}'/>")
+    b.append(txt((cx0 + ex) / 2, 224, "may abstain instead of guessing", 8.5, FAINT,
+                 style="font-style='italic'"))
+    b.append(leader(gx + gs - 12, IC + 54, gx + gs + 24, LOSS_Y - 18, ACC))
+    b.append(txt(gx + gs + 32, LOSS_Y - 12,
+                 "smooth-L1: each patch vs its OWN true coordinate", 10, ACC, 600, "start"))
+    b.append(txt(gx + gs + 32, LOSS_Y,
+                 "crop center + rotated offset → 64× denser supervision", 9.5, ACC, 400, "start"))
     return svgwrap(340, "".join(b))
 
 
