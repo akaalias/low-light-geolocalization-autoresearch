@@ -637,8 +637,11 @@ Every experiment is shown this same crop.</figcaption></figure>
             else "")
     out = []
     if svg:
+        legend = (" — <span style='color:var(--faint)'>gray = frozen contract"
+                  "</span> · ink = the current design · "
+                  "<span class='chg'>red = this experiment's change</span>")
         out.append(f"<div class='arch-h'>The design under test — technical "
-                   f"diagram{note}</div><div class='arch-svg'>{svg}</div>")
+                   f"diagram{legend}</div><div class='arch-svg'>{svg}</div>")
     elif pipe:
         out.append(f"<div class='arch-h'>The pipeline this run used{note}</div>"
                    f"<div class='wex-pipe' style='margin:0 0 14px'>{pipe}</div>")
