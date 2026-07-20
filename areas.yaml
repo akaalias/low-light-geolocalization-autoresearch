@@ -1,0 +1,31 @@
+# FROZEN — evaluation area definitions. The autoresearch loop must never edit this file.
+#
+# Bboxes are [west, south, east, north] in EPSG:4326 degrees.
+# Sizes are deliberately modest (~7 x 7 km) to keep fetch/train cycles fast in v1.
+# The pipeline itself accepts ANY bbox (see README) — these five exist to exercise
+# and verify genericity, per CLAUDE.md §0/§5.
+#
+# role: development areas feed the §6 optimized metric.
+#       holdout is Hamburg — NEVER used by the loop's optimization step (§5).
+
+areas:
+  berlin:
+    bbox: [13.32, 52.47, 13.42, 52.53]
+    role: development
+    note: Primary dense-urban reference case.
+  prignitz:
+    bbox: [12.10, 53.05, 12.20, 53.11]
+    role: development
+    note: Rural extreme — minimal artificial lighting.
+  munich:
+    bbox: [11.52, 48.10, 11.62, 48.16]
+    role: development
+    note: Second major-metro replicate.
+  frankfurt:
+    bbox: [8.62, 50.08, 8.72, 50.14]
+    role: development
+    note: Third major-metro replicate.
+  hamburg:
+    bbox: [9.93, 53.52, 10.03, 53.58]
+    role: holdout
+    note: Blind generalization holdout (§5). Read-only periodic check; never optimized against.

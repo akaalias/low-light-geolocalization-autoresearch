@@ -1,0 +1,8 @@
+{
+  "title": "Bootstrap baseline — naive TinyLocNet direct-coordinate regressor",
+  "category": "architecture",
+  "hypothesis": "A ~300k-param from-scratch CNN trained for 3 epochs will produce a valid end-to-end harness run but nowhere near the 20 m target; its error should approach the trivial 'predict the area center' bound (~2.9 km for a 7 km box), confirming the metric, gates, and lineage plumbing are trustworthy before the autoresearch loop starts.",
+  "method": "Frozen pipeline run unmodified on two structurally different bboxes (berlin dense-urban, prignitz rural): Sentinel-2 fetch -> 6-bucket relighting -> per-area TinyLocNet training with rotation augmentation -> ONNX export -> frozen §6 scoring with deployment gates.",
+  "expected_outcome": "Primary worst-case median error in the 2-3 km range; all deployment gates pass (ONNX ~0.4 MiB << 4 MiB, host latency << 250 ms); coverage degrades in dark rural buckets.",
+  "init_strategy": "from-scratch"
+}

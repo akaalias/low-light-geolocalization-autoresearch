@@ -1,0 +1,12 @@
+areas.yaml
+pipeline/common.py
+pipeline/fetch.py
+pipeline/relight.py
+pipeline/dataset.py
+pipeline/score.py
+autoresearch/schema.sql
+autoresearch/prompt.md
+autoresearch/db.py
+autoresearch/loop.sh
+FROZEN
+CLAUDE.md

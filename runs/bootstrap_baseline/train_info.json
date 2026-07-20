@@ -1,0 +1,20 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 372,
+    "epochs": 3,
+    "device": "mps",
+    "train_seconds": 6.7,
+    "onnx_bytes": 394346,
+    "init": "from-scratch"
+  },
+  {
+    "area": "prignitz",
+    "n_train_crops": 420,
+    "epochs": 3,
+    "device": "mps",
+    "train_seconds": 3.3,
+    "onnx_bytes": 394346,
+    "init": "from-scratch"
+  }
+]
