@@ -1,4 +1,4 @@
-"""Self-refreshing HTML research dashboard rendered from the SQLite lineage
+"""Static HTML research dashboard rendered from the SQLite lineage
 log (§7), styled after the human's prior research dashboards (Tufte cream /
 ink / Palatino vocabulary: airloom log, Heuristic Kitchen dashboard,
 FMDiscovery autoresearch dashboard) — including their UX patterns:
@@ -264,6 +264,13 @@ window.addEventListener('load',function(){
 
 def esc(s):
     return html.escape(str(s if s is not None else ""))
+
+
+def fmt_dur(s):
+    if s is None:
+        return "—"
+    s = int(s)
+    return f"{s // 60} m {s % 60:02d} s" if s >= 60 else f"{s} s"
 
 
 def fmt_m(v):
@@ -638,7 +645,6 @@ def render():
             f"<b class='num'>{best/TARGET_M:,.0f}×</b> better than today.")
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta http-equiv="refresh" content="30">
 <meta name="viewport" content="width=1100">
 <title>Low-Light Geolocalization — Autoresearch Progress</title>
 <style>{CSS}</style><script>{JS}</script></head><body>
@@ -685,6 +691,7 @@ def render():
 <th title="Worst median position error across 6 lighting conditions x 4 areas, on held-out crops. The one number the loop optimizes. Target: at or below 20 m.">Worst-case error</th>
 <th title="Largest per-area exported model. Hard limit: 4 MiB (ESP32-P4 flight computer).">Model</th>
 <th title="Single-frame inference on one CPU thread - a documented proxy for the flight computer, budget 250 ms.">Latency</th>
+<th title="Wall time of the whole iteration: agent design + training all areas + scoring.">Time</th>
 <th>Status</th></tr></thead><tbody>"""]
 
     for e in reversed(exps):
@@ -700,6 +707,7 @@ def render():
 <td class="mono">{esc(e['init_strategy'] or '—')}</td>
 <td class="num">{fmt_m(e['primary_metric'])}</td>
 <td class="num">{size}</td><td class="num">{lat}</td>
+<td class="num">{fmt_dur(e.get('duration_s'))}</td>
 <td>{status_of(e)}</td></tr>""")
 
         blocks = []
@@ -712,7 +720,7 @@ def render():
                 blocks.append(f"<div class='eb {cls}'><div class='eb-h'>{label}</div>"
                               f"<p>{esc(e[key])}</p></div>")
         metrics = json.loads(e["metrics_json"] or "{}")
-        body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="9">
+        body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="10">
 <div class="detail-inner">
 <div class="detail-grid">
 <div class="explain">{''.join(blocks)}</div>
@@ -724,7 +732,8 @@ red = failed cell, ink = at target</div>
 {gates_block(e, metrics)}
 {train_block(e['artifacts_dir'])}
 <div class="provenance">ts {esc(e['ts'][:19])} · commit {esc(e['git_commit'][:12])} ·
-parent {esc((e['parent_commit'] or '')[:12]) or '—'} · artifacts {esc(e['artifacts_dir'] or '—')}</div>
+parent {esc((e['parent_commit'] or '')[:12]) or '—'} · artifacts {esc(e['artifacts_dir'] or '—')} ·
+agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duration_s'))}</div>
 {prompt_block(e)}
 </div>
 </div>

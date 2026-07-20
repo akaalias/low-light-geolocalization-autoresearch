@@ -69,7 +69,8 @@ research trail. Every 5 kept improvements it runs the read-only **hamburg
 holdout check** (§5) — logged, never fed back into keep/revert, and
 `pipeline/score.py` hard-refuses to score hamburg without `--holdout`.
 
-Watch progress: `open gallery/index.html` (auto-refreshes every 30 s), or
+Watch progress: `open gallery/index.html` (re-rendered after every
+iteration — reload to see the latest), or
 `sqlite3 experiments.sqlite "SELECT id,title,primary_metric,kept FROM experiments ORDER BY id DESC LIMIT 10;"`
 
 ### Running on RunPod (manual step, v1)

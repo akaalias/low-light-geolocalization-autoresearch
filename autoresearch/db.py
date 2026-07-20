@@ -32,8 +32,10 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
         conn.executescript(f.read())
     # Migrate DBs created before a column was added to the schema.
     cols = [r[1] for r in conn.execute("PRAGMA table_info(experiments)")]
-    if "agent_prompt" not in cols:
-        conn.execute("ALTER TABLE experiments ADD COLUMN agent_prompt TEXT")
+    for col, typ in (("agent_prompt", "TEXT"), ("agent_model", "TEXT"),
+                     ("duration_s", "REAL")):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE experiments ADD COLUMN {col} {typ}")
     return conn
 
 
@@ -46,6 +48,8 @@ def log_experiment(metrics_path: Path, design: dict, result: str,
                    conclusion: str, git_commit: str, parent_commit: str | None,
                    artifacts_dir: str, kept: int | None, kind: str,
                    agent_prompt: str | None = None,
+                   agent_model: str | None = None,
+                   duration_s: float | None = None,
                    db_path: Path | None = None) -> int:
     with open(metrics_path) as f:
         metrics = json.load(f)
@@ -57,8 +61,8 @@ def log_experiment(metrics_path: Path, design: dict, result: str,
            (ts, git_commit, parent_commit, kind, title, category, hypothesis,
             method, expected_outcome, result, conclusion, init_strategy,
             primary_metric, kept, model_bytes_max, latency_ms_host_proxy,
-            metrics_json, artifacts_dir, agent_prompt)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            metrics_json, artifacts_dir, agent_prompt, agent_model, duration_s)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (datetime.datetime.now(datetime.timezone.utc).isoformat(),
          git_commit, parent_commit, kind,
          design.get("title", "(untitled)"), design.get("category"),
@@ -67,7 +71,8 @@ def log_experiment(metrics_path: Path, design: dict, result: str,
          design.get("init_strategy"),
          metrics["primary_worst_median_error_m"], kept,
          max(sizes) if sizes else None, max(lats) if lats else None,
-         json.dumps(metrics), artifacts_dir, agent_prompt))
+         json.dumps(metrics), artifacts_dir, agent_prompt, agent_model,
+         duration_s))
     exp_id = cur.lastrowid
     for a in metrics["areas"]:
         for bucket, c in a.get("buckets", {}).items():
@@ -95,6 +100,10 @@ def main():
                     choices=["development", "holdout_check"])
     ap.add_argument("--prompt-file", default=None,
                     help="file holding the exact prompt given to the headless agent")
+    ap.add_argument("--agent-model", default=None,
+                    help="LLM model id that ran the headless agent")
+    ap.add_argument("--duration-s", type=float, default=None,
+                    help="wall time of the whole iteration in seconds")
     args = ap.parse_args()
 
     try:
@@ -110,7 +119,8 @@ def main():
         Path(args.metrics), design, args.result, args.conclusion,
         git_rev(args.git_commit),
         git_rev(args.parent_commit) if args.parent_commit else None,
-        args.artifacts_dir, args.kept, args.kind, prompt)
+        args.artifacts_dir, args.kept, args.kind, prompt,
+        args.agent_model or None, args.duration_s)
     print(exp_id)
 
 

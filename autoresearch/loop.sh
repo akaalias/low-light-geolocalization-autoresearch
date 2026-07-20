@@ -82,6 +82,7 @@ for i in $(seq 1 "$ITERATIONS"); do
   RUN_DIR="runs/$RUN_ID"
   mkdir -p "$RUN_DIR"
   PARENT_COMMIT="$(git rev-parse HEAD)"
+  ITER_T0="$(date +%s)"
   echo "=== iteration $i/$ITERATIONS  run=$RUN_ID  parent=$PARENT_COMMIT ==="
 
   # 1. Agent designs ONE experiment: pre-registers hypothesis/method/expected
@@ -89,13 +90,20 @@ for i in $(seq 1 "$ITERATIONS"); do
   # Snapshot the exact prompt handed to the headless agent — part of the
   # experiment record (§7 lineage) even when SKIP_AGENT skips the call.
   cp autoresearch/prompt.md "$RUN_DIR/prompt.md"
+  AGENT_MODEL=""
   if [ "${SKIP_AGENT:-0}" != "1" ]; then
     rm -f runs/pending_experiment.json
-    "$CLAUDE_BIN" -p "$(cat "$RUN_DIR/prompt.md")" \
-      --permission-mode acceptEdits \
-      --allowedTools "Read,Edit,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
-      </dev/null \
+    # JSON output captures the result metadata (incl. which LLM model ran);
+    # CLAUDE_MODEL env var pins the model explicitly if set.
+    CLAUDE_ARGS=(-p "$(cat "$RUN_DIR/prompt.md")"
+      --permission-mode acceptEdits
+      --allowedTools "Read,Edit,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)"
+      --output-format json)
+    [ -n "${CLAUDE_MODEL:-}" ] && CLAUDE_ARGS+=(--model "$CLAUDE_MODEL")
+    "$CLAUDE_BIN" "${CLAUDE_ARGS[@]}" </dev/null >"$RUN_DIR/agent_result.json" \
       || { echo "agent invocation failed; skipping iteration"; continue; }
+    AGENT_MODEL="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_result.json" 2>/dev/null || true)"
+    echo "agent finished (model: ${AGENT_MODEL:-unknown})"
   fi
   [ -f runs/pending_experiment.json ] && mv runs/pending_experiment.json "$RUN_DIR/experiment.json"
   [ -f "$RUN_DIR/experiment.json" ] || echo '{"title":"(no experiment design provided)"}' > "$RUN_DIR/experiment.json"
@@ -144,11 +152,13 @@ $(cat "$RUN_DIR/experiment.json")" || true
     CONCLUSION="REVERTED — metric did not improve ($METRIC m vs best $BEST m); change discarded"
     echo "REVERTED: $METRIC m (best remains $BEST)"
   fi
+  DURATION_S=$(( $(date +%s) - ITER_T0 ))
   $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
     --experiment-file "$RUN_DIR/experiment.json" \
     --result "$RESULT" --conclusion "$CONCLUSION" \
     --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept "$KEEP" \
-    --prompt-file "$RUN_DIR/prompt.md"
+    --prompt-file "$RUN_DIR/prompt.md" \
+    --agent-model "$AGENT_MODEL" --duration-s "$DURATION_S"
 
   # 5. Periodic read-only holdout check (§5) — logged, never drives keep/revert.
   KEPT_COUNT="$(cat "$STATE/kept_count" 2>/dev/null || echo 0)"

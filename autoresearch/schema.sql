@@ -22,7 +22,9 @@ CREATE TABLE IF NOT EXISTS experiments (
     latency_ms_host_proxy REAL,       -- worst per-area host latency proxy
     metrics_json TEXT,                -- full score.py output (per-area/bucket)
     artifacts_dir TEXT,               -- runs/<id>/ path with models/heatmaps/samples
-    agent_prompt TEXT                 -- exact prompt given to the headless agent
+    agent_prompt TEXT,                -- exact prompt given to the headless agent
+    agent_model TEXT,                 -- LLM model id that ran the headless agent
+    duration_s REAL                   -- wall time of the whole iteration (agent+train+score)
 );
 
 CREATE TABLE IF NOT EXISTS area_results (
