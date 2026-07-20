@@ -342,11 +342,19 @@ def chart_svg(exps):
     if cur:
         cur.append((x(n - 1), y(best)))
         segments.append(cur)
-    for k, rx in enumerate(resets):
+    # Reset labels: a paper-colored halo (paint-order stroke) keeps them
+    # legible wherever the data line runs; stagger vertically only when two
+    # rules sit close enough for their labels to collide.
+    LABEL_W = 130
+    prev_rx, prev_row = None, 0
+    for rx in resets:
+        row = (prev_row + 1) % 2 if (prev_rx is not None and rx - prev_rx < LABEL_W) else 0
+        prev_rx, prev_row = rx, row
         parts.append(f"<line x1='{rx:.1f}' x2='{rx:.1f}' y1='{mt}' y2='{H-mb}' "
                      f"stroke='#9b998c' stroke-width='1' stroke-dasharray='3 4'/>")
-        parts.append(f"<text class='axis-lab' x='{rx+5:.1f}' y='{mt+11+k*13}'>"
-                     f"eval set changed</text>")
+        parts.append(f"<text class='axis-lab' x='{rx+5:.1f}' y='{mt+11+row*13}' "
+                     f"stroke='#fffff8' stroke-width='4' "
+                     f"style='paint-order:stroke'>eval set changed</text>")
     for seg in segments:
         if len(seg) > 1:
             d = "M" + " L".join(f"{px:.1f},{py:.1f}" for px, py in seg)
