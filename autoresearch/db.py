@@ -7,7 +7,10 @@ harness-measured result/conclusion and all §6 metrics.
 experiment.json format (written by the agent BEFORE the run):
   {"title": "...", "category": "architecture|loss|augmentation|relighting|training|quantization|other",
    "hypothesis": "...", "method": "...", "expected_outcome": "...",
-   "init_strategy": "from-scratch" | "pretrained:<name>"}
+   "init_strategy": "from-scratch" | "pretrained:<name>",
+   "eli5": "plain-language explanation for the gallery (optional)",
+   "architecture": {"stages": [{"name": "...", "detail": "...",
+                                "changed": bool, "train_only": bool}, ...]}}
 
 Usage (invoked by loop.sh; also usable manually):
   python -m autoresearch.db --metrics runs/X/metrics.json \
@@ -33,7 +36,8 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
     # Migrate DBs created before a column was added to the schema.
     cols = [r[1] for r in conn.execute("PRAGMA table_info(experiments)")]
     for col, typ in (("agent_prompt", "TEXT"), ("agent_model", "TEXT"),
-                     ("duration_s", "REAL")):
+                     ("duration_s", "REAL"), ("eli5", "TEXT"),
+                     ("arch_json", "TEXT")):
         if col not in cols:
             conn.execute(f"ALTER TABLE experiments ADD COLUMN {col} {typ}")
     return conn
@@ -61,8 +65,9 @@ def log_experiment(metrics_path: Path, design: dict, result: str,
            (ts, git_commit, parent_commit, kind, title, category, hypothesis,
             method, expected_outcome, result, conclusion, init_strategy,
             primary_metric, kept, model_bytes_max, latency_ms_host_proxy,
-            metrics_json, artifacts_dir, agent_prompt, agent_model, duration_s)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            metrics_json, artifacts_dir, agent_prompt, agent_model, duration_s,
+            eli5, arch_json)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (datetime.datetime.now(datetime.timezone.utc).isoformat(),
          git_commit, parent_commit, kind,
          design.get("title", "(untitled)"), design.get("category"),
@@ -72,7 +77,9 @@ def log_experiment(metrics_path: Path, design: dict, result: str,
          metrics["primary_worst_median_error_m"], kept,
          max(sizes) if sizes else None, max(lats) if lats else None,
          json.dumps(metrics), artifacts_dir, agent_prompt, agent_model,
-         duration_s))
+         duration_s, design.get("eli5"),
+         json.dumps(design["architecture"])
+         if isinstance(design.get("architecture"), dict) else None))
     exp_id = cur.lastrowid
     for a in metrics["areas"]:
         for bucket, c in a.get("buckets", {}).items():

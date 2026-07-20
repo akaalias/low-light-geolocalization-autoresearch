@@ -24,7 +24,9 @@ CREATE TABLE IF NOT EXISTS experiments (
     artifacts_dir TEXT,               -- runs/<id>/ path with models/heatmaps/samples
     agent_prompt TEXT,                -- exact prompt given to the headless agent
     agent_model TEXT,                 -- LLM model id that ran the headless agent
-    duration_s REAL                   -- wall time of the whole iteration (agent+train+score)
+    duration_s REAL,                  -- wall time of the whole iteration (agent+train+score)
+    eli5 TEXT,                        -- pre-registered plain-language explanation (no jargon)
+    arch_json TEXT                    -- pre-registered {"stages":[...]} inference-path diagram
 );
 
 CREATE TABLE IF NOT EXISTS area_results (

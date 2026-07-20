@@ -126,6 +126,24 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 .eb-exp{border-left-color:var(--rule)}
 .eb-res{border-left-color:var(--ink)} .eb-res .eb-h{color:var(--ink)}
 .eb-con{border-left-color:var(--accent)} .eb-con .eb-h{color:var(--accent)}
+.eb-eli{border-left-color:var(--ink);background:#fbf8ea}
+.eb-eli p{font-size:14.5px}
+
+.arch{margin:0 0 18px}
+.arch-h{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 8px}
+.arch-h .chg{color:var(--accent)}
+.arch-row{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px}
+.ab{border:1px solid var(--rule);background:#fff;border-radius:3px;
+  box-shadow:0 1px 7px rgba(60,50,30,.08);padding:7px 12px 8px;
+  max-width:210px;min-width:110px}
+.ab-n{font:700 11px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink);margin-bottom:3px}
+.ab-d{font-size:11.5px;line-height:1.45;color:#4a473e}
+.ab.ch{border-color:var(--accent);border-width:1.5px;background:#fdf5ef}
+.ab.ch .ab-n{color:var(--accent)}
+.ab.tr{border-style:dashed;box-shadow:none;background:transparent}
+.ab-arr{align-self:center;color:var(--faint);font-size:15px;flex:none}
 
 .score-head{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 4px}
@@ -167,7 +185,9 @@ pre.prompt{font:12px/1.5 var(--mono);white-space:pre-wrap;background:#fff;
 .thumbs{display:flex;flex-wrap:wrap;gap:12px}
 .thumbs figure{margin:0}
 .thumbs img{height:130px;display:block;border:1px solid var(--rule)}
-.thumbs.maps img{height:240px}
+.thumbs.maps{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:12px}
+.thumbs.maps figure{min-width:0}
+.thumbs.maps img{height:auto;width:100%}
 .thumbs figcaption{font:11px var(--serif);color:var(--faint);margin-top:3px}
 details.trywrap{margin:12px 0 0}
 details.trywrap>summary{cursor:pointer;color:var(--muted);font-weight:600;
@@ -534,6 +554,38 @@ def train_block(artifacts_dir):
     return "".join(rows)
 
 
+def arch_block(e):
+    """Uniform block diagram of the model's inference path, rendered from the
+    experiment's pre-registered `architecture` stages. Every experiment uses
+    the same left-to-right vocabulary (camera frame → … → output) and stages
+    the experiment changed are drawn in accent red — so two open detail rows
+    can be compared box-by-box."""
+    try:
+        arch = json.loads(e.get("arch_json") or "null")
+    except (TypeError, json.JSONDecodeError):
+        arch = None
+    stages = arch.get("stages") if isinstance(arch, dict) else None
+    if not stages:
+        return ""
+    boxes = []
+    for i, s in enumerate(stages):
+        if i:
+            boxes.append(f"<div class='ab-arr'>{'+' if s.get('train_only') else '→'}</div>")
+        cls = ("ab" + (" ch" if s.get("changed") else "")
+               + (" tr" if s.get("train_only") else ""))
+        name = esc(s.get("name", "?"))
+        if s.get("train_only"):
+            name += " <span style='color:var(--faint);font-weight:400'>· training only</span>"
+        boxes.append(f"<div class='{cls}'><div class='ab-n'>{name}</div>"
+                     f"<div class='ab-d'>{esc(s.get('detail', ''))}</div></div>")
+    note = ("<span class='chg'>red = what this experiment changed</span>"
+            if any(s.get("changed") for s in stages)
+            else "the design this run used (nothing changed vs. its parent)")
+    return (f"<div class='arch'><div class='arch-h'>How the model answers "
+            f"“where am I?” — {note}</div>"
+            f"<div class='arch-row'>{''.join(boxes)}</div></div>")
+
+
 def prompt_block(e):
     """The exact prompt the headless agent was given for this experiment."""
     prompt = e.get("agent_prompt")
@@ -607,6 +659,16 @@ enforced by the frozen split, not by convention.</dd>
 <dt>Agent prompt</dt><dd>Every loop experiment records the exact prompt its
 headless agent received — expandable in the detail view, so any experiment
 can be re-run or audited later.</dd>
+<dt>In plain words</dt><dd>Each experiment's own jargon-free explanation of
+what it tried, pre-registered alongside the technical design — read this
+first if the title looks like alphabet soup.</dd>
+<dt>Architecture strip</dt><dd>The block diagram at the top of each detail
+view shows the model's answer pipeline left to right, camera frame →
+(lat, lon, confidence). Every experiment uses the same box vocabulary;
+<b style="color:var(--accent)">red boxes</b> are the stages that experiment
+changed, and a dashed box is a training-time-only change (loss,
+augmentation) that isn't part of the deployed path. To compare two
+experiments, open both rows and compare strips box-by-box.</dd>
 </dl>
 <div class="foot">Click any row — or any point in the chart — to see the
 experiment's pre-registered hypothesis, method and expected outcome, the
@@ -711,6 +773,9 @@ def render():
 <td>{status_of(e)}</td></tr>""")
 
         blocks = []
+        if e.get("eli5"):
+            blocks.append(f"<div class='eb eb-eli'><div class='eb-h'>In plain "
+                          f"words</div><p>{esc(e['eli5'])}</p></div>")
         for key, cls, label in (("hypothesis", "eb-hyp", "Hypothesis"),
                                 ("method", "eb-met", "Method"),
                                 ("expected_outcome", "eb-exp", "Expected outcome"),
@@ -722,6 +787,7 @@ def render():
         metrics = json.loads(e["metrics_json"] or "{}")
         body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="10">
 <div class="detail-inner">
+{arch_block(e)}
 <div class="detail-grid">
 <div class="explain">{''.join(blocks)}</div>
 <div>
