@@ -1,0 +1,211 @@
+{
+  "kind": "development",
+  "areas": [
+    {
+      "area": "berlin",
+      "buckets": {
+        "morning": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 1924.72,
+          "mean_error_m": 2067.53,
+          "score": 1924.72
+        },
+        "midday": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2039.71,
+          "mean_error_m": 2095.76,
+          "score": 2039.71
+        },
+        "afternoon": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 1963.39,
+          "mean_error_m": 2058.61,
+          "score": 1963.39
+        },
+        "early_evening": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 1974.6,
+          "mean_error_m": 2011.7,
+          "score": 1974.6
+        },
+        "evening": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2119.24,
+          "mean_error_m": 2095.41,
+          "score": 2119.24
+        },
+        "night": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2124.52,
+          "mean_error_m": 2149.05,
+          "score": 2124.52
+        }
+      },
+      "gates": {
+        "model_bytes": 929733,
+        "latency_ms_host_proxy": 0.6
+      }
+    },
+    {
+      "area": "prignitz",
+      "buckets": {
+        "morning": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2126.36,
+          "mean_error_m": 2345.89,
+          "score": 2126.36
+        },
+        "midday": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2147.57,
+          "mean_error_m": 2446.44,
+          "score": 2147.57
+        },
+        "afternoon": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2122.69,
+          "mean_error_m": 2333.74,
+          "score": 2122.69
+        },
+        "early_evening": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2164.52,
+          "mean_error_m": 2366.24,
+          "score": 2164.52
+        },
+        "evening": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2323.75,
+          "mean_error_m": 2385.18,
+          "score": 2323.75
+        },
+        "night": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2307.9,
+          "mean_error_m": 2357.99,
+          "score": 2307.9
+        }
+      },
+      "gates": {
+        "model_bytes": 929733,
+        "latency_ms_host_proxy": 0.6
+      }
+    },
+    {
+      "area": "munich",
+      "buckets": {
+        "morning": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2274.1,
+          "mean_error_m": 2376.16,
+          "score": 2274.1
+        },
+        "midday": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2388.38,
+          "mean_error_m": 2454.89,
+          "score": 2388.38
+        },
+        "afternoon": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2371.39,
+          "mean_error_m": 2401.97,
+          "score": 2371.39
+        },
+        "early_evening": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2271.81,
+          "mean_error_m": 2309.89,
+          "score": 2271.81
+        },
+        "evening": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2323.38,
+          "mean_error_m": 2346.84,
+          "score": 2323.38
+        },
+        "night": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2489.03,
+          "mean_error_m": 2479.45,
+          "score": 2489.03
+        }
+      },
+      "gates": {
+        "model_bytes": 929733,
+        "latency_ms_host_proxy": 0.6
+      }
+    },
+    {
+      "area": "frankfurt",
+      "buckets": {
+        "morning": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 1807.4,
+          "mean_error_m": 1939.46,
+          "score": 1807.4
+        },
+        "midday": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 1748.74,
+          "mean_error_m": 1884.46,
+          "score": 1748.74
+        },
+        "afternoon": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 1765.92,
+          "mean_error_m": 1884.25,
+          "score": 1765.92
+        },
+        "early_evening": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 1984.16,
+          "mean_error_m": 1974.16,
+          "score": 1984.16
+        },
+        "evening": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2171.55,
+          "mean_error_m": 2145.68,
+          "score": 2171.55
+        },
+        "night": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 2220.9,
+          "mean_error_m": 2262.28,
+          "score": 2220.9
+        }
+      },
+      "gates": {
+        "model_bytes": 929733,
+        "latency_ms_host_proxy": 0.66
+      }
+    }
+  ],
+  "primary_worst_median_error_m": 2489.03,
+  "target_m": 20.0
+}

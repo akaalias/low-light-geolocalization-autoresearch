@@ -1,0 +1,20 @@
+{
+  "title": "Per-epoch rotation resampling replaces the one-shot frozen training tensor",
+  "category": "augmentation",
+  "hypothesis": "The probability field stays near-uniform not because of supervision form (exp-3/4/5 all attacked the head/loss and failed identically) but because the encoder never learns rotation-invariant features: train.py extracts each of the few hundred train locations exactly once, at one fixed random heading, into a static tensor reused every epoch, while the frozen eval rotates every crop by a different deterministic angle. The model can fit 'this place seen at heading 137 degrees' without ever being forced to recognize the same place at another heading, so at eval time features do not fire, the field stays flat, and the soft-argmax decode collapses toward the map center. Re-extracting all training crops with fresh uniform-random angles at the start of every epoch multiplies heading diversity per location by the epoch count and makes rotation invariance the only way to reduce training loss.",
+  "method": "In model/train.py only: split load_training_tensors into a one-time loader (meta, train-crop list, six relight images cached in memory) and a per-epoch sampler that re-runs extract_crop with a fresh rng.uniform(0,360) angle for every (location, bucket) pair; the training loop rebuilds x each epoch from the cached images. Locations stay on the frozen list_crops grid (no position jitter, so the no-eval-leakage guarantee in pipeline/dataset.py is untouched). model/model.py, the loss, and the exported inference path are unchanged.",
+  "expected_outcome": "If rotation overfit is the binding constraint, the worst-case median error drops clearly below the kept 2489 m -- plausibly to 1400-2300 m, with the largest gains in bright buckets where texture is most discriminative. Downside is tightly bounded: same locations, same model, same loss, and a near-uniform field still decodes to the map center (~3.2 km floor), so a null result should land near the current best rather than below baseline.",
+  "init_strategy": "from-scratch",
+  "eli5": "Until now the model studied each training photo from one fixed compass direction only -- like memorizing your neighborhood while always facing north, then being quizzed while facing random directions. Unsurprisingly, it froze on the quiz. Now, every time it re-reads its study deck, every photo is re-dealt at a new random rotation, so the only way to get good grades in practice is to recognize places no matter which way it is facing -- which is exactly what the real quiz (and a real drone) demands.",
+  "architecture": {
+    "stages": [
+      {"name": "Camera frame", "detail": "128×128 px aerial crop, one of 6 simulated lighting conditions", "changed": false},
+      {"name": "Feature extractor", "detail": "small 4-layer CNN (~230k params) boils the image down to 128 numbers", "changed": false},
+      {"name": "Probability map", "detail": "scores every cell of a 32×32 grid over the map: “how likely did the photo come from here?”", "changed": false},
+      {"name": "Decode", "detail": "answer = balance point of the whole heat map (weighted average of all 1,024 cells)", "changed": false},
+      {"name": "Confidence", "detail": "separate 0–1 score; low means the model abstains rather than guessing", "changed": false},
+      {"name": "Output", "detail": "(lat, lon, confidence)", "changed": false},
+      {"name": "Training signal", "detail": "every study pass re-deals each training photo at a fresh random compass rotation, instead of showing each place from one fixed direction forever — forcing the model to recognize places from any heading", "changed": true, "train_only": true}
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "title": "Step-budget training with cosine annealing — fix the 600-step underfit",
+  "category": "training",
+  "hypothesis": "The metric is not limited by supervision structure (exps 3-6 changed decode, per-patch supervision, hierarchical loss, and rotation resampling; all landed within noise of 2489 m). A new diagnostic on the kept best model shows why: its median error on its OWN TRAINING locations is ~2.3 km at heading 0 — identical to eval error, i.e. there is no generalization gap, only catastrophic underfitting. The cause is the optimization budget: 4,800 crops / batch 64 / 8 epochs = 600 gradient steps for a 1,024-way discrimination task. A time-boxed probe (runs/_probe_iter7.py) shows train-set median error falling monotonically from 2,795 m to ~500 m over 780 steps with NO plateau — the optimizer simply stops an order of magnitude too early. Training for a fixed ~6,000-step budget with cosine LR annealing (instead of a step count dictated by the harness's epoch knob) lets the network actually fit the training area, which is the precondition for every previously-tested supervision idea to matter at all.",
+  "method": "model/train.py only: train_area now runs a fixed TRAIN_STEPS=6000 gradient-step budget (new --steps flag, default 6000), cycling shuffled epochs over the same one-shot training tensor as the current best (no resampling — exp 6's confound stays out), with torch.optim.lr_scheduler.CosineAnnealingLR decaying lr 1e-3 -> 0 over the budget. --epochs remains an accepted CLI flag (harness contract) and is logged, but no longer determines training length. Model, loss, data, and export are untouched.",
+  "expected_outcome": "Train-set fit improves by roughly an order of magnitude (probe: ~500 m median at 780 steps on a 1-bucket subset, still falling). If the fitted features transfer even partially to the never-seen eval blocks, worst-case median error drops below the kept 2489 m — predicted 1,200-2,200 m. Downside is bounded: if fitting the train blocks does not transfer at all, predictions on uninformative eval crops still collapse toward the field's probability-weighted center, i.e. roughly the current center-guess regime (~2.5-3.2 km), and the deployment gates are unaffected (same architecture, same ONNX).",
+  "init_strategy": "from-scratch",
+  "eli5": "Until now every attempt assumed the model was studying the map the wrong way, so we kept redesigning its study method. This time we checked something nobody had measured: how well does it know the places it WAS shown? Answer: barely at all — it misses its own training locations by 2 kilometers, because training stops after the equivalent of skimming the textbook once. We changed one thing: let it study about ten times longer, winding the learning speed down gradually like an athlete tapering before a race. You can't be good at the test if you never finished the homework.",
+  "architecture": {
+    "stages": [
+      {"name": "Camera frame", "detail": "128×128 px aerial crop, one of 6 simulated lighting conditions", "changed": false, "icon": "frame"},
+      {"name": "Feature extractor", "detail": "small 4-layer CNN (~230k params) boils the image down to 128 numbers", "changed": false, "icon": "cnn"},
+      {"name": "Probability map", "detail": "scores every cell of a 32×32 grid over the map: “how likely did the photo come from here?”", "changed": false, "icon": "heatmap"},
+      {"name": "Decode", "detail": "answer = balance point of the whole heat map (weighted average of all 1,024 cells)", "changed": false, "icon": "balance"},
+      {"name": "Confidence", "detail": "separate 0–1 score; low means the model abstains rather than guessing", "changed": false, "icon": "gauge"},
+      {"name": "Output", "detail": "(lat, lon, confidence)", "changed": false, "icon": "pin"},
+      {"name": "Training signal", "detail": "same lessons, ten times more study time: a fixed 6,000-step practice budget with the learning speed gently annealed to zero, replacing the old habit of stopping after 600 steps — long before the model had memorized anything", "changed": true, "train_only": true, "icon": "target"}
+    ]
+  }
+}

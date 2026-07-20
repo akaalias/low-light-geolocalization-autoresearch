@@ -158,6 +158,8 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 .wex-pipe b.chg{color:var(--accent)}
 .wex-pipe .pd{color:#7a4438}
 .wex-pipe .sep{color:var(--faint)}
+.arch-svg{max-width:1120px;margin:2px 0 20px;overflow-x:auto}
+.arch-svg svg{width:100%;min-width:760px;height:auto;display:block}
 
 .score-head{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 4px}
@@ -626,14 +628,24 @@ Every experiment is shown this same crop.</figcaption></figure>
 <div><div class='wex-num num'>{info['conf']:.2f}</div>
 <div class='wex-lab'>self-reported confidence</div></div>
 </div></div>"""
-    if not fig and not pipe:
+    svg = e.get("arch_svg") or ""
+    svg = svg if svg.lstrip().startswith("<svg") else ""
+    if not fig and not pipe and not svg:
         return ""
-    head = ("One real test, end to end" if fig else "The pipeline this run used")
     note = (" — <span class='chg'>red = what this experiment changed</span>"
-            if stages and any(s.get("changed") for s in stages) else "")
-    pipe_html = f"<div class='wex-pipe'>{pipe}</div>" if pipe else ""
-    return (f"<div class='arch'><div class='arch-h'>{head}{note}</div>"
-            f"{fig}{pipe_html}</div>")
+            if (svg or (stages and any(s.get("changed") for s in stages)))
+            else "")
+    out = []
+    if svg:
+        out.append(f"<div class='arch-h'>The design under test — technical "
+                   f"diagram{note}</div><div class='arch-svg'>{svg}</div>")
+    elif pipe:
+        out.append(f"<div class='arch-h'>The pipeline this run used{note}</div>"
+                   f"<div class='wex-pipe' style='margin:0 0 14px'>{pipe}</div>")
+    if fig:
+        out.append(f"<div class='arch-h'>One real test, end to end"
+                   f"{'' if svg or pipe else note}</div>{fig}")
+    return f"<div class='arch'>{''.join(out)}</div>"
 
 
 
