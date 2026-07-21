@@ -593,62 +593,61 @@ HERO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 340" font
 
   <!-- terrain band -->
   <path d="M 0 262 Q 240 250 490 258 T 980 250 L 980 340 L 0 340 Z" fill="url(#ground)"/>
-  <!-- streets -->
-  <g stroke="#000000" stroke-width="1.3" fill="none" opacity="0.12">
-    <path d="M 40 336 L 250 266"/>
-    <path d="M 190 338 L 320 268"/>
-    <path d="M 0 300 Q 300 284 620 274 T 980 268"/>
-    <path d="M 560 338 L 470 264"/>
-    <path d="M 340 318 Q 600 302 980 296"/>
+  <!-- roads: one long band following the horizon, two feeders converging -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M 0 296 Q 320 282 640 274 Q 820 270 980 268" stroke="#55503c" stroke-width="2.2" opacity="0.30"/>
+    <path d="M 0 296 Q 320 282 640 274 Q 820 270 980 268" stroke="#fffff8" stroke-width="2.2" opacity="0.07"/>
+    <path d="M 120 340 Q 240 300 358 276" stroke="#55503c" stroke-width="1.8" opacity="0.28"/>
+    <path d="M 470 340 Q 520 312 560 288" stroke="#55503c" stroke-width="1.6" opacity="0.22"/>
+    <path d="M 830 340 Q 780 300 742 270" stroke="#cfc9ae" stroke-width="1.6" opacity="0.12"/>
+    <path d="M 980 316 Q 890 296 820 284" stroke="#cfc9ae" stroke-width="1.4" opacity="0.10"/>
   </g>
-  <g stroke="#fffff8" stroke-width="1.2" fill="none" opacity="0.10">
-    <path d="M 760 338 L 700 262"/>
-    <path d="M 620 320 Q 800 306 980 302"/>
-  </g>
-  <!-- buildings: day side plain, night side lit -->
+  <!-- buildings, footprints aligned to the road band -->
   <g>
-    <rect x="120" y="290" width="26" height="14" fill="#8f886b"/>
-    <rect x="252" y="276" width="20" height="10" fill="#7c7458" transform="rotate(-6 262 281)"/>
-    <rect x="368" y="286" width="28" height="12" fill="#5c553f" transform="rotate(3 382 292)"/>
-    <rect x="600" y="278" width="24" height="11" fill="#2f2d24" transform="rotate(-4 612 283)"/>
-    <rect x="607" y="281" width="2.6" height="2.6" fill="#c69b3a" opacity="0.9"/>
-    <rect x="702" y="296" width="34" height="15" fill="#2f2d24" transform="rotate(2 719 303)"/>
-    <rect x="710" y="300" width="3" height="3" fill="#c69b3a" opacity="0.95"/>
-    <rect x="724" y="303" width="3" height="3" fill="#c69b3a" opacity="0.55"/>
-    <rect x="850" y="282" width="22" height="10" fill="#2b2921"/>
-    <rect x="856" y="285" width="2.6" height="2.6" fill="#c69b3a" opacity="0.85"/>
-    <circle cx="668" cy="270" r="1.2" fill="#c69b3a"/>
-    <circle cx="668" cy="270" r="5" fill="#c69b3a" opacity="0.15"/>
-    <circle cx="806" cy="264" r="1.1" fill="#c69b3a"/>
-    <circle cx="806" cy="264" r="4.5" fill="#c69b3a" opacity="0.15"/>
-    <circle cx="918" cy="268" r="1.1" fill="#c69b3a"/>
-    <circle cx="918" cy="268" r="4.5" fill="#c69b3a" opacity="0.15"/>
+    <rect x="146" y="300" width="30" height="13" fill="#8f886b" transform="rotate(-3 161 306)"/>
+    <rect x="236" y="286" width="24" height="11" fill="#7c7458" transform="rotate(-3 248 291)"/>
+    <rect x="322" y="279" width="20" height="9" fill="#6a6349" transform="rotate(-2 332 283)"/>
+    <rect x="640" y="279" width="19" height="9" fill="#2f2d24" transform="rotate(-2 649 283)"/>
+    <rect x="645" y="281" width="2.6" height="2.6" fill="#c69b3a" opacity="0.9"/>
+    <rect x="716" y="290" width="26" height="12" fill="#292720" transform="rotate(2 729 296)"/>
+    <rect x="722" y="293" width="3" height="3" fill="#c69b3a" opacity="0.95"/>
+    <rect x="733" y="296" width="3" height="3" fill="#c69b3a" opacity="0.5"/>
+    <rect x="836" y="276" width="18" height="8" fill="#2b2921" transform="rotate(-2 845 280)"/>
+    <rect x="841" y="278" width="2.4" height="2.4" fill="#c69b3a" opacity="0.85"/>
+    <rect x="902" y="292" width="26" height="12" fill="#26241d" transform="rotate(2 915 298)"/>
+    <rect x="908" y="295" width="3" height="3" fill="#c69b3a" opacity="0.9"/>
+    <circle cx="678" cy="272" r="1.2" fill="#c69b3a"/>
+    <circle cx="678" cy="272" r="5" fill="#c69b3a" opacity="0.15"/>
+    <circle cx="806" cy="268" r="1.1" fill="#c69b3a"/>
+    <circle cx="806" cy="268" r="4.5" fill="#c69b3a" opacity="0.15"/>
+    <circle cx="942" cy="266" r="1.1" fill="#c69b3a"/>
+    <circle cx="942" cy="266" r="4.5" fill="#c69b3a" opacity="0.15"/>
   </g>
 
-  <!-- the aircraft: a slender blade flying into the night -->
-  <g transform="rotate(-4 295 118)">
-    <path d="M 252 121 Q 290 110 334 117 Q 298 127 252 121 Z"
+  <!-- the aircraft: a paper-dart gliding into the night -->
+  <g transform="rotate(3 296 118)">
+    <path d="M 258 108 L 338 121 L 262 132 L 278 121 Z"
           fill="#26251e" stroke="#fffff8" stroke-width="1.3" stroke-linejoin="round"/>
-    <path d="M 264 108 q 13 -3.5 26 -0.5" stroke="#fffff8" stroke-width="1.1" fill="none" opacity="0.75"/>
-    <path d="M 300 106 q 12 -3 24 -0.5" stroke="#fffff8" stroke-width="1.1" fill="none" opacity="0.75"/>
-    <circle cx="322" cy="121" r="2" fill="none" stroke="#c0503a" stroke-width="1.4"/>
+    <path d="M 258 108 L 338 121 L 292 118 Z" fill="#3d3a2e" stroke="#fffff8"
+          stroke-width="1.1" stroke-linejoin="round"/>
+    <circle cx="318" cy="124" r="1.8" fill="#c0503a" stroke="none"/>
   </g>
   <text x="294" y="92" font-size="9.5" fill="#efecd9" text-anchor="middle" font-style="italic" opacity="0.9">low-light camera · one glance</text>
 
   <!-- camera cone -->
-  <path d="M 320 125 L 430 262 L 550 262 Z" fill="#fffff8" opacity="0.07"/>
-  <path d="M 320 125 L 430 262 M 320 125 L 550 262" stroke="#dcd8c4" stroke-width="0.9"
+  <path d="M 330 126 L 420 256 L 585 256 Z" fill="#fffff8" opacity="0.07"/>
+  <path d="M 330 126 L 420 256 M 330 126 L 585 256" stroke="#dcd8c4" stroke-width="0.9"
         stroke-dasharray="1.5 3.5" opacity="0.5" fill="none"/>
 
   <!-- viewed patch + fix -->
   <g>
-    <path d="M 430 262 L 550 262 L 570 292 L 412 292 Z" fill="none"
+    <path d="M 420 256 L 585 256 L 612 298 L 396 298 Z" fill="none"
           stroke="#efecd9" stroke-width="1.3" opacity="0.9"/>
-    <circle cx="490" cy="277" r="5.5" fill="none" stroke="#c0503a" stroke-width="1.6"/>
-    <line x1="490" y1="268" x2="490" y2="286" stroke="#c0503a" stroke-width="1.6"/>
-    <line x1="481" y1="277" x2="499" y2="277" stroke="#c0503a" stroke-width="1.6"/>
-    <text x="490" y="318" font-size="12.5" fill="#efecd9" text-anchor="middle" font-weight="600">(lat, lon, confidence)</text>
-    <text x="490" y="331" font-size="9.5" fill="#c9c4ae" text-anchor="middle">position fix — no GPS, no maps on board</text>
+    <circle cx="502" cy="276" r="6" fill="none" stroke="#c0503a" stroke-width="1.6"/>
+    <line x1="502" y1="266" x2="502" y2="286" stroke="#c0503a" stroke-width="1.6"/>
+    <line x1="492" y1="276" x2="512" y2="276" stroke="#c0503a" stroke-width="1.6"/>
+    <text x="504" y="320" font-size="12.5" fill="#efecd9" text-anchor="middle" font-weight="600">(lat, lon, confidence)</text>
+    <text x="504" y="333" font-size="9.5" fill="#c9c4ae" text-anchor="middle">position fix — no GPS, no maps on board</text>
   </g>
 
   <!-- leader to lens -->
