@@ -65,6 +65,18 @@ the same bounded-downside floor every kept experiment has relied on). The
 field itself still trains on the same calibrated Gaussian-bump CE at
 temperature 1 (loss_fn is unchanged); only the coordinate L2's decode is
 sharpened, so training now grades the committed answer that would fly.
+
+Exp 15: the frozen scorer already implements selective prediction (conf <
+0.3 abstains, coverage >= 0.2 required per cell) but coverage has been
+1.000 in every logged cell -- the confidence head never learned to predict
+anything but "always sure". It is replaced with a calibrated hit predictor
+over the DECODE'S OWN SHAPE (sharpened-field peak mass, normalized field
+entropy, and the distance between the sharpened and unsharpened decodes --
+all detached, so no confidence gradient reaches the trunk/heads/gate),
+trained to predict whether the committed decode lands within
+GOOD_ERR_UV. A registered conf_shift buffer (calibrated post-training by
+train.py, baked into the ONNX export) converts that hit probability into
+the frozen 0.3 abstention threshold with a per-bucket >= 40% keep floor.
 """
 
 import numpy as np
@@ -76,6 +88,7 @@ from torchvision.models import mobilenet_v3_small
 GRID_K = 32              # 32x32 cells over the map (~220 m cells on a ~7 km area)
 TARGET_SIGMA_CELLS = 1.5  # Gaussian soft-target spread, in cell units
 DECODE_BETA = 3.0  # inverse-temperature sharpening of the decode distribution (exp 14): softmax(β·logits) commits the soft-argmax to the dominant mode instead of the field mean; a uniform field stays uniform, so the untrained decode still starts at the map center
+GOOD_ERR_UV = 0.05  # confidence 'hit' radius in normalized map units (~350 m on a ~7 km area, ~1.6 grid cells)
 
 PRETRAINED_TRUNK_PATH = Path(__file__).parent / "pretrained" / "mnv3s_features8.pt"
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
@@ -128,7 +141,8 @@ class TinyLocNet(nn.Module):
             nn.Linear(feat_ch + 1, gate_hidden), nn.ReLU(),
             nn.Linear(gate_hidden, 1),
         )
-        self.conf_head = nn.Linear(feat_ch, 1)
+        self.conf_head = nn.Sequential(nn.Linear(feat_ch + 3, 32), nn.ReLU(), nn.Linear(32, 1))
+        self.register_buffer("conf_shift", torch.zeros(1))
         cell_u, cell_v = _grid_centers(grid_k)
         self.register_buffer("cell_u", cell_u)
         self.register_buffer("cell_v", cell_v)
@@ -145,7 +159,15 @@ class TinyLocNet(nn.Module):
         p = torch.softmax(DECODE_BETA * logits, dim=1)
         u = (p * self.cell_u).sum(dim=1, keepdim=True)
         v = (p * self.cell_v).sum(dim=1, keepdim=True)
-        conf = torch.sigmoid(self.conf_head(f))
+        p1 = torch.softmax(logits, dim=1)  # unsharpened field
+        u1 = (p1 * self.cell_u).sum(dim=1, keepdim=True)
+        v1 = (p1 * self.cell_v).sum(dim=1, keepdim=True)
+        pd = p.detach()
+        peak = pd.max(dim=1, keepdim=True).values  # sharpened-field peak mass
+        ent = -(pd * torch.log(pd + 1e-9)).sum(dim=1, keepdim=True) / float(np.log(self.grid_k * self.grid_k))
+        gap = torch.sqrt((u.detach() - u1.detach()) ** 2 + (v.detach() - v1.detach()) ** 2 + 1e-12)
+        z = self.conf_head(torch.cat([f.detach(), peak, ent, gap], dim=1))
+        conf = torch.sigmoid(z - self.conf_shift)
         out = torch.cat([u, v, conf], dim=1)
         if return_logits:
             return out, logits
@@ -171,14 +193,13 @@ def loss_fn(pred: torch.Tensor, logits: torch.Tensor,
     coord_err = ((pred[:, :2] - target_uv) ** 2).sum(dim=1)
     coord_loss = coord_err.mean()
     with torch.no_grad():
-        # Conf target stays deliberately loose (abstain only on catastrophic
-        # misses > half the map extent) so the model stays scoreable instead
-        # of abstaining its way into the §6 coverage FAIL; calibrating
-        # confidence properly is a separate research target.
-        good = (coord_err.sqrt() < 0.5).float()
+        # conf is now a calibrated hit predictor for selective prediction --
+        # the frozen scorer treats conf < 0.3 as abstention and requires
+        # coverage >= 0.2 per cell.
+        good = (coord_err.sqrt() < GOOD_ERR_UV).float()
     conf_loss = nn.functional.binary_cross_entropy(
         pred[:, 2].clamp(1e-6, 1 - 1e-6), good)
-    return ce + coord_loss + 0.1 * conf_loss
+    return ce + coord_loss + 0.3 * conf_loss
 
 
 def export_onnx(model: nn.Module, path: str):

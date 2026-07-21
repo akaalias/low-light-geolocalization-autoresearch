@@ -19,6 +19,12 @@ head + gate MLP) are fresh-initialized and fall into the existing "head"
 param group here unchanged, so they train at the same 1e-3 LR as the rest
 of the head — no changes needed to this file's training loop.
 
+Exp 15: after the epoch loop, the new conf head (model.py) is calibrated on
+fresh-rotation TRAIN-split crops per lighting bucket so that the frozen
+scorer's fixed conf >= 0.3 abstention threshold keeps >= 40% of crops in
+every bucket (double the scorer's 0.2 coverage floor) before ONNX export;
+the resulting conf_shift buffer is exported with the model.
+
 Usage: python -m model.train --area berlin --out-dir runs/<id> [--epochs 2]
 """
 
@@ -34,6 +40,10 @@ from PIL import Image
 from model.model import build_model, export_onnx, loss_fn
 from pipeline.common import DATA_DIR, LIGHTING_BUCKETS, area_dir, load_meta
 from pipeline.dataset import crop_center_norm, extract_crop, list_crops
+
+CAL_CROPS_PER_BUCKET = 400
+MIN_KEEP_RATE = 0.40          # per-bucket keep floor at calibration (2x the scorer's 0.2 coverage floor)
+SCORER_CONF_THRESHOLD = 0.3   # mirrors pipeline/score.py's frozen CONF_THRESHOLD; restated here, not imported
 
 
 def load_training_tensors(area: str, data_dir: Path, max_crops_per_bucket: int, rng):
@@ -52,6 +62,44 @@ def load_training_tensors(area: str, data_dir: Path, max_crops_per_bucket: int, 
     x = torch.from_numpy(np.stack(xs))  # uint8 NxHxWx3; float-converted per batch
     y = torch.tensor(ys, dtype=torch.float32)
     return x, y
+
+
+def calibrate_conf_shift(model, area: str, data_dir: Path, device: str, rng) -> dict:
+    """Set model.conf_shift so the scorer's fixed 0.3 threshold keeps >=
+    MIN_KEEP_RATE of crops in every lighting bucket (TRAIN split only)."""
+    meta = load_meta(area, data_dir)
+    crops = list_crops(area, meta["width"], meta["height"], "train")
+    model.eval()
+    z_by_bucket = {}
+    with torch.no_grad():
+        for bucket in LIGHTING_BUCKETS:
+            img = np.asarray(Image.open(area_dir(area, data_dir) / "relight" / f"{bucket}.png"))
+            picks = rng.choice(len(crops), size=min(CAL_CROPS_PER_BUCKET, len(crops)),
+                               replace=False)
+            xs = []
+            for i in picks:
+                c = crops[i]
+                angle = float(rng.uniform(0, 360))
+                xs.append(extract_crop(img, c["cx"], c["cy"], angle))
+            xb_all = torch.from_numpy(np.stack(xs))
+            confs = []
+            for i in range(0, len(xb_all), 64):
+                xb = xb_all[i:i + 64].to(device).permute(0, 3, 1, 2).contiguous().float().div_(255.0)
+                out = model(xb)
+                confs.append(out[:, 2].cpu().numpy())
+            conf_values = np.concatenate(confs)
+            c = np.clip(conf_values, 1e-6, 1 - 1e-6)
+            z_by_bucket[bucket] = np.log(c / (1 - c))
+
+    t_per_bucket = {b: float(np.quantile(z, 1.0 - MIN_KEEP_RATE)) for b, z in z_by_bucket.items()}
+    T = min(t_per_bucket.values())
+    with torch.no_grad():
+        model.conf_shift.fill_(T - float(np.log(SCORER_CONF_THRESHOLD / (1.0 - SCORER_CONF_THRESHOLD))) - 1e-4)
+    return {
+        "conf_shift": float(model.conf_shift.item()),
+        "cal_logit_threshold": float(T),
+        "cal_keep_rate_per_bucket": {b: float(np.mean(z > T - 1e-4)) for b, z in z_by_bucket.items()},
+    }
 
 
 def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
@@ -85,11 +133,13 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
             losses.append(loss.item())
         print(f"[{area}] epoch {epoch + 1}/{epochs} loss={np.mean(losses):.4f}")
 
+    cal = calibrate_conf_shift(model, area, data_dir, device, rng)
+
     models_dir = out_dir / "models"
     models_dir.mkdir(parents=True, exist_ok=True)
     onnx_path = models_dir / f"{area}.onnx"
     export_onnx(model.cpu(), str(onnx_path))
-    return {
+    info = {
         "area": area,
         "n_train_crops": n,
         "epochs": epochs,
@@ -99,6 +149,8 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         # §9: log init strategy per experiment
         "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
     }
+    info.update(cal)
+    return info
 
 
 def main():
