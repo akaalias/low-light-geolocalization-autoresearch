@@ -1,0 +1,28 @@
+[
+  {
+    "area": "frankfurt",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1672.0,
+    "onnx_bytes": 3302661,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "recon_aux": {
+      "lambda": 0.3,
+      "target_px": 64
+    },
+    "epoch_sampler": "preallocated-uint8",
+    "conf_shift": -0.573580265045166,
+    "cal_logit_threshold": -1.4207781314849857,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.7825,
+      "midday": 0.8325,
+      "afternoon": 0.8475,
+      "early_evening": 0.7925,
+      "evening": 0.71,
+      "night": 0.4
+    }
+  }
+]
