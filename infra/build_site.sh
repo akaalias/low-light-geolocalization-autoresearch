@@ -25,9 +25,8 @@ rsync -a --prune-empty-dirs \
   --include '*/' --include '*.png' --include '*.json' --include '*.md' \
   --exclude '*' runs/ "$OUT/runs/"
 cp experiments.sqlite "$OUT/experiments.sqlite" 2>/dev/null || true
-cat > "$OUT/index.html" <<'EOF'
-<!doctype html><meta http-equiv="refresh" content="0; url=gallery/">
-<a href="gallery/">→ gallery</a>
-EOF
+# The site's front door is the rendered project overview (gallery.py writes
+# it to the repo root alongside the gallery pages).
+cp index.html "$OUT/index.html"
 touch "$OUT/.nojekyll"
 echo "site assembled in $OUT/ — open $OUT/gallery/index.html to preview exactly what goes live"

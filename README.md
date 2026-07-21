@@ -91,6 +91,15 @@ infra/runpod.sh pull        # runs/ + sqlite + state/ back, ff-merge pod commits
 infra/runpod.sh stop        # stop the $0.69/hr meter; volume persists
 ```
 
+**The pod's `experiments.sqlite` is the production database.** It flows one
+way only — pod → laptop via `pull`, which replaces the local copy wholesale.
+`sync-up` never pushes it (excluded). Local runs are for testing/trying
+things out; DB fixes and migrations run *on the pod* (e.g. the scripts in
+`archive/`), never from a laptop copy.
+
+```bash
+```
+
 `model/train.py` auto-selects cuda > mps > cpu; nothing else changes.
 One-time pod setup, cost history, measurement caveats of the hardware
 switch, and the M1-era timings live in **`docs/infra.md`**.

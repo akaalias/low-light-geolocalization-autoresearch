@@ -4,8 +4,9 @@ vectors as tick-bars, FC as connection fans, decodes as lines converging to a
 point. Captions sit under elements; no labeled boxes."""
 import math
 import sys
+from pathlib import Path
 
-sys.path.insert(0, "/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from autoresearch.db import connect
 
 INK, MUT, FAINT, ACC, OCH = "#111111", "#6b6a60", "#9b998c", "#8c2f1f", "#8a6a1e"

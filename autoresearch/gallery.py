@@ -69,6 +69,23 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
   color:#4a473e}
 .pnote p{margin:0 0 10px}
 .pnote b{color:var(--ink)}
+.stats{display:flex;flex-wrap:wrap;gap:18px 56px;justify-content:center;
+  margin:30px auto 10px;text-align:center}
+.stat b{display:block;font-size:34px;line-height:1.1;font-weight:600;
+  font-variant-numeric:lining-nums tabular-nums}
+.stat span{font:600 11px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.sec-h{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+  text-align:center;margin:44px 0 10px}
+.explore{max-width:780px;margin:0 auto}
+.explore a.card{display:block;border:1px solid var(--rule);border-radius:2px;
+  padding:14px 18px;margin:0 0 12px;color:inherit}
+.explore a.card:hover{border-color:var(--ink)}
+.explore .card b{font-size:16px}
+.explore .card span{display:block;font-size:13.5px;color:var(--muted);
+  margin-top:3px;line-height:1.55}
+
 .contract-fig{max-width:980px;margin:34px auto 4px}
 .contract-fig svg{width:100%;height:auto;display:block}
 .contract-cap{max-width:760px;margin:10px auto 0;font-size:13px;
@@ -461,18 +478,24 @@ def esc(s):
 
 
 # Shared top navigation, airloom pattern (centered, italic brand, smallcaps
-# links, active page underlined in ink). Lineage + results pages are planned
-# but held out for now — add them here when they exist so every page's nav
-# updates together.
-NAV_PAGES = (("index.html", "research log"),
-             ("inference-paths.html", "inference paths"))
+# links, active page underlined in ink). The overview lives at the repo root
+# (index.html) and the other pages under gallery/, so hrefs are resolved per
+# page location. Lineage + results pages are planned but held out for now —
+# add them here when they exist so every page's nav updates together.
+NAV_PAGES = (("overview", "overview"),
+             ("log", "research log"),
+             ("paths", "inference paths"))
 
 
-def topnav(active):
+def topnav(active, root=False):
+    hrefs = {"overview": "index.html" if root else "../index.html",
+             "log": "gallery/index.html" if root else "index.html",
+             "paths": ("gallery/inference-paths.html" if root
+                       else "inference-paths.html")}
     links = []
-    for href, label in NAV_PAGES:
-        cls = " class='on'" if href == active else ""
-        links.append(f"<a href='{href}'{cls}>{label}</a>")
+    for key, label in NAV_PAGES:
+        cls = " class='on'" if key == active else ""
+        links.append(f"<a href='{hrefs[key]}'{cls}>{label}</a>")
     return ("<nav class='topnav'><span class='brand'>Low-Light "
             "Geolocalization</span>" + "".join(links) + "</nav>")
 
@@ -930,6 +953,97 @@ Code: MIT License —
 style="color:inherit">source repository</a>.</footer>"""
 
 PATHS_OUT = REPO_ROOT / "gallery" / "inference-paths.html"
+OVERVIEW_OUT = REPO_ROOT / "index.html"
+
+
+def render_overview(exps):
+    """index.html at the repo root — the project's front door: what this is,
+    live status numbers from the lineage DB, and links into the gallery
+    pages. Same airloom-style typography and shared topnav as the rest."""
+    dev = [e for e in exps if e["kind"] != "holdout_check"]
+    n_kept = sum(1 for e in dev if e["kept"])
+    best = next((e["primary_metric"] for e in reversed(dev)
+                 if e["kept"] and e["primary_metric"]
+                 and e["primary_metric"] < FAIL), None)
+    best_size = next((e["model_bytes_max"] for e in reversed(dev)
+                      if e["kept"] and e["model_bytes_max"]), None)
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    best_s = fmt_m(best) if best is not None else "—"
+    size_s = f"{best_size/1024:,.0f} KB" if best_size else "—"
+    factor = (f"{best/TARGET_M:,.0f}×" if best and best > TARGET_M
+              else "at goal" if best else "—")
+
+    wander = (f"Not all who wander are lost. (This one was, by {best_s}.)"
+              if best is not None else "Not all who wander are lost.")
+    html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=1100">
+<title>{wander} — Low-Light Geolocalization</title>
+<style>{CSS}</style></head><body>
+{topnav('overview', root=True)}
+<div class="paths-wrap">
+<div class="eyebrow" style="text-align:center">Alexis Rondeau · an autonomous research project</div>
+<h1>&ldquo;{wander}&rdquo;</h1>
+<p class="psub lead">A 5-inch drone built to fly at night <b>without GPS</b>:
+in place of satellite navigation, a low-light camera and a neural network
+small enough for a $4 flight computer — a network that has <i>memorized its
+flight area</i> and turns one downward glance into
+<i>(lat,&nbsp;lon,&nbsp;confidence)</i>. No satellites to jam or lose, no
+maps on board, no internet. And the research to get there is not done by me:
+an <b>autonomous loop of coding agents</b> designs, trains, and scores one
+pre-registered experiment at a time, keeping only what measurably helps.
+This site is its live lab notebook.</p>
+
+<div class="stats">
+  <div class="stat"><b>{best_s}</b><span>worst-case median miss, best model</span></div>
+  <div class="stat"><b>≤ 20 m</b><span>the goal — {factor} to go</span></div>
+  <div class="stat"><b>{len(dev)}</b><span>experiments · {n_kept} kept</span></div>
+  <div class="stat"><b>{size_s}</b><span>deployed model · limit 4 MiB</span></div>
+</div>
+
+<div class="sec-h">How it works — think globally, memorize locally</div>
+<div class="pnote">
+<p>The model family is <b>scene-coordinate regression</b>: one compact
+network per flight area that encodes "what does this place look like from
+above, under which lighting" directly into its weights — the pipeline works
+for any bounding box on Earth, but each trained model knows exactly one
+patch of it by heart. No reference imagery on the aircraft, no retrieval,
+no matching. Training data comes
+from a frozen pipeline that fetches open-licensed aerial orthophotos for
+any bounding box and re-renders them under six lighting conditions, from
+morning to night, through a synthetic low-light sensor model.</p>
+<p>The research loop is Karpathy-style autoresearch: each iteration, a
+headless coding agent reads the full experiment history, pre-registers ONE
+focused change — hypothesis, method, expected outcome, and a hand-drawn
+architecture figure — then the harness trains and scores it against a
+single frozen ruler: the <b>worst</b> median position error across 6
+lighting conditions × 4 German test areas (dense Berlin, rural Prignitz,
+Munich, Frankfurt), on held-out map crops. Improvements are kept as git
+commits; everything else is reverted but stays in the record. Hamburg is
+never touched by the loop — it exists only as a blind check that the
+method generalizes.</p>
+</div>
+
+<div class="sec-h">Explore</div>
+<div class="explore">
+<a class="card" href="gallery/index.html"><b>The research log</b>
+<span>Every experiment ever run, failures included: pre-registered
+hypotheses, results, per-area × lighting scoreboards, the exact prompts
+the agents received, and one real worked example per experiment — the same
+night crop through each model's actual deployed weights.</span></a>
+<a class="card" href="gallery/inference-paths.html"><b>Proposed inference
+paths</b>
+<span>The technical figures: each experiment's model design, drawn by the
+agent itself before training, in one shared visual language — frozen
+endpoints aligned so you can scroll and compare designs directly.</span></a>
+</div>
+
+<p class="psub num" style="margin-top:34px">updated {now} · experiments run
+around the clock on a rented RTX 4090; the loop commits every result to
+git as it goes</p>
+</div>
+{CREDITS}</body></html>"""
+    OVERVIEW_OUT.write_text(html_page)
+    print(f"wrote {OVERVIEW_OUT}")
 
 
 def contract_svg():
@@ -1050,7 +1164,7 @@ def render_paths(exps):
 <meta name="viewport" content="width=1100">
 <title>Proposed Inference Paths — Low-Light Geolocalization</title>
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
-{topnav('inference-paths.html')}
+{topnav('paths')}
 <div class="paths-wrap">
 <div class="eyebrow" style="text-align:center">Alexis Rondeau · live research log</div>
 <h1>Proposed Inference Paths</h1>
@@ -1174,7 +1288,7 @@ def render():
 <meta name="viewport" content="width=1100">
 <title>Low-Light Geolocalization — Autoresearch Progress</title>
 <style>{CSS}</style><script>{JS}</script></head><body>
-{topnav('index.html')}
+{topnav('log')}
 <header class="dash-head">
   <div class="eyebrow">Alexis Rondeau · live research log</div>
   <h1>Can a drone find itself in the dark?</h1>
@@ -1279,6 +1393,7 @@ agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duratio
     OUT.write_text("\n".join(body))
     print(f"wrote {OUT} ({len(exps)} experiments)")
     render_paths(exps)
+    render_overview(exps)
 
 
 if __name__ == "__main__":

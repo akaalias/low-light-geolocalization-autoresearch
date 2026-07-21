@@ -11,8 +11,9 @@ instead of double-shifting.
 Usage: .venv/bin/python archive/align_svg_anchors.py
 """
 import sys
+from pathlib import Path
 
-sys.path.insert(0, "/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from autoresearch.db import connect
 
 # (old, new, expected occurrences) per experiment
