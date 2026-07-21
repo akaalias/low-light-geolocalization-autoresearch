@@ -14,6 +14,11 @@ gently rather than trained from scratch — trunk params use a 10x lower LR
 than the freshly-initialized head params, so early large head gradients
 don't wash out the transferred features before they adapt.
 
+Exp 12: model.py adds a gated dark-expert field head; its new params (dark
+head + gate MLP) are fresh-initialized and fall into the existing "head"
+param group here unchanged, so they train at the same 1e-3 LR as the rest
+of the head — no changes needed to this file's training loop.
+
 Usage: python -m model.train --area berlin --out-dir runs/<id> [--epochs 2]
 """
 

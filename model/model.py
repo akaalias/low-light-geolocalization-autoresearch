@@ -34,6 +34,23 @@ IMAGENET1K_V1 tensors). ImageNet mean/std normalization is baked into
 forward() as buffers so the ONNX input contract ([0,1] float, no external
 preprocessing) is unchanged. The layout-squeeze + GAP + field head are
 otherwise identical to exp 10, only re-widthed for 48 input channels.
+
+Exp 12: exp 11 was kept and, for the first time in the project's history,
+produced a clear per-lighting-bucket gradient instead of a flat error
+profile -- night is worst in all four development areas (e.g. Munich night
+2010 m vs Munich midday 1381 m), meaning the single shared field head is
+being asked to serve both a well-lit regime the pretrained features handle
+well and a low-light regime it does not. A second, cheap "dark expert" field
+head (Linear on the 48-d GAP descriptor only, 50k params -- no layout code,
+since the spatial layout signal is assumed to be the least reliable part of
+the descriptor once texture is mostly gone) is blended with the existing
+layout-aware head via a per-example learned gate. The gate reads the crop's
+own raw-pixel mean brightness plus the 48-d GAP descriptor -- both computed
+from the frame itself, so the frozen (frame in) -> (lat, lon, conf) contract
+is untouched -- through a tiny 2-layer MLP into a sigmoid blend weight. This
+is a budget-safe MoE-lite stand-in for a full dispatcher+specialist design
+(a second full 560->1024 head would cost ~2.2 MB, blowing the 4 MiB ONNX
+gate on top of exp 11's 2.94 MiB); the cheap dark head + gate adds ~200 KB.
 """
 
 import numpy as np
@@ -69,9 +86,17 @@ def _build_pretrained_trunk() -> nn.Module:
 class TinyLocNet(nn.Module):
     """ImageNet-pretrained MobileNetV3-Small trunk (48x8x8) -> {GAP descriptor
     + 1x1-squeezed spatial layout code} -> map-cell probability field ->
-    soft-argmax (u, v), plus a separate sigmoid conf head."""
+    soft-argmax (u, v), plus a separate sigmoid conf head.
 
-    def __init__(self, grid_k: int = GRID_K, layout_ch: int = 8):
+    Exp 12: the field logits are a per-example gated blend of two experts --
+    the existing layout-aware head (GAP + layout code) and a cheap GAP-only
+    "dark expert" -- so the network can compute a different effective
+    cell-scoring function for low-light crops without duplicating the
+    expensive layout-aware FC. The gate is a tiny MLP over [raw-pixel mean
+    brightness, GAP descriptor], both derived from the input frame alone.
+    """
+
+    def __init__(self, grid_k: int = GRID_K, layout_ch: int = 8, gate_hidden: int = 16):
         super().__init__()
         self.grid_k = grid_k
         self.features = _build_pretrained_trunk()
@@ -83,16 +108,25 @@ class TinyLocNet(nn.Module):
         self.layout_squeeze = nn.Conv2d(feat_ch, layout_ch, 1)
         self.loc_logits = nn.Linear(feat_ch + layout_ch * fmap_hw * fmap_hw,
                                     grid_k * grid_k)
+        self.dark_logits = nn.Linear(feat_ch, grid_k * grid_k)
+        self.gate = nn.Sequential(
+            nn.Linear(feat_ch + 1, gate_hidden), nn.ReLU(),
+            nn.Linear(gate_hidden, 1),
+        )
         self.conf_head = nn.Linear(feat_ch, 1)
         cell_u, cell_v = _grid_centers(grid_k)
         self.register_buffer("cell_u", cell_u)
         self.register_buffer("cell_v", cell_v)
 
     def forward(self, x, return_logits: bool = False):
+        lum = x.mean(dim=(1, 2, 3)).unsqueeze(1)  # raw-pixel brightness, [N,1] in [0,1]
         fmap = self.features((x - self.norm_mean) / self.norm_std)
         f = fmap.mean(dim=(2, 3))
         layout = self.layout_squeeze(fmap).flatten(1)
-        logits = self.loc_logits(torch.cat([f, layout], dim=1))
+        bright_logits = self.loc_logits(torch.cat([f, layout], dim=1))
+        dark_logits = self.dark_logits(f)
+        g = torch.sigmoid(self.gate(torch.cat([lum, f], dim=1)))
+        logits = (1 - g) * bright_logits + g * dark_logits
         p = torch.softmax(logits, dim=1)
         u = (p * self.cell_u).sum(dim=1, keepdim=True)
         v = (p * self.cell_v).sum(dim=1, keepdim=True)
