@@ -49,10 +49,16 @@ Workstream A (author feedback):
   16 — glyph only, plus rotation-fan origins moved from the old frame
        edge (82) to the new one (104) and the camera captions nudged
        +6 px below the taller frame.
+  17 — (follow-up sweep) landed mid-run during the round-3 pass with the
+       same lane-148 frame markup as row 16; identical glyph-only patch.
+       Row 18 was drawn with the glyph natively and is not touched.
 
-Usage: .venv/bin/python archive/align_svg_round3.py
+Usage: .venv/bin/python archive/align_svg_round3.py [row ...]
+With no arguments patches the original round-3 set (7-16); pass explicit
+row ids (e.g. `... align_svg_round3.py 17`) to apply only those rows —
+re-running on an already-patched row aborts on the first assert.
 (run on the pod against the pod's experiments.sqlite — back it up first:
-cp experiments.sqlite experiments.sqlite.bak-figfix3)
+cp experiments.sqlite experiments.sqlite.bak-figfix3 / -figfix4)
 """
 import sys
 from pathlib import Path
@@ -154,7 +160,7 @@ def glyph_patches(row):
             out15 = ("<text x='828' y='110' font-family='" + F + "' font-size='13' fill='#6b6a60' "
                      "font-weight='600' text-anchor='start'>(lat, lon, confidence)</text>")
             p += [(out15, out15.replace("<text ", "<text id='frozen-output' ", 1), 1)]
-    elif row == 16:
+    elif row in (16, 17):
         p += [(_texture_v1(121, with_id=True), terrain_frame(110), 1),
               ("x1='82' y1='148'", "x1='104' y1='148'", 4),
               ("<text x='53' y='108' font-family='" + F + "' font-size='9' fill='#9b998c' "
@@ -187,8 +193,9 @@ def _txt12(x, y, size, fill, w, extra, s):
             f"{weight}text-anchor='middle' {extra}>{s}</text>")
 
 
+ROUND3_ROWS = (7, 8, 9, 10, 11, 12, 14, 15, 16)
 PATCHES = {}
-for r in (7, 8, 9, 10, 11, 12, 14, 15, 16):
+for r in ROUND3_ROWS + (17,):
     PATCHES[r] = glyph_patches(r)
 
 # --- workstream A ---------------------------------------------------------
@@ -332,8 +339,9 @@ PATCHES[15] += _p15
 
 
 def main():
+    rows = [int(a) for a in sys.argv[1:]] or list(ROUND3_ROWS)
     conn = connect()
-    for exp_id in sorted(PATCHES):
+    for exp_id in sorted(rows):
         patches = PATCHES[exp_id]
         svg = conn.execute("SELECT arch_svg FROM experiments WHERE id=?",
                            (exp_id,)).fetchone()[0]
