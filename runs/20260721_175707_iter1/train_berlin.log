@@ -1,0 +1,19 @@
+/workspace/low-light-geolocalization-autoresearch/model/model.py:200: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_logits:
+[berlin] epoch 1/8 36000 crops, device=cuda
+[berlin] epoch 1/8 loss=6.2899
+[berlin] epoch 2/8 36000 crops, device=cuda
+[berlin] epoch 2/8 loss=5.8374
+[berlin] epoch 3/8 36000 crops, device=cuda
+[berlin] epoch 3/8 loss=5.6247
+[berlin] epoch 4/8 36000 crops, device=cuda
+[berlin] epoch 4/8 loss=5.4798
+[berlin] epoch 5/8 36000 crops, device=cuda
+[berlin] epoch 5/8 loss=5.3506
+[berlin] epoch 6/8 36000 crops, device=cuda
+[berlin] epoch 6/8 loss=5.2468
+[berlin] epoch 7/8 36000 crops, device=cuda
+[berlin] epoch 7/8 loss=5.1723
+[berlin] epoch 8/8 36000 crops, device=cuda
+[berlin] epoch 8/8 loss=5.1081
+{"area": "berlin", "n_train_crops": 36000, "epochs": 8, "device": "cuda", "train_seconds": 1085.1, "onnx_bytes": 3302661, "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)", "train_realizations": 3, "epoch_location_resampling": true, "conf_shift": -0.3094179332256317, "cal_logit_threshold": -1.1566158056259161, "cal_keep_rate_per_bucket": {"morning": 0.7325, "midday": 0.655, "afternoon": 0.66, "early_evening": 0.645, "evening": 0.625, "night": 0.4}}

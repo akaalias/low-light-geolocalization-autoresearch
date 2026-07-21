@@ -1,0 +1,86 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1085.1,
+    "onnx_bytes": 3302661,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "conf_shift": -0.3094179332256317,
+    "cal_logit_threshold": -1.1566158056259161,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.7325,
+      "midday": 0.655,
+      "afternoon": 0.66,
+      "early_evening": 0.645,
+      "evening": 0.625,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "prignitz",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1003.7,
+    "onnx_bytes": 3302661,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "conf_shift": -0.21791449189186096,
+    "cal_logit_threshold": -1.0651123523712167,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.8575,
+      "midday": 0.9025,
+      "afternoon": 0.8425,
+      "early_evening": 0.865,
+      "evening": 0.7925,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "munich",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1156.9,
+    "onnx_bytes": 3302661,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "conf_shift": -0.09981794655323029,
+    "cal_logit_threshold": -0.9470158100128176,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.7625,
+      "midday": 0.7175,
+      "afternoon": 0.7725,
+      "early_evening": 0.735,
+      "evening": 0.6775,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "frankfurt",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1085.1,
+    "onnx_bytes": 3302661,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "conf_shift": -0.7629988789558411,
+    "cal_logit_threshold": -1.6101967573165894,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.82,
+      "midday": 0.825,
+      "afternoon": 0.8175,
+      "early_evening": 0.7775,
+      "evening": 0.6925,
+      "night": 0.4
+    }
+  }
+]

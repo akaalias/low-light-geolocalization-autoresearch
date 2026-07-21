@@ -1,0 +1,1 @@
+{"title":"Periodic blind holdout check (hamburg)","category":"other","hypothesis":"If the pipeline is genuinely generic, holdout error should track the development worst-case.","method":"Train current best model code on hamburg, score read-only (§5)."}

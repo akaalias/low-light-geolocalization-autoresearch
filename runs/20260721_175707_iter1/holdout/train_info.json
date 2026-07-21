@@ -1,0 +1,23 @@
+[
+  {
+    "area": "hamburg",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1125.9,
+    "onnx_bytes": 3302661,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "conf_shift": -0.48556599020957947,
+    "cal_logit_threshold": -1.3327638626098637,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.79,
+      "midday": 0.7825,
+      "afternoon": 0.795,
+      "early_evening": 0.7525,
+      "evening": 0.67,
+      "night": 0.4
+    }
+  }
+]
