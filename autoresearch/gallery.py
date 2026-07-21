@@ -66,6 +66,9 @@ a:hover{border-bottom-color:var(--accent)}
    svg (agent figures, chart) without touching the drawings themselves. */
 svg text{paint-order:stroke;stroke:var(--paper);stroke-width:2.8px;
   stroke-linejoin:round}
+.hero{max-width:980px;margin:26px auto 6px;padding:0 16px}
+.hero svg{display:block;width:100%;height:auto}
+.hero svg text{stroke:none;paint-order:normal}
 .live-row{background:rgba(140,47,31,.045)}
 .live-row td{color:var(--muted);font-style:italic}
 .live-row .status-badge{font-style:normal}
@@ -545,6 +548,155 @@ def status_badge():
     return ("<span class='status-badge live' title='experiments are running "
             "and this page updates as each one lands'>"
             "<span class='dot'></span>live</span>")
+
+
+HERO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 340" font-family="Palatino,Georgia,serif">
+  <!-- night panel -->
+  <rect x="0" y="0" width="980" height="340" rx="6" fill="#1b1a15"/>
+
+  <!-- stars -->
+  <g fill="#fffff8">
+    <circle cx="60" cy="38" r="0.9" opacity="0.5"/>
+    <circle cx="150" cy="70" r="0.7" opacity="0.35"/>
+    <circle cx="235" cy="30" r="0.8" opacity="0.45"/>
+    <circle cx="330" cy="58" r="0.7" opacity="0.3"/>
+    <circle cx="420" cy="26" r="0.9" opacity="0.5"/>
+    <circle cx="505" cy="66" r="0.7" opacity="0.35"/>
+    <circle cx="590" cy="34" r="0.8" opacity="0.4"/>
+    <circle cx="95" cy="120" r="0.7" opacity="0.3"/>
+    <circle cx="285" cy="105" r="0.7" opacity="0.3"/>
+    <circle cx="380" cy="128" r="0.6" opacity="0.25"/>
+    <circle cx="545" cy="112" r="0.7" opacity="0.3"/>
+    <circle cx="638" cy="90" r="0.7" opacity="0.35"/>
+    <circle cx="905" cy="40" r="0.8" opacity="0.45"/>
+    <circle cx="945" cy="90" r="0.7" opacity="0.3"/>
+  </g>
+  <!-- crescent moon -->
+  <path d="M 924 26 a 13 13 0 1 0 9 22 a 10.5 10.5 0 1 1 -9 -22 Z" fill="#fffff8" opacity="0.5"/>
+
+  <!-- terrain band -->
+  <path d="M 0 262 Q 240 248 490 258 T 980 252 L 980 340 L 0 340 Z" fill="#26251e"/>
+  <!-- streets: faint perspective network -->
+  <g stroke="#3d3a2e" stroke-width="1.4" fill="none" opacity="0.9">
+    <path d="M 40 336 L 250 266"/>
+    <path d="M 190 338 L 320 268"/>
+    <path d="M 0 300 Q 300 282 620 272 T 980 268"/>
+    <path d="M 560 338 L 470 264"/>
+    <path d="M 760 338 L 700 262"/>
+    <path d="M 340 316 Q 600 300 980 296"/>
+  </g>
+  <!-- building footprints with a few lit windows -->
+  <g>
+    <rect x="120" y="290" width="26" height="14" fill="#2f2d24"/>
+    <rect x="126" y="294" width="3" height="3" fill="#8a6a1e" opacity="0.95"/>
+    <rect x="136" y="297" width="3" height="3" fill="#8a6a1e" opacity="0.6"/>
+    <rect x="262" y="274" width="20" height="10" fill="#2f2d24" transform="rotate(-6 272 279)"/>
+    <rect x="268" y="277" width="2.6" height="2.6" fill="#8a6a1e" opacity="0.8"/>
+    <rect x="380" y="284" width="30" height="13" fill="#2f2d24" transform="rotate(3 395 290)"/>
+    <rect x="388" y="288" width="3" height="3" fill="#8a6a1e" opacity="0.9"/>
+    <rect x="399" y="290" width="3" height="3" fill="#8a6a1e" opacity="0.5"/>
+    <rect x="600" y="278" width="24" height="11" fill="#2f2d24" transform="rotate(-4 612 283)"/>
+    <rect x="607" y="281" width="2.6" height="2.6" fill="#8a6a1e" opacity="0.85"/>
+    <rect x="702" y="296" width="34" height="15" fill="#2f2d24" transform="rotate(2 719 303)"/>
+    <rect x="710" y="300" width="3" height="3" fill="#8a6a1e" opacity="0.9"/>
+    <rect x="724" y="303" width="3" height="3" fill="#8a6a1e" opacity="0.55"/>
+    <rect x="850" y="282" width="22" height="10" fill="#2f2d24"/>
+    <rect x="856" y="285" width="2.6" height="2.6" fill="#8a6a1e" opacity="0.8"/>
+    <!-- streetlights -->
+    <circle cx="330" cy="272" r="1.2" fill="#8a6a1e"/>
+    <circle cx="330" cy="272" r="5" fill="#8a6a1e" opacity="0.14"/>
+    <circle cx="536" cy="268" r="1.2" fill="#8a6a1e"/>
+    <circle cx="536" cy="268" r="5" fill="#8a6a1e" opacity="0.14"/>
+    <circle cx="796" cy="264" r="1.1" fill="#8a6a1e"/>
+    <circle cx="796" cy="264" r="4.5" fill="#8a6a1e" opacity="0.14"/>
+  </g>
+
+  <!-- camera light cone from drone down to the viewed patch -->
+  <path d="M 291 141 L 420 262 L 540 262 Z" fill="#fffff8" opacity="0.07"/>
+  <path d="M 291 141 L 420 262 M 291 141 L 540 262" stroke="#9b998c" stroke-width="0.9"
+        stroke-dasharray="1.5 3.5" opacity="0.55" fill="none"/>
+
+  <!-- viewed ground patch (perspective parallelogram) + position fix -->
+  <g>
+    <path d="M 420 262 L 540 262 L 560 292 L 402 292 Z" fill="none"
+          stroke="#e8e5d6" stroke-width="1.3" opacity="0.85"/>
+    <!-- crosshair -->
+    <circle cx="480" cy="277" r="5.5" fill="none" stroke="#c0503a" stroke-width="1.6"/>
+    <line x1="480" y1="268" x2="480" y2="286" stroke="#c0503a" stroke-width="1.6"/>
+    <line x1="471" y1="277" x2="489" y2="277" stroke="#c0503a" stroke-width="1.6"/>
+    <text x="480" y="318" font-size="12.5" fill="#e8e5d6" text-anchor="middle" font-weight="600">(lat, lon, confidence)</text>
+    <text x="480" y="331" font-size="9.5" fill="#9b998c" text-anchor="middle">position fix — no GPS, no maps on board</text>
+  </g>
+
+  <!-- the quad, side view, light ink -->
+  <g stroke="#e8e5d6" fill="none" stroke-width="1.5">
+    <!-- arms -->
+    <path d="M 258 118 L 282 126 L 306 118"/>
+    <!-- body -->
+    <path d="M 270 122 L 294 122 L 290 132 L 274 132 Z" fill="#1b1a15"/>
+    <!-- props -->
+    <ellipse cx="258" cy="114" rx="15" ry="1.7"/><circle cx="258" cy="114" r="1" fill="#e8e5d6"/>
+    <ellipse cx="306" cy="114" rx="15" ry="1.7"/><circle cx="306" cy="114" r="1" fill="#e8e5d6"/>
+    <line x1="258" y1="118" x2="258" y2="112" />
+    <line x1="306" y1="118" x2="306" y2="112" />
+    <!-- camera pod under body, angled down-right -->
+    <path d="M 286 132 L 296 132 L 294 140 L 288 140 Z" fill="#1b1a15"/>
+    <circle cx="291" cy="136" r="1.6" stroke="#c0503a" stroke-width="1.2"/>
+  </g>
+  <text x="282" y="100" font-size="9.5" fill="#9b998c" text-anchor="middle" font-style="italic">low-light camera · one glance</text>
+
+  <!-- leader from drone to the lens -->
+  <path d="M 310 126 H 560 " stroke="#9b998c" stroke-width="0.9" stroke-dasharray="2 4" fill="none" opacity="0.7"/>
+
+  <!-- magnifier lens: inside the navigation controller -->
+  <g>
+    <circle cx="700" cy="126" r="93" fill="#211f18" stroke="#e8e5d6" stroke-width="1.6"/>
+    <line x1="560" y1="126" x2="612" y2="126" stroke="#9b998c" stroke-width="0.9" stroke-dasharray="2 4" opacity="0.7"/>
+    <!-- mini inference path inside the lens -->
+    <!-- tiny camera frame -->
+    <rect x="626" y="108" width="26" height="26" fill="none" stroke="#9b998c" stroke-width="1.2"/>
+    <path d="M 626 126 L 652 117" stroke="#3d3a2e" stroke-width="2.2"/>
+    <rect x="631" y="112" width="6" height="4" fill="#2f2d24"/>
+    <rect x="643" y="123" width="5" height="4" fill="#2f2d24"/>
+    <rect x="632.5" y="113" width="1.5" height="1.5" fill="#8a6a1e"/>
+    <!-- arrow -->
+    <line x1="656" y1="121" x2="666" y2="121" stroke="#9b998c" stroke-width="1"/>
+    <path d="M 666 121 l -3.5 -2 v 4 Z" fill="#9b998c"/>
+    <!-- two conv slabs -->
+    <g stroke="#e8e5d6" stroke-width="1.1" fill="#211f18">
+      <path d="M 670 112 h 13 v 16 h -13 Z M 670 112 l 4 -4 h 13 l -4 4 M 683 112 l 4 -4 v 16 l -4 4"/>
+      <path d="M 692 116 h 9 v 11 h -9 Z M 692 116 l 3.5 -3.5 h 9 l -3.5 3.5 M 701 116 l 3.5 -3.5 v 11 l -3.5 3.5"/>
+    </g>
+    <!-- arrow -->
+    <line x1="708" y1="121" x2="717" y2="121" stroke="#9b998c" stroke-width="1"/>
+    <path d="M 717 121 l -3.5 -2 v 4 Z" fill="#9b998c"/>
+    <!-- probability field with hot cells -->
+    <g>
+      <rect x="721" y="106" width="30" height="30" fill="none" stroke="#e8e5d6" stroke-width="1.1"/>
+      <g stroke="#3d3a2e" stroke-width="0.5">
+        <line x1="727" y1="106" x2="727" y2="136"/><line x1="733" y1="106" x2="733" y2="136"/>
+        <line x1="739" y1="106" x2="739" y2="136"/><line x1="745" y1="106" x2="745" y2="136"/>
+        <line x1="721" y1="112" x2="751" y2="112"/><line x1="721" y1="118" x2="751" y2="118"/>
+        <line x1="721" y1="124" x2="751" y2="124"/><line x1="721" y1="130" x2="751" y2="130"/>
+      </g>
+      <rect x="733" y="112" width="6" height="6" fill="#c0503a" opacity="0.9"/>
+      <rect x="739" y="112" width="6" height="6" fill="#c0503a" opacity="0.45"/>
+      <rect x="733" y="118" width="6" height="6" fill="#c0503a" opacity="0.4"/>
+    </g>
+    <!-- decode to tiny crosshair -->
+    <line x1="755" y1="121" x2="762" y2="121" stroke="#9b998c" stroke-width="1"/>
+    <circle cx="766" cy="121" r="3.4" fill="none" stroke="#c0503a" stroke-width="1.3"/>
+    <line x1="766" y1="116" x2="766" y2="126" stroke="#c0503a" stroke-width="1.3"/>
+    <line x1="761" y1="121" x2="771" y2="121" stroke="#c0503a" stroke-width="1.3"/>
+    <!-- lens captions -->
+    <text x="700" y="162" font-size="10.5" fill="#e8e5d6" text-anchor="middle" font-weight="600">inside the flight computer</text>
+    <text x="700" y="176" font-size="9" fill="#9b998c" text-anchor="middle">4 MiB of memorized terrain</text>
+    
+  </g>
+
+  <!-- bottom-left eyebrow -->
+  <text x="18" y="326" font-size="9" fill="#9b998c" letter-spacing="1.6" font-weight="600">FLYING DARK — HOW A FIX HAPPENS</text>
+</svg>"""
 
 
 # Compute credit banner — full-width strip under the topnav on every page,
@@ -1120,6 +1272,7 @@ def render_overview(exps):
 {topnav('overview', root=True)}
 {compute_banner()}
 <div class="paths-wrap">
+<div class="hero">{HERO_SVG}</div>
 <div class="eyebrow" style="text-align:center">Alexis Rondeau · an autonomous research project</div>
 <h1>&ldquo;Not all who wander are lost&rdquo; &mdash; a 5-inch drone learns
 to find itself in the dark, with no GPS, no maps on board, and a $4 flight
