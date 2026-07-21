@@ -1,0 +1,12 @@
+/workspace/low-light-geolocalization-autoresearch/model/model.py:172: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_logits:
+[munich] 36000 crops, device=cuda
+[munich] epoch 1/8 loss=6.4353
+[munich] epoch 2/8 loss=5.8586
+[munich] epoch 3/8 loss=5.6094
+[munich] epoch 4/8 loss=5.4220
+[munich] epoch 5/8 loss=5.2824
+[munich] epoch 6/8 loss=5.1635
+[munich] epoch 7/8 loss=5.0650
+[munich] epoch 8/8 loss=4.9871
+{"area": "munich", "n_train_crops": 36000, "epochs": 8, "device": "cuda", "train_seconds": 1058.1, "onnx_bytes": 3299616, "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)", "conf_shift": -0.4936225116252899, "cal_logit_threshold": -1.3408203601837159, "cal_keep_rate_per_bucket": {"morning": 0.7775, "midday": 0.7275, "afternoon": 0.73, "early_evening": 0.7225, "evening": 0.6525, "night": 0.4}}

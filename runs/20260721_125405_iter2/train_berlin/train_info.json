@@ -1,0 +1,21 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1052.0,
+    "onnx_bytes": 3299616,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "conf_shift": -0.43753373622894287,
+    "cal_logit_threshold": -1.284731602668763,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.6625,
+      "midday": 0.68,
+      "afternoon": 0.6475,
+      "early_evening": 0.63,
+      "evening": 0.5975,
+      "night": 0.4
+    }
+  }
+]

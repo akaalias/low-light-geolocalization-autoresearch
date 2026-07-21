@@ -1,0 +1,78 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1052.0,
+    "onnx_bytes": 3299616,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "conf_shift": -0.43753373622894287,
+    "cal_logit_threshold": -1.284731602668763,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.6625,
+      "midday": 0.68,
+      "afternoon": 0.6475,
+      "early_evening": 0.63,
+      "evening": 0.5975,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "prignitz",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1045.1,
+    "onnx_bytes": 3299616,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "conf_shift": -0.12374058365821838,
+    "cal_logit_threshold": -0.9709384441375737,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.72,
+      "midday": 0.7675,
+      "afternoon": 0.8225,
+      "early_evening": 0.775,
+      "evening": 0.705,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "munich",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1058.1,
+    "onnx_bytes": 3299616,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "conf_shift": -0.4936225116252899,
+    "cal_logit_threshold": -1.3408203601837159,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.7775,
+      "midday": 0.7275,
+      "afternoon": 0.73,
+      "early_evening": 0.7225,
+      "evening": 0.6525,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "frankfurt",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1054.3,
+    "onnx_bytes": 3299616,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "conf_shift": -0.49412745237350464,
+    "cal_logit_threshold": -1.3413253068923954,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.7425,
+      "midday": 0.8,
+      "afternoon": 0.7475,
+      "early_evening": 0.74,
+      "evening": 0.6625,
+      "night": 0.4
+    }
+  }
+]
