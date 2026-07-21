@@ -1225,7 +1225,6 @@ This site is its live lab notebook.</p>
   <div class="stat"><b>{best_s}</b><span>today — {factor} to go</span></div>
   <div class="stat"><b>{progress_s}</b><span>progress, log scale</span></div>
   <div class="stat"><b>{len(dev)}</b><span>experiments · {n_kept} kept</span></div>
-  <div class="stat"><b>{size_s}</b><span>model · limit 4 MiB</span></div>
 </div>
 
 <div class="sec-h">How it works — think globally, memorize locally</div>
