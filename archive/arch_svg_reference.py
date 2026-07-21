@@ -7,7 +7,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from autoresearch.db import connect
+from terrain_frame_glyph import terrain_frame
 
 INK, MUT, FAINT, ACC, OCH = "#111111", "#6b6a60", "#9b998c", "#8c2f1f", "#8a6a1e"
 FONT = "Palatino,Georgia,serif"
@@ -211,13 +213,15 @@ def conv_group(x0, colors=None, prev=None):
 
 
 def frame_part():
-    g, w = imgsq(26, 54, FAINT, tid="frozen-input")
-    out = (g + txt(53, IC - 40, "128²×3", 9, FAINT)
+    # canonical 76x76 nadir-terrain glyph (prompt.md: copy verbatim),
+    # centered on the inference lane; captions stay centered on x=53
+    g = terrain_frame(IC - 38)
+    out = (g + txt(53, IC - 44, "128²×3", 9, FAINT)
            + txt(53, IC + 48, "camera frame", 10.5, MUT, 600)
            + txt(53, IC + 60, "one night exposure", 9.5, FAINT)
            + txt(53, IC + 73, "frozen contract", 8.5, FAINT,
                  style="font-style='italic'"))
-    return out, 26 + w
+    return out, 26 + 76
 
 
 def conf_branch(bar_x, out_x, color=FAINT):
@@ -257,7 +261,7 @@ def exp1():
     b = [lanes(330)]
     g, x = frame_part(); b.append(g)
     b.append(harrow(x + 6, x + 30, IC)); x += 32
-    g, x = conv_group(x, prev=(26, 54, FAINT)); b.append(g)
+    g, x = conv_group(x, prev=(26, 76, FAINT)); b.append(g)
     b.append(harrow(x + 8, x + 30, IC)); x += 34
     g, w = bar(x, 64, ticks=11); b.append(g)
     b.append(cap(x + 4, IC + 46, "128-d vector", "global avg pool"))
@@ -282,7 +286,7 @@ def field_chain(fc_color, field_color, dec_color, dec_cells, dec_name, dec_sub):
     b = []
     g, x = frame_part(); b.append(g)
     b.append(harrow(x + 6, x + 30, IC)); x += 32
-    g, x = conv_group(x, prev=(26, 54, FAINT)); b.append(g)
+    g, x = conv_group(x, prev=(26, 76, FAINT)); b.append(g)
     b.append(harrow(x + 8, x + 30, IC)); x += 34
     g, _ = bar(x, 64, ticks=11); b.append(g)
     b.append(cap(x + 4, IC + 46, "128-d", "GAP"))
@@ -346,7 +350,7 @@ def exp4():
     b = [lanes(340)]
     g, x = frame_part(); b.append(g)
     b.append(harrow(x + 6, x + 30, IC)); x += 36
-    g, x = conv_group(x, prev=(26, 54, FAINT)); b.append(g)
+    g, x = conv_group(x, prev=(26, 76, FAINT)); b.append(g)
     b.append(harrow(x + 8, x + 34, IC)); x += 38
     dil_x = x
     g, w = slab(x, 17, 21, ACC); b.append(g)
