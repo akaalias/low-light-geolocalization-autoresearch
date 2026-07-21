@@ -51,6 +51,20 @@ is untouched -- through a tiny 2-layer MLP into a sigmoid blend weight. This
 is a budget-safe MoE-lite stand-in for a full dispatcher+specialist design
 (a second full 560->1024 head would cost ~2.2 MB, blowing the 4 MiB ONNX
 gate on top of exp 11's 2.94 MiB); the cheap dark head + gate adds ~200 KB.
+
+Exp 14: expected-value soft-argmax over the full field returns the
+posterior MEAN, so any diffuse or multimodal residual mass shrinks every
+prediction toward the map centroid -- the error profile after exp 10-12
+(medians 1.0-1.9 km vs. a ~3.2 km center-guess floor, mean/median ratio
+only ~1.2 in every area x bucket cell) is the shrinkage signature of
+exactly this effect, not heavy-tailed mode-commitment error. Decoding from
+softmax(DECODE_BETA * logits) instead sharpens the field before the
+soft-argmax, committing to its dominant mode while leaving a uniform field
+exactly uniform (so an untrained model still decodes near the map center --
+the same bounded-downside floor every kept experiment has relied on). The
+field itself still trains on the same calibrated Gaussian-bump CE at
+temperature 1 (loss_fn is unchanged); only the coordinate L2's decode is
+sharpened, so training now grades the committed answer that would fly.
 """
 
 import numpy as np
@@ -61,6 +75,7 @@ from torchvision.models import mobilenet_v3_small
 
 GRID_K = 32              # 32x32 cells over the map (~220 m cells on a ~7 km area)
 TARGET_SIGMA_CELLS = 1.5  # Gaussian soft-target spread, in cell units
+DECODE_BETA = 3.0  # inverse-temperature sharpening of the decode distribution (exp 14): softmax(β·logits) commits the soft-argmax to the dominant mode instead of the field mean; a uniform field stays uniform, so the untrained decode still starts at the map center
 
 PRETRAINED_TRUNK_PATH = Path(__file__).parent / "pretrained" / "mnv3s_features8.pt"
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
@@ -127,7 +142,7 @@ class TinyLocNet(nn.Module):
         dark_logits = self.dark_logits(f)
         g = torch.sigmoid(self.gate(torch.cat([lum, f], dim=1)))
         logits = (1 - g) * bright_logits + g * dark_logits
-        p = torch.softmax(logits, dim=1)
+        p = torch.softmax(DECODE_BETA * logits, dim=1)
         u = (p * self.cell_u).sum(dim=1, keepdim=True)
         v = (p * self.cell_v).sum(dim=1, keepdim=True)
         conf = torch.sigmoid(self.conf_head(f))
