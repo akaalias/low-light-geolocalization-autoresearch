@@ -114,3 +114,17 @@ Both should render from `experiments.sqlite` + `runs/` artifacts the same
 way `autoresearch/gallery.py` does (single source of truth, no hand-copied
 numbers), and follow the same Tufte-style visual vocabulary as the
 existing gallery and the author's prior research pages.
+
+**Publish target: public GitHub Pages**, in the style of the author's
+[airloom](https://github.com/akaalias/airloom) page. Confirmed feasible
+with today's code: the gallery is fully static and uses only relative
+paths (`../runs/...` from `gallery/index.html`), so a publish step just
+needs to bundle `gallery/` + the referenced `runs/` artifacts (heatmaps,
+samples — small PNGs) + `experiments.sqlite` (sub-MB) into the Pages
+tree, preserving that directory shape. No server, no build framework.
+`data/` (4.3 GB imagery) stays out of the published tree and out of git;
+if any published artifact ever exceeds GitHub's 100 MB file limit, Git
+LFS is the known fallback (used by the author before). Anyone can
+regenerate their own `data/` from scratch — README "Quickstart" +
+"Adding a new deployment area" document the credential-free
+fetch/relight path for arbitrary bboxes.
