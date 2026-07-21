@@ -25,6 +25,27 @@ rsync -a --prune-empty-dirs \
   --include '*/' --include '*.png' --include '*.json' --include '*.md' \
   --exclude '*' runs/ "$OUT/runs/"
 cp experiments.sqlite "$OUT/experiments.sqlite" 2>/dev/null || true
+# Web-size the heatmaps IN THE SITE COPY only — the full-res originals in
+# runs/ remain the research record. Heatmaps are full-area photographic
+# renders (~4.6 MB each); at 100+ of them they blew past the Pages deploy
+# timeout. 1400 px wide is crisp for the detail view and ~4-6x smaller.
+$PY - "$OUT" <<'PYRESIZE'
+import sys
+from pathlib import Path
+from PIL import Image
+out = Path(sys.argv[1])
+before = after = n = 0
+for f in out.glob("runs/*/**/heatmap_*.png"):
+    b = f.stat().st_size
+    img = Image.open(f)
+    if img.width > 1400:
+        img = img.resize((1400, round(img.height * 1400 / img.width)),
+                         Image.LANCZOS)
+        img.save(f, optimize=True)
+    before += b; after += f.stat().st_size; n += 1
+print(f"heatmaps web-sized: {n} files, "
+      f"{before/1e6:,.0f} MB -> {after/1e6:,.0f} MB")
+PYRESIZE
 # The site's front door is the rendered project overview (gallery.py writes
 # it to the repo root alongside the gallery pages).
 cp index.html "$OUT/index.html"
