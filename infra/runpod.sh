@@ -10,7 +10,7 @@
 # only, pod -> laptop (pull). sync-up never pushes it; seed-db is the single,
 # guarded exception for bootstrapping a brand-new pod.
 #
-# Usage:  infra/runpod.sh <up|status|ssh|sync-up|seed-db|pull|stop|terminate>
+# Usage:  infra/runpod.sh <up|status|ssh|sync-up|seed-db|pull|stop|resume|terminate>
 # Needs:  .env with RUNPOD_API_KEY; ssh keypair (default ~/.ssh/id_ed25519)
 #
 # up         create a Secure Cloud RTX 4090 pod (idempotent: refuses if one
@@ -184,6 +184,11 @@ seed-db)
 stop)
   ID="$(pod_id)"
   gql "{\"query\":\"mutation { podStop(input: {podId: \\\"$ID\\\"}) { id desiredStatus } }\"}"; echo
+  ;;
+resume)
+  ID="$(pod_id)"
+  gql "{\"query\":\"mutation { podResume(input: {podId: \\\"$ID\\\", gpuCount: 1}) { id desiredStatus } }\"}"; echo
+  echo "Resuming. Wait ~1 min, then: infra/runpod.sh status  (ssh port may change)"
   ;;
 terminate)
   ID="$(pod_id)"

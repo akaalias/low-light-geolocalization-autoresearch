@@ -631,7 +631,7 @@ def live_row(next_id):
   function tick(){{
     var now=Date.now()/1000, msg;
     if(st && st.phase==='idle'){{
-      msg='no experiment running right now — the last batch finished; the best result stands';
+      msg=st.note || 'no experiment running right now — the last batch finished; the best result stands';
     }} else if(st && (st.phase==='waiting')){{
       msg='paused — waiting for agent capacity; resumes automatically';
     }} else if(st && now-st.phase_started < 5400){{
