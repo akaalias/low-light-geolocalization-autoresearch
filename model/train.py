@@ -46,6 +46,15 @@ locations seen per bucket to ~30k over an 8-epoch run, each seen only ~1-2
 times and never twice identically. Model, losses, decode, and calibration
 are unchanged.
 
+Exp 25: convergence-scaled training. A read-only probe of the kept exp-20
+model showed train-split and eval-split unfiltered medians both ~1 km --
+the fresh-draw sampler removed memorization, but the 8-epoch constant-LR
+schedule (sized in the bootstrap era, when a few passes over one frozen
+tensor sufficed to memorize) was cutting training off while loss was still
+falling ~0.065/epoch. Training now runs 3x the epochs (EPOCH_MULT) with a
+per-step cosine LR anneal to zero, so the same fresh-draw sampler is
+finally trained to convergence instead of truncated mid-descent.
+
 Usage: python -m model.train --area berlin --out-dir runs/<id> [--epochs 2]
 """
 
@@ -68,6 +77,9 @@ CAL_CROPS_PER_BUCKET = 400
 MIN_KEEP_RATE = 0.40          # per-bucket keep floor at calibration (2x the scorer's 0.2 coverage floor)
 SCORER_CONF_THRESHOLD = 0.3   # mirrors pipeline/score.py's frozen CONF_THRESHOLD; restated here, not imported
 TRAIN_REALIZATIONS = 3        # exp 17: seeded relight re-renders per bucket, incl. the stored eval-matched one
+EPOCH_MULT = 3                 # exp 25: convergence scaling -- the harness's --epochs is an outer budget fixed
+                                # at bootstrap; the exp-20 fresh-draw sampler needs ~3x the steps to converge
+                                # (loss still falling ~0.065/epoch at the old cutoff)
 
 
 def prepare_realizations(area: str, data_dir: Path, out_dir: Path) -> Path:
@@ -162,6 +174,10 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
     t0 = time.time()
     meta = load_meta(area, data_dir)
     crops = list_crops(area, meta["width"], meta["height"], "train")
+    total_epochs = epochs * EPOCH_MULT
+    n_per_epoch = 6 * min(max_crops_per_bucket, len(crops))
+    steps_per_epoch = (n_per_epoch + 63) // 64
+    total_steps = steps_per_epoch * total_epochs
     renders_dir = prepare_realizations(area, data_dir, out_dir)
     model = build_model().to(device)
     trunk_params = list(model.features.parameters())
@@ -171,13 +187,14 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         {"params": trunk_params, "lr": 1e-4},
         {"params": head_params, "lr": 1e-3},
     ])
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=total_steps, eta_min=0.0)
     n = 0
-    for epoch in range(epochs):
+    for epoch in range(total_epochs):
         epoch_rng = np.random.default_rng([seed, epoch])
         x, y = sample_epoch(area, meta, crops, renders_dir, data_dir,
                             max_crops_per_bucket, epoch_rng)
         n = len(x)
-        print(f"[{area}] epoch {epoch + 1}/{epochs} {n} crops, device={device}")
+        print(f"[{area}] epoch {epoch + 1}/{total_epochs} {n} crops, device={device}")
         perm = torch.randperm(n)
         losses = []
         for i in range(0, n, 64):
@@ -186,9 +203,9 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
             yb = y[idx].to(device)
             out, logits = model(xb, return_logits=True)
             loss = loss_fn(out, logits, yb)
-            opt.zero_grad(); loss.backward(); opt.step()
+            opt.zero_grad(); loss.backward(); opt.step(); sched.step()
             losses.append(loss.item())
-        print(f"[{area}] epoch {epoch + 1}/{epochs} loss={np.mean(losses):.4f}")
+        print(f"[{area}] epoch {epoch + 1}/{total_epochs} loss={np.mean(losses):.4f}")
         del x, y
 
     cal = calibrate_conf_shift(model, area, data_dir, device, rng)
@@ -208,6 +225,9 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
         "train_realizations": TRAIN_REALIZATIONS,
         "epoch_location_resampling": True,
+        "total_epochs_run": total_epochs,
+        "epoch_mult": EPOCH_MULT,
+        "lr_schedule": f"cosine-per-step to 0 over {total_steps} steps",
     }
     info.update(cal)
     return info
