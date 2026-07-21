@@ -1,0 +1,58 @@
+{
+  "kind": "holdout_check",
+  "areas": [
+    {
+      "area": "hamburg",
+      "buckets": {
+        "morning": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 1058.55,
+          "mean_error_m": 1378.14,
+          "score": 1058.55
+        },
+        "midday": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 969.18,
+          "mean_error_m": 1368.92,
+          "score": 969.18
+        },
+        "afternoon": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 979.43,
+          "mean_error_m": 1344.25,
+          "score": 979.43
+        },
+        "early_evening": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 1087.05,
+          "mean_error_m": 1394.76,
+          "score": 1087.05
+        },
+        "evening": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 1071.68,
+          "mean_error_m": 1412.52,
+          "score": 1071.68
+        },
+        "night": {
+          "n_eval": 400,
+          "coverage": 1.0,
+          "median_error_m": 1289.0,
+          "mean_error_m": 1552.18,
+          "score": 1289.0
+        }
+      },
+      "gates": {
+        "model_bytes": 3290525,
+        "latency_ms_host_proxy": 0.77
+      }
+    }
+  ],
+  "primary_worst_median_error_m": 1289.0,
+  "target_m": 20.0
+}

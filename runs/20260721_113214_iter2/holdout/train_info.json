@@ -1,0 +1,11 @@
+[
+  {
+    "area": "hamburg",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 354.7,
+    "onnx_bytes": 3290525,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)"
+  }
+]
