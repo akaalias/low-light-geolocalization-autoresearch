@@ -50,6 +50,15 @@ a:hover{border-bottom-color:var(--accent)}
 .num{font-variant-numeric:lining-nums tabular-nums}
 .mono{font-family:var(--mono);font-size:12px}
 
+#gh-ribbon{position:fixed;right:-56px;bottom:36px;z-index:80;
+  transform:rotate(-45deg);background:#111111;color:#fffff8;
+  font:600 11px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.12em;white-space:nowrap;
+  padding:7px 64px;text-decoration:none;border:none;
+  outline:1px solid rgba(255,255,248,.4);outline-offset:-4px;
+  box-shadow:0 1px 8px rgba(0,0,0,.3)}
+#gh-ribbon:hover{background:#8c2f1f;color:#fffff8}
+
 .topnav{display:flex;gap:28px;justify-content:center;align-items:baseline;
   border-bottom:1px solid var(--rule);padding:18px 0 12px;margin:0 0 6px}
 .topnav .brand{font:italic 14px var(--serif);color:var(--faint)}
@@ -950,7 +959,9 @@ Imagery-derived figures are based on open geodata:
 · Contains modified Copernicus Sentinel data.
 Code: MIT License —
 <a href="https://github.com/akaalias/low-light-geolocalization-autoresearch"
-style="color:inherit">source repository</a>.</footer>"""
+style="color:inherit">source repository</a>.</footer>
+<a id="gh-ribbon" href="https://github.com/akaalias/low-light-geolocalization-autoresearch"
+target="_blank" rel="noopener">view on GitHub</a>"""
 
 PATHS_OUT = REPO_ROOT / "gallery" / "inference-paths.html"
 OVERVIEW_OUT = REPO_ROOT / "index.html"
