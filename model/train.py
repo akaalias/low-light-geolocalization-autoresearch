@@ -25,6 +25,16 @@ scorer's fixed conf >= 0.3 abstention threshold keeps >= 40% of crops in
 every bucket (double the scorer's 0.2 coverage floor) before ONNX export;
 the resulting conf_shift buffer is exported with the model.
 
+Exp 17: night is the binding constraint everywhere, and a stored night
+render freezes one seeded roll of the relight sim's stochastic nuisances
+(sensor noise, lamp thinning) that differs roll-to-roll by ~half the image's
+content -- so the 1024-way head was memorizing roll-specific texture that
+can't transfer to held-out locations. Each bucket's training crops are now
+drawn from three seeded realizations of the frozen pipeline.relight.relight
+function (the stored eval-matched render plus two fresh re-renders), so only
+seed-stable structure stays discriminative between locations. Eval renders,
+model, losses, decode, and calibration are unchanged.
+
 Usage: python -m model.train --area berlin --out-dir runs/<id> [--epochs 2]
 """
 
@@ -34,31 +44,44 @@ import time
 from pathlib import Path
 
 import numpy as np
+import rasterio
 import torch
 from PIL import Image
 
 from model.model import build_model, export_onnx, loss_fn
-from pipeline.common import DATA_DIR, LIGHTING_BUCKETS, area_dir, load_meta
+from pipeline.common import DATA_DIR, LIGHTING_BUCKETS, area_dir, load_meta, stable_hash
 from pipeline.dataset import crop_center_norm, extract_crop, list_crops
+from pipeline.relight import relight
 
 CAL_CROPS_PER_BUCKET = 400
 MIN_KEEP_RATE = 0.40          # per-bucket keep floor at calibration (2x the scorer's 0.2 coverage floor)
 SCORER_CONF_THRESHOLD = 0.3   # mirrors pipeline/score.py's frozen CONF_THRESHOLD; restated here, not imported
+TRAIN_REALIZATIONS = 3        # exp 17: seeded relight re-renders per bucket, incl. the stored eval-matched one
 
 
 def load_training_tensors(area: str, data_dir: Path, max_crops_per_bucket: int, rng):
     meta = load_meta(area, data_dir)
     crops = list_crops(area, meta["width"], meta["height"], "train")
     xs, ys = [], []
+    with rasterio.open(area_dir(area, data_dir) / "reference.tif") as src:
+        ref = src.read().transpose(1, 2, 0)  # HxWx3 uint8
     for bucket in LIGHTING_BUCKETS:
-        img = np.asarray(Image.open(area_dir(area, data_dir) / "relight" / f"{bucket}.png"))
         picks = rng.choice(len(crops), size=min(max_crops_per_bucket, len(crops)),
                            replace=False)
-        for i in picks:
-            c = crops[i]
-            angle = float(rng.uniform(0, 360))  # heading augmentation
-            xs.append(extract_crop(img, c["cx"], c["cy"], angle))
-            ys.append(crop_center_norm(meta, c["cx"], c["cy"]))
+        for r in range(TRAIN_REALIZATIONS):
+            part = picks[r::TRAIN_REALIZATIONS]
+            if r == 0:
+                img = np.asarray(Image.open(area_dir(area, data_dir) / "relight" / f"{bucket}.png"))
+            else:
+                img = relight(ref, LIGHTING_BUCKETS[bucket], meta["gsd_m"],
+                             stable_hash(f"{area}:{bucket}:trainreal:{r}"))
+            for i in part:
+                c = crops[i]
+                angle = float(rng.uniform(0, 360))  # heading augmentation
+                xs.append(extract_crop(img, c["cx"], c["cy"], angle))
+                ys.append(crop_center_norm(meta, c["cx"], c["cy"]))
+            del img
+    del ref
     x = torch.from_numpy(np.stack(xs))  # uint8 NxHxWx3; float-converted per batch
     y = torch.tensor(ys, dtype=torch.float32)
     return x, y
@@ -148,6 +171,7 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         "onnx_bytes": onnx_path.stat().st_size,
         # §9: log init strategy per experiment
         "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+        "train_realizations": TRAIN_REALIZATIONS,
     }
     info.update(cal)
     return info
