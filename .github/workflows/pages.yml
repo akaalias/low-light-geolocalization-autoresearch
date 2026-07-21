@@ -65,3 +65,8 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # the site artifact is hundreds of MB of experiment figures;
+          # deployments can exceed the 10-min default
+          timeout: 1800000
+          error_count: 15
