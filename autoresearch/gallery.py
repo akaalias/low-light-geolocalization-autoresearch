@@ -75,6 +75,8 @@ header.page-head .page-sub{font:15.5px/1.6 var(--serif);color:var(--muted);
   font-style:normal;margin:0 auto;max-width:820px;text-align:center}
 .page-head .page-sub b{color:var(--ink)}
 .page-head .page-sub a{color:var(--accent)}
+.paths-wrap>.eyebrow{margin:34px 0 0}
+h1.home-h1{margin:28px auto 32px}
 .live-row{background:rgba(140,47,31,.045)}
 .live-row td{color:var(--muted);font-style:italic}
 .live-row .status-badge{font-style:normal}
@@ -180,7 +182,7 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .ov-canvas.dragging{cursor:grabbing}
 .ov-inner{width:100%;height:100%;transform-origin:0 0;position:relative}
 .ov-inner svg{width:100%;height:100%;display:block;position:absolute;
-  inset:0;transition:opacity .5s ease}
+  inset:0;transition:opacity 1.1s ease}
 .ov-replay{position:fixed;left:0;right:0;bottom:0;z-index:65;display:none;
   align-items:center;gap:14px;padding:10px 18px;background:var(--paper);
   border-top:1px solid var(--rule)}
@@ -482,15 +484,30 @@ function ovApply(){ovIn.style.transform=
   'translate('+px+'px,'+py+'px) scale('+sc+')'}
 function stopPlay(){if(playing){clearTimeout(playing);playing=null;
   var b=ov.querySelector('.ov-play');if(b)b.textContent='\u25B6';}}
+function anchorTransform(f){
+  // map this figure's frozen-input anchor onto the target figure's anchor,
+  // so the frozen endpoints stay planted while the middle crossfades.
+  var t=figReg[chain[chain.length-1]];
+  if(!t||f.inY==null||t.inY==null)return '';
+  var r=ovCv.getBoundingClientRect(),W=r.width,H=r.height;
+  function geo(g){var k=Math.min(W/980,H/g.vbH);
+    return {k:k,ox:(W-k*980)/2,oy:(H-k*g.vbH)/2};}
+  var gf=geo(f),gt=geo(t),sc2=gt.k/gf.k;
+  var dx=gt.ox-sc2*gf.ox;
+  var dy=gt.oy+gt.k*(t.inY+38)-sc2*(gf.oy+gf.k*(f.inY+38));
+  return 'translate('+dx.toFixed(1)+'px,'+dy.toFixed(1)+'px) scale('+sc2.toFixed(4)+')';
+}
 function showStep(i,fade){
   if(i<0||i>=chain.length)return;
   step=i;var f=figReg[chain[i]];if(!f)return;
   var nw=f.svg.cloneNode(true);
+  nw.style.transformOrigin='0 0';
+  var tf=anchorTransform(f);if(tf)nw.style.transform=tf;
   if(fade){nw.style.opacity='0';}
   var olds=[].slice.call(ovIn.children);
   ovIn.appendChild(nw);
   if(fade){void nw.getBoundingClientRect();nw.style.opacity='1';
-    setTimeout(function(){olds.forEach(function(o){o.remove()})},520);}
+    setTimeout(function(){olds.forEach(function(o){o.remove()})},1150);}
   else{olds.forEach(function(o){o.remove()});}
   document.querySelector('.ov-no').textContent=
     'step '+(i+1)+' of '+chain.length+' \u00B7 '+f.no;
@@ -500,7 +517,7 @@ function showStep(i,fade){
 }
 function playFrom(i){
   showStep(i,true);
-  if(i<chain.length-1){playing=setTimeout(function(){playFrom(i+1)},1250);}
+  if(i<chain.length-1){playing=setTimeout(function(){playFrom(i+1)},2700);}
   else{stopPlay();}
 }
 function buildReplay(){
@@ -536,7 +553,10 @@ window.addEventListener('load',function(){
   document.querySelectorAll('.fig-entry').forEach(function(sec){
     var holder=sec.querySelector('.fig-svg'),svg=holder&&holder.querySelector('svg');
     if(!svg)return;
-    figReg[sec.dataset.id]={svg:svg,
+    var vb=(svg.getAttribute('viewBox')||'0 0 980 300').split(/\s+/),
+        fin=svg.querySelector("[id='frozen-input']"),
+        finY=fin?parseFloat(fin.getAttribute('y')||'74'):null;
+    figReg[sec.dataset.id]={svg:svg,vbH:parseFloat(vb[3])||300,inY:finY,
       no:sec.querySelector('.fig-no').textContent,
       title:sec.querySelector('.fig-title').textContent};
     holder.addEventListener('click',function(){
