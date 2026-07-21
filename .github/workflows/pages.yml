@@ -18,7 +18,10 @@ on:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # queue, don't cancel: with the slimmed ~64MB artifact builds take ~3 min,
+  # and cancel-in-progress kept killing deploys seconds before completion
+  # whenever the loop pushed mid-build
+  cancel-in-progress: false
 
 permissions:
   contents: read
