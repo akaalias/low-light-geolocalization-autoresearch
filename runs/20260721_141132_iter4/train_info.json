@@ -1,0 +1,82 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1289.9,
+    "onnx_bytes": 3302661,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "conf_shift": -0.22202859818935394,
+    "cal_logit_threshold": -1.0692264556884767,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.635,
+      "midday": 0.6975,
+      "afternoon": 0.7125,
+      "early_evening": 0.6925,
+      "evening": 0.5975,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "prignitz",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1280.4,
+    "onnx_bytes": 3302661,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "conf_shift": 0.06643892824649811,
+    "cal_logit_threshold": -0.780758929252625,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.8025,
+      "midday": 0.87,
+      "afternoon": 0.885,
+      "early_evening": 0.8425,
+      "evening": 0.765,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "munich",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1311.8,
+    "onnx_bytes": 3302661,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "conf_shift": -0.1998325139284134,
+    "cal_logit_threshold": -1.0470303773880008,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.75,
+      "midday": 0.8025,
+      "afternoon": 0.76,
+      "early_evening": 0.76,
+      "evening": 0.7075,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "frankfurt",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1296.9,
+    "onnx_bytes": 3302661,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "conf_shift": -0.2721869647502899,
+    "cal_logit_threshold": -1.1193848371505741,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.765,
+      "midday": 0.7725,
+      "afternoon": 0.7525,
+      "early_evening": 0.73,
+      "evening": 0.6375,
+      "night": 0.4
+    }
+  }
+]
