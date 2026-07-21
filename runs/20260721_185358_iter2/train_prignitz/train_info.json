@@ -1,0 +1,23 @@
+[
+  {
+    "area": "prignitz",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1064.6,
+    "onnx_bytes": 3302661,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "conf_shift": -0.09728508442640305,
+    "cal_logit_threshold": -0.9444829463958743,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.78,
+      "midday": 0.8025,
+      "afternoon": 0.8075,
+      "early_evening": 0.8175,
+      "evening": 0.7,
+      "night": 0.4
+    }
+  }
+]
