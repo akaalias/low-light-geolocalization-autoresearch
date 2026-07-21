@@ -122,8 +122,11 @@ sync-up)
       exit 1
     fi
   fi
+  # .git/lfs excluded: GitHub holds the LFS objects; the pod only ever needs
+  # the working-tree files (rsynced) plus objects it creates itself on push.
   rsync -a --stats -e "ssh -i $SSH_KEY -p $PORT" \
     --exclude '.venv' --exclude '__pycache__' --exclude '.env' --exclude '.DS_Store' \
+    --exclude '.git/lfs' \
     ./ "root@$IP:$REMOTE_DIR/"
   ;;
 pull)
