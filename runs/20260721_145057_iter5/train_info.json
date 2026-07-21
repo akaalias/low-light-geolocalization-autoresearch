@@ -1,0 +1,86 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1307.1,
+    "onnx_bytes": 1352909,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "head": "dense-per-patch 1x1 MLP, 64-vote fusion",
+    "conf_shift": -0.41074907779693604,
+    "cal_logit_threshold": -1.257946944236756,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.6025,
+      "midday": 0.665,
+      "afternoon": 0.67,
+      "early_evening": 0.62,
+      "evening": 0.6175,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "prignitz",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1309.4,
+    "onnx_bytes": 1352909,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "head": "dense-per-patch 1x1 MLP, 64-vote fusion",
+    "conf_shift": -0.109198197722435,
+    "cal_logit_threshold": -0.9563960552215588,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.795,
+      "midday": 0.8075,
+      "afternoon": 0.815,
+      "early_evening": 0.82,
+      "evening": 0.7425,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "munich",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1329.5,
+    "onnx_bytes": 1352909,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "head": "dense-per-patch 1x1 MLP, 64-vote fusion",
+    "conf_shift": -0.782755434513092,
+    "cal_logit_threshold": -1.6299532651901245,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.79,
+      "midday": 0.765,
+      "afternoon": 0.765,
+      "early_evening": 0.7775,
+      "evening": 0.6875,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "frankfurt",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1314.3,
+    "onnx_bytes": 1352909,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "head": "dense-per-patch 1x1 MLP, 64-vote fusion",
+    "conf_shift": -0.26356494426727295,
+    "cal_logit_threshold": -1.1107628107070928,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.6625,
+      "midday": 0.6875,
+      "afternoon": 0.61,
+      "early_evening": 0.655,
+      "evening": 0.5675,
+      "night": 0.4
+    }
+  }
+]
