@@ -15,8 +15,9 @@ IC = 112          # inference lane center y
 LOSS_Y = 292      # loss-annotation row baseline
 
 
-def txt(x, y, s, size=10, color=MUT, w=400, anchor="middle", style=""):
-    return (f"<text x='{x:.0f}' y='{y:.0f}' font-family='{FONT}' font-size='{size}' "
+def txt(x, y, s, size=10, color=MUT, w=400, anchor="middle", style="", tid=None):
+    tid_attr = f"id='{tid}' " if tid else ""
+    return (f"<text {tid_attr}x='{x:.0f}' y='{y:.0f}' font-family='{FONT}' font-size='{size}' "
             f"fill='{color}' font-weight='{w}' text-anchor='{anchor}' {style}>{s}</text>")
 
 
@@ -56,10 +57,11 @@ def slab(x, s, d, color=INK):
     return "".join(out), s + dx
 
 
-def imgsq(x, s, color=INK):
+def imgsq(x, s, color=INK, tid=None):
     """Input image: square with a sparse pixel-grid texture."""
     y = IC - s / 2
-    out = [f"<rect x='{x}' y='{y}' width='{s}' height='{s}' fill='#00000008' "
+    tid_attr = f"id='{tid}' " if tid else ""
+    out = [f"<rect {tid_attr}x='{x}' y='{y}' width='{s}' height='{s}' fill='#00000008' "
            f"stroke='{color}' stroke-width='1.4'/>"]
     n = 6
     for i in range(1, n):
@@ -127,9 +129,15 @@ def converge(gx, gs, tx, color, cells="all", n=8):
     out = []
     src = []
     y0 = IC - gs / 2
-    rng = range(n) if cells == "all" else range(3, 8)
-    for gyy in rng:
-        for gxx in rng:
+    if cells == "all":
+        xs = ys = range(n)
+    else:
+        # 5x5 refinement window: cols 3-7, rows 1-5 — must match the red
+        # window rect exp3 draws (wx = gx+3gs/8, wy = y0+1gs/8), so every
+        # vote line starts at a cell center INSIDE the drawn window.
+        xs, ys = range(3, 8), range(1, 6)
+    for gyy in ys:
+        for gxx in xs:
             if cells == "all" and (gxx + gyy) % 2:
                 continue
             src.append((gx + (gxx + 0.5) * gs / n, y0 + (gyy + 0.5) * gs / n))
@@ -203,7 +211,7 @@ def conv_group(x0, colors=None, prev=None):
 
 
 def frame_part():
-    g, w = imgsq(26, 54, FAINT)
+    g, w = imgsq(26, 54, FAINT, tid="frozen-input")
     out = (g + txt(53, IC - 40, "128²×3", 9, FAINT)
            + txt(53, IC + 48, "camera frame", 10.5, MUT, 600)
            + txt(53, IC + 60, "one night exposure", 9.5, FAINT)
@@ -229,7 +237,8 @@ def conf_branch(bar_x, out_x, color=FAINT):
 def output_part(x, sub="position fix + confidence"):
     return (txt(x, IC - 18, "frozen contract", 8.5, FAINT, anchor="start",
                 style="font-style='italic'")
-            + txt(x, IC - 2, "(lat, lon, confidence)", 13, MUT, 600, "start")
+            + txt(x, IC - 2, "(lat, lon, confidence)", 13, MUT, 600, "start",
+                  tid="frozen-output")
             + txt(x, IC + 12, sub, 9, FAINT, anchor="start"))
 
 
@@ -348,17 +357,25 @@ def exp4():
     gx = x
     g, gs = gridsq(gx, 96, 8, ACC)
     b.append(g)
+    dots = []
     for i in range(8):
         for j in range(8):
             ox = ((i * 37 + j * 53) % 9 - 4) * 0.9
             oy = ((i * 61 + j * 29) % 9 - 4) * 0.9
-            cx = gx + (j + 0.5) * gs / 8 + ox
-            cy = IC - gs / 2 + (i + 0.5) * gs / 8 + oy
-            b.append(f"<circle cx='{cx:.1f}' cy='{cy:.1f}' r='1.3' fill='{ACC}'/>")
+            dots.append((i, j, gx + (j + 0.5) * gs / 8 + ox,
+                         IC - gs / 2 + (i + 0.5) * gs / 8 + oy))
+    for (_, _, cx, cy) in dots:
+        b.append(f"<circle cx='{cx:.1f}' cy='{cy:.1f}' r='1.3' fill='{ACC}'/>")
     b.append(cap(gx + gs / 2, IC + 72, "64 per-patch coordinates",
                  "1×1 conv + σ (8×8×2)", name_color=ACC))
     tx = 812  # shared right anchor
-    b.append(converge(gx, gs, tx, ACC, cells="all"))
+    # committee decode: every vote line starts at an actual per-patch dot
+    for (i, j, cx, cy) in dots:
+        if (i + j) % 2:
+            continue
+        b.append(f"<line x1='{cx:.1f}' y1='{cy:.1f}' x2='{tx}' y2='{IC}' "
+                 f"stroke='{ACC}' stroke-width='0.55' opacity='0.4'/>")
+    b.append(crosspt(tx, IC, ACC))
     b.append(cap((gx + gs + tx) / 2, IC - 54, "mean of 64 answers",
                  "one committee answer from 64 votes", name_color=ACC))
     b.append(output_part(828))
@@ -409,14 +426,18 @@ def exp6():
                                    "soft-argmax over ALL cells",
                                    "answer = Σ probability · cell-center")
     body = [lanes(340)] + b
-    for i, ang in enumerate((0, 22, 44)):
-        cx, cy, s = 84 + i * 26, LOSS_Y - 4, 24
-        body.append(f"<rect x='{cx - s / 2}' y='{cy - s / 2}' width='{s}' height='{s}' "
-                    f"fill='none' stroke='{ACC}' stroke-width='1' opacity='{0.45 + i * 0.27}' "
-                    f"transform='rotate({ang} {cx} {cy})'/>")
-    body.append(f"<path d='M 152,{LOSS_Y - 14} a 11 11 0 1 1 -6,9' fill='none' "
+    # rotation glyph: one square re-drawn at three concentric angles
+    # (fainter = earlier epoch), circled by a single arc arrow that stays
+    # clear of the squares.
+    cx0, cy0, s = 100, LOSS_Y - 6, 20
+    for i, ang in enumerate((0, 30, 60)):
+        body.append(f"<rect x='{cx0 - s / 2}' y='{cy0 - s / 2}' width='{s}' height='{s}' "
+                    f"fill='none' stroke='{ACC}' stroke-width='1' opacity='{0.3 + i * 0.3:.1f}' "
+                    f"transform='rotate({ang} {cx0} {cy0})'/>")
+    r = 24
+    body.append(f"<path d='M {cx0 - r},{cy0} A {r} {r} 0 0 1 {cx0 + r},{cy0}' fill='none' "
                 f"stroke='{ACC}' stroke-width='1.2'/>"
-                f"<path d='M 146,{LOSS_Y - 5} l 7,-1 -4,6 Z' fill='{ACC}'/>")
+                f"<path d='M {cx0 + r},{cy0 + 7} l -3.5,-7 h 7 Z' fill='{ACC}'/>")
     body.append(leader(53, IC + 80, 78, LOSS_Y - 22, ACC))
     body.append(txt(184, LOSS_Y - 8, "crop rotations re-drawn EVERY epoch", 10, ACC, 600, "start"))
     body.append(txt(184, LOSS_Y + 4, "fresh views of the same places each pass, not one frozen tensor reused 8×",

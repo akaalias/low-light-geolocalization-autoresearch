@@ -64,6 +64,34 @@ you only design the experiment and edit the code.
    Palatino,Georgia,serif; stroke-width ≈1.2 elements, 1 arrows; fills only
    faint tints (opacity ≤ .12); no gradients, no icons, no emoji. Inference
    flows left → right from camera frame to (lat, lon, confidence).
+   **The camera frame is a fixed glyph — copy it verbatim.** It must look
+   like an actual nadir frame of terrain (streets, building footprints),
+   not abstract pixels, and be identical in every figure. Use exactly this
+   snippet, substituting Y for the frame's top edge (pick Y so the frame
+   centers on your inference lane; captions go under it as usual — note
+   128²×3 is the model input crop, ~1 m/px, not the sensor's native
+   resolution):
+   ```svg
+   <g><rect id='frozen-input' x='26' y='Y' width='76' height='76'
+      fill='#f6f4ea' stroke='#9b998c' stroke-width='1.6'/>
+   <path d='M26 Y+50 L102 Y+24' stroke='#e6e3d4' stroke-width='6' fill='none'/>
+   <path d='M62 Y+2 L48 Y+74' stroke='#e6e3d4' stroke-width='4' fill='none'/>
+   <rect x='33' y='Y+8' width='13' height='9' fill='#d9d5c3' transform='rotate(-8 39 Y+12)'/>
+   <rect x='79' y='Y+7' width='10' height='12' fill='#cfccbd'/>
+   <rect x='34' y='Y+58' width='14' height='9' fill='#d9d5c3'/>
+   <rect x='76' y='Y+50' width='11' height='10' fill='#cfccbd' transform='rotate(6 81 Y+55)'/>
+   <rect x='55' y='Y+32' width='9' height='8' fill='#d9d5c3' opacity='.85'/>
+   <ellipse cx='88' cy='Y+66' rx='10' ry='7' fill='#8a6a1e' opacity='.12'/>
+   <circle cx='40' cy='Y+28' r='.7' fill='#6b6a60' opacity='.5'/>
+   <circle cx='70' cy='Y+14' r='.7' fill='#6b6a60' opacity='.5'/>
+   <circle cx='92' cy='Y+34' r='.7' fill='#6b6a60' opacity='.5'/>
+   <circle cx='52' cy='Y+50' r='.7' fill='#6b6a60' opacity='.5'/>
+   <circle cx='83' cy='Y+70' r='.7' fill='#6b6a60' opacity='.5'/>
+   <circle cx='31' cy='Y+44' r='.7' fill='#6b6a60' opacity='.5'/></g>
+   ```
+   (Y+n means the literal number Y plus n — compute the values.) Draw your
+   receptive-field square and kernel-projection lines on top of it as
+   usual.
    **Anchor the frozen endpoints identically in every figure** so all
    experiments' figures line up when compared down the gallery page: the
    camera-frame square starts at x=26 (its captions centered on x=53), and
