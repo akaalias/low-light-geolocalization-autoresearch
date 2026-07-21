@@ -37,7 +37,9 @@ def connect(db_path: Path | None = None) -> sqlite3.Connection:
     cols = [r[1] for r in conn.execute("PRAGMA table_info(experiments)")]
     for col, typ in (("agent_prompt", "TEXT"), ("agent_model", "TEXT"),
                      ("duration_s", "REAL"), ("eli5", "TEXT"),
-                     ("arch_json", "TEXT"), ("arch_svg", "TEXT")):
+                     ("arch_json", "TEXT"), ("arch_svg", "TEXT"),
+                     ("agent_model_design", "TEXT"),
+                     ("agent_model_impl", "TEXT")):
         if col not in cols:
             conn.execute(f"ALTER TABLE experiments ADD COLUMN {col} {typ}")
     return conn
@@ -53,6 +55,8 @@ def log_experiment(metrics_path: Path, design: dict, result: str,
                    artifacts_dir: str, kept: int | None, kind: str,
                    agent_prompt: str | None = None,
                    agent_model: str | None = None,
+                   agent_model_design: str | None = None,
+                   agent_model_impl: str | None = None,
                    duration_s: float | None = None,
                    db_path: Path | None = None) -> int:
     with open(metrics_path) as f:
@@ -66,8 +70,8 @@ def log_experiment(metrics_path: Path, design: dict, result: str,
             method, expected_outcome, result, conclusion, init_strategy,
             primary_metric, kept, model_bytes_max, latency_ms_host_proxy,
             metrics_json, artifacts_dir, agent_prompt, agent_model, duration_s,
-            eli5, arch_json, arch_svg)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            eli5, arch_json, arch_svg, agent_model_design, agent_model_impl)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (datetime.datetime.now(datetime.timezone.utc).isoformat(),
          git_commit, parent_commit, kind,
          design.get("title", "(untitled)"), design.get("category"),
@@ -80,7 +84,8 @@ def log_experiment(metrics_path: Path, design: dict, result: str,
          duration_s, design.get("eli5"),
          json.dumps(design["architecture"])
          if isinstance(design.get("architecture"), dict) else None,
-         design.get("architecture_svg")))
+         design.get("architecture_svg"),
+         agent_model_design, agent_model_impl))
     exp_id = cur.lastrowid
     for a in metrics["areas"]:
         for bucket, c in a.get("buckets", {}).items():
@@ -109,7 +114,11 @@ def main():
     ap.add_argument("--prompt-file", default=None,
                     help="file holding the exact prompt given to the headless agent")
     ap.add_argument("--agent-model", default=None,
-                    help="LLM model id that ran the headless agent")
+                    help="legacy single-agent model id (pre two-stage rows)")
+    ap.add_argument("--agent-model-design", default=None,
+                    help="LLM model id that ran the design stage")
+    ap.add_argument("--agent-model-impl", default=None,
+                    help="LLM model id that ran the implementation stage")
     ap.add_argument("--duration-s", type=float, default=None,
                     help="wall time of the whole iteration in seconds")
     args = ap.parse_args()
@@ -128,7 +137,9 @@ def main():
         git_rev(args.git_commit),
         git_rev(args.parent_commit) if args.parent_commit else None,
         args.artifacts_dir, args.kept, args.kind, prompt,
-        args.agent_model or None, args.duration_s)
+        args.agent_model or None,
+        args.agent_model_design or None, args.agent_model_impl or None,
+        args.duration_s)
     print(exp_id)
 
 

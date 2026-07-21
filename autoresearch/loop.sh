@@ -88,25 +88,43 @@ for i in $(seq 1 "$ITERATIONS"); do
   ITER_T0="$(date +%s)"
   echo "=== iteration $i/$ITERATIONS  run=$RUN_ID  parent=$PARENT_COMMIT ==="
 
-  # 1. Agent designs ONE experiment: pre-registers hypothesis/method/expected
-  #    outcome in runs/pending_experiment.json, then edits model/ accordingly.
-  # Snapshot the exact prompt handed to the headless agent — part of the
-  # experiment record (§7 lineage) even when SKIP_AGENT skips the call.
+  # 1. Two-stage agent (models chosen per task — design is the creative/
+  #    strategic work, implementation is focused code editing):
+  #      stage 1 DESIGN_MODEL (default Fable): pre-registers the experiment +
+  #        an implementation_brief in runs/pending_experiment.json; no code edits.
+  #      stage 2 IMPL_MODEL (default Sonnet): applies the brief to model/.
+  # Snapshot the exact prompts handed to the agents — part of the experiment
+  # record (§7 lineage) even when SKIP_AGENT skips the calls.
   cp autoresearch/prompt.md "$RUN_DIR/prompt.md"
-  AGENT_MODEL=""
+  cp autoresearch/prompt_impl.md "$RUN_DIR/prompt_impl.md"
+  AGENT_MODEL_DESIGN=""; AGENT_MODEL_IMPL=""
+  T_DESIGN=0; T_IMPL=0
   if [ "${SKIP_AGENT:-0}" != "1" ]; then
     rm -f runs/pending_experiment.json
-    # JSON output captures the result metadata (incl. which LLM model ran);
-    # CLAUDE_MODEL env var pins the model explicitly if set.
-    CLAUDE_ARGS=(-p "$(cat "$RUN_DIR/prompt.md")"
-      --permission-mode acceptEdits
-      --allowedTools "Read,Edit,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)"
-      --output-format json)
-    [ -n "${CLAUDE_MODEL:-}" ] && CLAUDE_ARGS+=(--model "$CLAUDE_MODEL")
-    "$CLAUDE_BIN" "${CLAUDE_ARGS[@]}" </dev/null >"$RUN_DIR/agent_result.json" \
-      || { echo "agent invocation failed; skipping iteration"; continue; }
-    AGENT_MODEL="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_result.json" 2>/dev/null || true)"
-    echo "agent finished (model: ${AGENT_MODEL:-unknown})"
+    T0=$(date +%s)
+    "$CLAUDE_BIN" -p "$(cat "$RUN_DIR/prompt.md")" \
+      --model "${DESIGN_MODEL:-claude-fable-5}" \
+      --permission-mode acceptEdits \
+      --allowedTools "Read,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
+      --output-format json </dev/null >"$RUN_DIR/agent_design.json" \
+      || { echo "design agent failed; skipping iteration"; continue; }
+    T_DESIGN=$(( $(date +%s) - T0 ))
+    if [ ! -f runs/pending_experiment.json ]; then
+      echo "design agent produced no runs/pending_experiment.json; skipping iteration"
+      continue
+    fi
+    T0=$(date +%s)
+    "$CLAUDE_BIN" -p "$(cat "$RUN_DIR/prompt_impl.md")" \
+      --model "${IMPL_MODEL:-claude-sonnet-5}" \
+      --permission-mode acceptEdits \
+      --allowedTools "Read,Edit,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
+      --output-format json </dev/null >"$RUN_DIR/agent_impl.json" \
+      || { echo "impl agent failed; skipping iteration"
+           git checkout -- model/ 2>/dev/null || true; continue; }
+    T_IMPL=$(( $(date +%s) - T0 ))
+    AGENT_MODEL_DESIGN="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_design.json" 2>/dev/null || echo "${DESIGN_MODEL:-claude-fable-5}")"
+    AGENT_MODEL_IMPL="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_impl.json" 2>/dev/null || echo "${IMPL_MODEL:-claude-sonnet-5}")"
+    echo "agents finished (design: $AGENT_MODEL_DESIGN ${T_DESIGN}s, impl: $AGENT_MODEL_IMPL ${T_IMPL}s)"
   fi
   [ -f runs/pending_experiment.json ] && mv runs/pending_experiment.json "$RUN_DIR/experiment.json"
   [ -f "$RUN_DIR/experiment.json" ] || echo '{"title":"(no experiment design provided)"}' > "$RUN_DIR/experiment.json"
@@ -120,11 +138,35 @@ for i in $(seq 1 "$ITERATIONS"); do
   # Enforce holdout blindness: agent must never read/copy holdout data or score it.
   # (score.py refuses hamburg without --holdout; loop only passes dev areas.)
 
-  # 3. Train one model per development area, then score (§6).
-  FAILED=0
+  # 3. Train one model per development area — IN PARALLEL (areas are fully
+  #    independent; per-area out-dirs avoid a write race on train_info.json,
+  #    merged below) — then score (§6).
+  T0=$(date +%s); FAILED=0; PIDS=""
   for area in $AREAS; do
-    $PY -m model.train --area "$area" --out-dir "$RUN_DIR" --epochs "$EPOCHS" || { FAILED=1; break; }
+    $PY -m model.train --area "$area" --out-dir "$RUN_DIR/train_$area" \
+      --epochs "$EPOCHS" >"$RUN_DIR/train_$area.log" 2>&1 &
+    PIDS="$PIDS $!"
   done
+  for pid in $PIDS; do wait "$pid" || FAILED=1; done
+  for area in $AREAS; do echo "--- train $area:"; tail -2 "$RUN_DIR/train_$area.log"; done
+  T_TRAIN=$(( $(date +%s) - T0 ))
+  if [ "$FAILED" = "0" ]; then
+    mkdir -p "$RUN_DIR/models"
+    for area in $AREAS; do
+      cp "$RUN_DIR/train_$area/models/"*.onnx "$RUN_DIR/models/" 2>/dev/null || FAILED=1
+    done
+    $PY - "$RUN_DIR" $AREAS <<'PYMERGE' || FAILED=1
+import json, sys
+from pathlib import Path
+run = Path(sys.argv[1]); merged = []
+for a in sys.argv[2:]:
+    p = run / f"train_{a}" / "train_info.json"
+    if p.exists():
+        merged += json.loads(p.read_text())
+(run / "train_info.json").write_text(json.dumps(merged, indent=2))
+PYMERGE
+  fi
+  T0=$(date +%s)
   if [ "$FAILED" = "1" ]; then
     echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
   else
@@ -133,7 +175,10 @@ for i in $(seq 1 "$ITERATIONS"); do
       --heatmap-dir "$RUN_DIR/heatmaps" || \
       echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
   fi
+  T_SCORE=$(( $(date +%s) - T0 ))
+  T0=$(date +%s)
   $PY -m autoresearch.samples --areas "$(echo $AREAS | tr ' ' ',')" --out "$RUN_DIR/samples" || true
+  T_SAMPLES=$(( $(date +%s) - T0 ))
 
   METRIC="$($PY -c "import json;print(json.load(open('$RUN_DIR/metrics.json'))['primary_worst_median_error_m'])")"
   BEST="$(best_metric)"
@@ -161,9 +206,12 @@ $(cat "$RUN_DIR/experiment.json")" || true
     --result "$RESULT" --conclusion "$CONCLUSION" \
     --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept "$KEEP" \
     --prompt-file "$RUN_DIR/prompt.md" \
-    --agent-model "$AGENT_MODEL" --duration-s "$DURATION_S"
+    --agent-model-design "$AGENT_MODEL_DESIGN" \
+    --agent-model-impl "$AGENT_MODEL_IMPL" \
+    --duration-s "$DURATION_S"
 
   # 5. Periodic read-only holdout check (§5) — logged, never drives keep/revert.
+  T_HOLDOUT=0; T0=$(date +%s)
   KEPT_COUNT="$(cat "$STATE/kept_count" 2>/dev/null || echo 0)"
   if [ "$KEEP" = "1" ] && [ $(( KEPT_COUNT % HOLDOUT_EVERY )) -eq 0 ]; then
     echo "--- holdout check (hamburg) ---"
@@ -180,7 +228,23 @@ $(cat "$RUN_DIR/experiment.json")" || true
       --kind holdout_check || echo "holdout check failed (non-fatal)"
   fi
 
+  T_HOLDOUT=$(( $(date +%s) - T0 ))
+  T0=$(date +%s)
   $PY -m autoresearch.gallery || true
+  T_GALLERY=$(( $(date +%s) - T0 ))
+
+  # Per-phase timing breakdown — committed with the record so the gallery's
+  # experiment-detail view can render where the iteration's time went.
+  $PY - <<PYTIMES || true
+import json
+json.dump({
+    "agent_design_s": $T_DESIGN, "agent_impl_s": $T_IMPL,
+    "train_wall_s": $T_TRAIN, "score_s": $T_SCORE,
+    "samples_s": $T_SAMPLES, "holdout_s": $T_HOLDOUT,
+    "gallery_s": $T_GALLERY,
+    "total_s": $(( $(date +%s) - ITER_T0 )),
+}, open("$RUN_DIR/timings.json", "w"), indent=2)
+PYTIMES
 
   # 6. Persist the complete iteration record — artifacts (incl. any holdout
   #    check), lineage DB, state — for kept AND reverted experiments, and

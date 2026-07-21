@@ -23,7 +23,9 @@ CREATE TABLE IF NOT EXISTS experiments (
     metrics_json TEXT,                -- full score.py output (per-area/bucket)
     artifacts_dir TEXT,               -- runs/<id>/ path with models/heatmaps/samples
     agent_prompt TEXT,                -- exact prompt given to the headless agent
-    agent_model TEXT,                 -- LLM model id that ran the headless agent
+    agent_model TEXT,                 -- legacy single-agent model id (pre two-stage rows)
+    agent_model_design TEXT,          -- LLM model id that ran the design stage
+    agent_model_impl TEXT,            -- LLM model id that ran the implementation stage
     duration_s REAL,                  -- wall time of the whole iteration (agent+train+score)
     eli5 TEXT,                        -- pre-registered plain-language explanation (no jargon)
     arch_json TEXT,                   -- pre-registered {"stages":[...]} inference-path summary

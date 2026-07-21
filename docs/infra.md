@@ -64,7 +64,9 @@ eras. `infra/runpod.sh sync-up` enforces this by construction.
 # laptop: .env with RUNPOD_API_KEY (+ CLAUDE_CODE_OAUTH_TOKEN for launch)
 infra/runpod.sh up          # Secure 4090, ssh key injected
 infra/runpod.sh status      # wait until ssh endpoint appears
-infra/runpod.sh sync-up     # repo + data/ + experiments.sqlite (~4.7 GB)
+infra/runpod.sh sync-up     # repo + data/ (~4.7 GB); never the DB
+infra/runpod.sh seed-db     # one-time: seed the fresh pod's experiments.sqlite
+                            # (guarded — refuses if the pod already has one)
 
 # pod one-time setup (infra/runpod.sh ssh):
 apt-get update && apt-get install -y rsync tmux
@@ -83,6 +85,10 @@ git config --global --add safe.directory /workspace/low-light-geolocalization-au
 # launch (on the pod, inside tmux so ssh drops don't kill the loop):
 tmux new -s loop
 CLAUDE_CODE_OAUTH_TOKEN=... ./autoresearch/loop.sh 25
+# models per task (defaults; override via env): DESIGN_MODEL=claude-fable-5
+# does the creative/strategic design, IMPL_MODEL=claude-sonnet-5 implements
+# the brief. Both are persisted per experiment (agent_model_design/_impl
+# columns). Policy: never Opus.
 
 # watch from the laptop:
 infra/runpod.sh ssh         # then: tmux attach -t loop
@@ -96,6 +102,18 @@ infra/runpod.sh terminate   # only when truly done — destroys the volume
 
 Graceful stop of a running loop: `touch state/stop` on the pod (finishes
 the current iteration, then exits) — same mechanism as local.
+
+**Iteration anatomy (since 2026-07-21):** each iteration is a two-stage
+agent (design → implementation, separate models, both recorded in the DB)
+followed by **parallel** training of all 4 areas (independent per-area
+out-dirs merged afterward — `train.py`'s `train_info.json` append is not
+concurrency-safe, so areas never share an out-dir), then scoring. Every
+run dir carries `timings.json` with the per-phase breakdown
+(agent_design_s / agent_impl_s / train_wall_s / score_s / samples_s /
+holdout_s / gallery_s / total_s) — measured on the 4090 the design phase
+dominates (~15–20 min LLM vs ~3–4 min parallel training), which is why a
+bigger GPU is NOT the lever for faster iterations. TODO(gallery): render
+this breakdown in the experiment-detail view.
 
 ### Persistence — every experiment survives the pod
 
@@ -144,12 +162,15 @@ infra/runpod.sh ssh   # tmux new -s loop; CLAUDE_CODE_OAUTH_TOKEN=… ./autorese
 Caveats: (a) **frozen-file changes are era events** — anything touching
 `pipeline/` or scoring makes metrics incomparable with earlier rows, so
 note it here and expect a baseline re-seed, as in the bootstrap era
-resets. (b) A `SKIP_AGENT=1` smoke run writes a throwaway row into
-`experiments.sqlite`, and sync-up pushes your local DB onto the pod —
-so either accept the smoke row in the permanent lineage or delete it
-(`sqlite3 experiments.sqlite "DELETE FROM experiments WHERE id=…"` plus
-its `area_results` rows) before `sync-up`. (c) GitHub is the off-site
-archive: `git push` after every `pull` so kept experiments land there.
+resets. (b) **The pod's `experiments.sqlite` is production and flows one
+way only** (pod → laptop via `pull`; `sync-up` excludes it, `seed-db` is
+the guarded one-time exception for a fresh pod). Local smoke rows from
+`SKIP_AGENT=1` runs therefore never pollute the permanent lineage — the
+next `pull` simply replaces the local DB, discarding them along with any
+other local-only DB edits. DB fixes/migrations (e.g. `archive/`'s figure
+scripts) are run *on the pod*, then flow back via `pull`. (c) GitHub is
+the off-site archive: `git push` after every `pull` so kept experiments
+land there.
 
 ## Publishing roadmap (planned, not yet built)
 

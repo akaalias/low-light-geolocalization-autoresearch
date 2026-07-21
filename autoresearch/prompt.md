@@ -89,21 +89,31 @@ you only design the experiment and edit the code.
    unchanged and adds one final stage with `"train_only": true` describing the
    training signal.
 
-3. **Implement exactly that change** in the agent-editable files (`model/`).
-   Keep `train.py`'s CLI contract and the ONNX export contract in `model/model.py`'s
-   docstring intact — the frozen scorer depends on them.
+3. **Write the implementation brief.** You do NOT edit `model/` yourself —
+   a separate implementation agent applies your design, seeing only the
+   current code plus what you pre-registered. Add one more field to
+   `runs/pending_experiment.json`:
+   ```
+   "implementation_brief": "exact file-level instructions: which functions/
+   blocks in model/model.py and model/train.py change and how, what stays
+   untouched, and every contract to preserve"
+   ```
+   Be precise enough that a competent engineer with no other context
+   implements it in one pass. Always restate the fixed contracts:
+   `train.py`'s CLI and the ONNX export contract in `model/model.py`'s
+   docstring — the frozen scorer depends on them.
 
 ## Hard rules
 
-- Edit ONLY `model/` (and `runs/pending_experiment.json`). Files listed in
-  `/FROZEN` are off-limits; the harness hard-reverts any change to them.
+- Edit ONLY `runs/pending_experiment.json`. You never edit `model/` (the
+  implementation stage does) and files listed in `/FROZEN` are off-limits;
+  the harness hard-reverts any change to them.
 - NEVER touch, read, or evaluate the `hamburg` holdout area (§5).
 - ONE focused change per iteration — if you can't describe it in one sentence,
   it's too big. Prefer architectural/procedural novelty over hyperparameter
   nudges (§3): changing a learning rate is a weak experiment; changing the
   coordinate parameterization, loss family, relighting-for-training, or model
   topology is a strong one.
-- Do not run training yourself; the harness does that. A quick syntax check
-  (`.venv/bin/python -c "import model.train, model.model"`) is fine.
+- Do not run training yourself; the harness does that.
 - Stay within the deployment gates: exported ONNX ≤ 4 MiB per area, host
   latency proxy ≤ 250 ms (see pipeline/score.py).
