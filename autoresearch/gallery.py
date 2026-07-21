@@ -158,6 +158,8 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .fig-svg{margin:10px 0 4px;overflow-x:auto;cursor:zoom-in}
 .fig-svg svg{width:100%;min-width:720px;height:auto;display:block}
 .contract-fig>svg{cursor:zoom-in}
+.arch-svg[data-ovfig]{cursor:zoom-in}
+.fig-svg{cursor:zoom-in}
 
 #svgov{position:fixed;inset:0;background:var(--paper);z-index:60;
   display:none;flex-direction:column}
@@ -477,6 +479,13 @@ window.addEventListener('load',function(){
 # Zoom/pan overlay for the inference-paths page: click any figure to open it
 # full-screen (SVG, so zoom is lossless); wheel = zoom about the cursor,
 # drag = pan, double-click = reset, Esc or the close button to exit.
+OVERLAY_HTML = """<div id="svgov"><div class="ov-bar"><span class="ov-no"></span>
+<span class="ov-title"></span>
+<span class="ov-hint">scroll to zoom · drag to pan · double-click to reset</span>
+<button class="ov-close">Esc · close</button></div>
+<div class="ov-canvas"><div class="ov-inner"></div></div>
+<div class="ov-replay" id="ov-replay"><button class="ov-play" title="replay the lineage: oldest ancestor first, fading forward to this design">▶</button><div class="ov-steps"></div></div></div>"""
+
 PATHS_JS = """
 var ov,ovIn,ovCv,sc=1,px=0,py=0,drag=null;
 var figReg={},chain=[],step=-1,playing=null;
@@ -550,19 +559,18 @@ window.addEventListener('load',function(){
   ov=document.getElementById('svgov');
   ovIn=ov.querySelector('.ov-inner');
   ovCv=ov.querySelector('.ov-canvas');
-  document.querySelectorAll('.fig-entry').forEach(function(sec){
-    var holder=sec.querySelector('.fig-svg'),svg=holder&&holder.querySelector('svg');
+  document.querySelectorAll('[data-ovfig]').forEach(function(holder){
+    var svg=holder.querySelector('svg');
     if(!svg)return;
-    var vb=(svg.getAttribute('viewBox')||'0 0 980 300').split(/\s+/),
+    var vb=(svg.getAttribute('viewBox')||'0 0 980 300').split(/\\s+/),
         fin=svg.querySelector("[id='frozen-input']"),
         finY=fin?parseFloat(fin.getAttribute('y')||'74'):null;
-    figReg[sec.dataset.id]={svg:svg,vbH:parseFloat(vb[3])||300,inY:finY,
-      no:sec.querySelector('.fig-no').textContent,
-      title:sec.querySelector('.fig-title').textContent};
+    if(holder.dataset.id)
+      figReg[holder.dataset.id]={svg:svg,vbH:parseFloat(vb[3])||300,inY:finY,
+        no:holder.dataset.no||'',title:holder.dataset.title||''};
     holder.addEventListener('click',function(){
-      ovOpen(svg,sec.querySelector('.fig-no').textContent,
-             sec.querySelector('.fig-title').textContent,
-             (sec.dataset.chain||'').split(',').filter(function(x){
+      ovOpen(svg,holder.dataset.no||'',holder.dataset.title||'',
+             (holder.dataset.chain||'').split(',').filter(function(x){
                return figReg[x]}))});
   });
   var pb=ov.querySelector('.ov-play');
@@ -570,9 +578,7 @@ window.addEventListener('load',function(){
     if(playing){stopPlay();}
     else{pb.textContent='\u25A0';playFrom(0);}
   });
-  var cf=document.querySelector('.contract-fig>svg');
-  if(cf)cf.addEventListener('click',function(){
-    ovOpen(cf,'','The frozen contract — where the experiments happen')});
+
   ov.querySelector('.ov-close').addEventListener('click',ovClose);
   window.addEventListener('keydown',function(e){
     if(e.key==='Escape'&&ov.classList.contains('on'))ovClose()});
@@ -1067,7 +1073,16 @@ def train_block(artifacts_dir):
     return "".join(rows)
 
 
-def arch_block(e):
+def chain_of(e, exps):
+    """Kept-ancestor chain (oldest -> self) as the overlay replay expects."""
+    if e["kind"] == "holdout_check":
+        return ""
+    ids = [str(k["id"]) for k in exps
+           if k["kept"] and k["kind"] != "holdout_check" and k["id"] < e["id"]]
+    return ",".join(ids + [str(e["id"])])
+
+
+def arch_block(e, chain_str=""):
     """One REAL worked example — the same held-out night crop for every
     experiment, run through the run's actual exported ONNX model — plus a
     one-line pipeline sentence from the pre-registered architecture stages
@@ -1133,8 +1148,11 @@ Every experiment is shown this same crop.</figcaption></figure>
         legend = (" — <span style='color:var(--faint)'>gray = frozen contract"
                   "</span> · ink = the current design · "
                   "<span class='chg'>red = this experiment's change</span>")
+        attrs = (f" data-ovfig data-id='{e['id']}' data-chain='{chain_str}' "
+                 f"data-no='Fig. {e['id']}' data-title='{esc(e['title'])}'"
+                 if chain_str else "")
         out.append(f"<div class='arch-h'>The design under test — technical "
-                   f"diagram{legend}</div><div class='arch-svg'>{svg}</div>")
+                   f"diagram{legend}</div><div class='arch-svg'{attrs}>{svg}</div>")
     elif pipe:
         out.append(f"<div class='arch-h'>The pipeline this run used{note}</div>"
                    f"<div class='wex-pipe' style='margin:0 0 14px'>{pipe}</div>")
@@ -1556,7 +1574,7 @@ as text; their figures were drawn to this standard after the fact. From
 experiment 7 on, every figure is the headless agent's own, drawn before
 training ran.)</p>
 </div>
-<div class="contract-fig">{contract_svg()}
+<div class="contract-fig" data-ovfig data-title="The frozen contract — where the experiments happen">{contract_svg()}
 <p class="contract-cap">The shape every figure on this page shares. The gray
 endpoints are the harness's frozen contract — one low-light camera crop in,
 one <i>(lat,&nbsp;lon,&nbsp;confidence)</i> answer out — and the dashed box
@@ -1594,7 +1612,7 @@ updated {now}</p>"""]
   <span class="fig-title">{esc(e['title'])}</span>
   <span class="fig-status">{paths_status(e, e['id'] == current_id)}</span>
 </div>
-<div class="fig-svg">{e['arch_svg']}</div>
+<div class="fig-svg" data-ovfig data-id="{e['id']}" data-chain="{','.join(chain)}" data-no="Fig. {e['id']}" data-title="{esc(e['title'])}">{e['arch_svg']}</div>
 <div class="fig-cap">
 {eli5}
 <p class="fig-meta">{esc(e['category'] or '—')} · {esc(e['init_strategy'] or '—')}
@@ -1605,13 +1623,7 @@ updated {now}</p>"""]
 </section>""")
 
     body.append("""</div>
-<div id="svgov"><div class="ov-bar"><span class="ov-no"></span>
-<span class="ov-title"></span>
-<span class="ov-hint">scroll to zoom · drag to pan · double-click to reset</span>
-<button class="ov-close">Esc · close</button></div>
-<div class="ov-canvas"><div class="ov-inner"></div></div>
-<div class="ov-replay" id="ov-replay"><button class="ov-play" title="replay the lineage: oldest ancestor first, fading forward to this design">▶</button><div class="ov-steps"></div></div></div>
-""" + CREDITS + "</body></html>")
+""" + OVERLAY_HTML + CREDITS + "</body></html>")
     PATHS_OUT.parent.mkdir(exist_ok=True)
     PATHS_OUT.write_text("\n".join(body))
     print(f"wrote {PATHS_OUT} ({len(figs)} figures)")
@@ -1967,7 +1979,7 @@ def render():
         metrics = json.loads(e["metrics_json"] or "{}")
         body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="10">
 <div class="detail-inner">
-{arch_block(e)}
+{arch_block(e, chain_of(e, exps))}
 <div class="detail-grid">
 <div class="explain">{''.join(blocks)}</div>
 <div>
@@ -1990,7 +2002,9 @@ agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duratio
     body.append(f"</tbody></table>{HELP}</div>")
     body.append("<div id='lightbox'><img alt=''><div class='lb-cap'></div>"
                 "<div class='lb-hint'>click anywhere or press Esc to close</div></div>")
-    body.append("<div id='tip'></div>" + CREDITS + "</body></html>")
+    body.append("<div id='tip'></div>" + OVERLAY_HTML
+                + "<script>" + PATHS_JS + "</script>" + CREDITS
+                + "</body></html>")
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text("\n".join(body))
     print(f"wrote {OUT} ({len(exps)} experiments)")
