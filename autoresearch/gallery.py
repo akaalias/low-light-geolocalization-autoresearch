@@ -916,6 +916,18 @@ actually looked at.</div>
 </details>"""
 
 
+# License attribution for imagery-derived figures — required by the data
+# sources' terms on any published page (dl-de/by-2-0, CC BY 4.0, Copernicus).
+CREDITS = """<footer style="margin:48px auto 24px;max-width:960px;color:#9b998c;
+font-size:12.5px;line-height:1.5;border-top:1px solid #e6e4da;padding-top:10px">
+Imagery-derived figures are based on open geodata:
+© GeoBasis-DE/LGB (dl-de/by-2-0) · © Bayerische Vermessungsverwaltung (CC BY 4.0)
+· © HVBG Hessen (dl-de/by-2-0) · © Freie und Hansestadt Hamburg, LGV (dl-de/by-2-0)
+· Contains modified Copernicus Sentinel data.
+Code: MIT License —
+<a href="https://github.com/akaalias/low-light-geolocalization-autoresearch"
+style="color:inherit">source repository</a>.</footer>"""
+
 PATHS_OUT = REPO_ROOT / "gallery" / "inference-paths.html"
 
 
@@ -1122,7 +1134,7 @@ updated {now}</p>"""]
 <span class="ov-hint">scroll to zoom · drag to pan · double-click to reset</span>
 <button class="ov-close">Esc · close</button></div>
 <div class="ov-canvas"><div class="ov-inner"></div></div></div>
-</body></html>""")
+""" + CREDITS + "</body></html>")
     PATHS_OUT.parent.mkdir(exist_ok=True)
     PATHS_OUT.write_text("\n".join(body))
     print(f"wrote {PATHS_OUT} ({len(figs)} figures)")
@@ -1261,7 +1273,7 @@ agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duratio
     body.append(f"</tbody></table>{HELP}</div>")
     body.append("<div id='lightbox'><img alt=''><div class='lb-cap'></div>"
                 "<div class='lb-hint'>click anywhere or press Esc to close</div></div>")
-    body.append("<div id='tip'></div></body></html>")
+    body.append("<div id='tip'></div>" + CREDITS + "</body></html>")
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text("\n".join(body))
     print(f"wrote {OUT} ({len(exps)} experiments)")

@@ -1,0 +1,67 @@
+name: pages
+
+# Publishes the research gallery to GitHub Pages after every push (the loop
+# pushes one commit per experiment, so the live site tracks the research).
+#
+# Parity contract: the site is assembled by infra/build_site.sh — the same
+# script used for local preview — so a locally-verified page is exactly what
+# deploys. See docs/infra.md "Publishing".
+#
+# Dormant until the repo variable PAGES_ENABLED is set to 'true' (do this
+# when the repo goes public and Pages is switched to "GitHub Actions").
+# The build job always runs as a render smoke-test; only deploy is gated.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # LFS objects via cache: only each iteration's new ~30 MB is fetched
+      # from LFS bandwidth quota; the rest restores from the Actions cache.
+      - name: LFS cache key
+        id: lfs
+        run: |
+          git lfs install --skip-smudge
+          echo "key=$(git lfs ls-files -l | cut -d' ' -f1 | sort | sha256sum | cut -c-16)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: lfs-${{ steps.lfs.outputs.key }}
+          restore-keys: lfs-
+      - name: Fetch LFS artifacts
+        run: git lfs pull
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install render dependencies
+        run: pip install --quiet numpy pillow pyyaml
+      - name: Assemble site (same script as local preview)
+        run: PY=python3 infra/build_site.sh _site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    if: ${{ vars.PAGES_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
