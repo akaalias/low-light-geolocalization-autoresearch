@@ -121,7 +121,10 @@ for i in $(seq 1 "$ITERATIONS"); do
       --permission-mode acceptEdits \
       --allowedTools "Read,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
       --output-format json </dev/null >"$RUN_DIR/agent_design.json" \
-      || { echo "design agent failed; skipping iteration"; continue; }
+      || { echo "design agent failed (rate limit/usage cap?) — sleeping \
+${AGENT_RETRY_SLEEP:-1800}s before next iteration"
+           report_phase waiting
+           sleep "${AGENT_RETRY_SLEEP:-1800}"; continue; }
     T_DESIGN=$(( $(date +%s) - T0 ))
     if [ ! -f runs/pending_experiment.json ]; then
       echo "design agent produced no runs/pending_experiment.json; skipping iteration"

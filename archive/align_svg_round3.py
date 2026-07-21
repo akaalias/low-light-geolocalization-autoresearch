@@ -66,7 +66,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from autoresearch.db import connect
-from terrain_frame_glyph import terrain_frame
+# round 3 deployed the v1 glyph; import it under its old name so this
+# script remains an exact record (the v2 sweep lives in align_svg_glyph_v2.py)
+from terrain_frame_glyph import terrain_frame_v1 as terrain_frame
 
 F = "Palatino,Georgia,serif"
 
