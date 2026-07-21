@@ -1211,10 +1211,11 @@ def render_overview(exps):
 to find itself in the dark, with no GPS, no maps on board, and a $4 flight
 computer</h1>
 <p class="psub lead">Where other aircraft ask satellites, this one would
-have to <i>remember</i>. The open question: can a neural network small
-enough to fit in 4&nbsp;MiB memorize what its flight area looks like from
-above — by day, by dusk, by night — well enough to turn one glance of a
-low-light camera into <i>(lat,&nbsp;lon,&nbsp;confidence)</i>? No
+have to <i>remember</i>. <span style="color:var(--ink)">The open
+question: can a neural network small enough to fit in 4&nbsp;MiB memorize
+what its flight area looks like from above — by day, by dusk, by night —
+well enough to turn one glance of a low-light camera into
+<i>(lat,&nbsp;lon,&nbsp;confidence)</i>?</span> No
 satellites to jam or lose, no internet — if it can be done at all. Nobody
 knows yet; finding out is the project. And the research is not done by me:
 an <b>autonomous loop of coding agents</b> designs, trains, and scores one
