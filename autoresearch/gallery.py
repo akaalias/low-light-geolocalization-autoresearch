@@ -1624,28 +1624,25 @@ def render():
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
-<title>Low-Light Geolocalization — Autoresearch Progress</title>
+<title>Research Log — Low-Light Geolocalization</title>
 <style>{CSS}</style><script>{JS}</script></head><body>
 {topnav('log')}
 {compute_banner()}
 <header class="dash-head">
   <div class="eyebrow">Alexis Rondeau · live research log</div>
-  <h1>Can a drone find itself in the dark?</h1>
-  <p class="sub">A 5-inch UAV built to fly <b>without a GPS module at all</b>.
-  In place of satellite navigation it carries a low-light camera and a tiny
-  neural network ({size_note}) that has memorized what its flight area looks
-  like from above — by day, by dusk, and by night. It looks down at one frame
-  and answers: <b>where am I?</b> No satellites to jam or lose, no stored
-  maps, no internet.</p>
+  <h1>The experiment record</h1>
+  <p class="sub">Every experiment the autonomous loop has run — kept
+  <i>and</i> discarded. Each row was pre-registered before training
+  (hypothesis, method, expected outcome, and a hand-drawn architecture
+  figure), then trained on a rented RTX 4090 and measured against one
+  frozen ruler: the <b>worst</b> median position error across 6 lighting
+  conditions × 4 test areas, on held-out crops the model has never seen
+  ({size_note}). Two agents share each iteration — one designs, one
+  implements — and nothing here is curated after the fact: failures stay
+  on the record, and this page re-publishes itself with every result.
+  New here? The project story lives on the
+  <a href="../index.html">overview</a>.</p>
   <div class="intro">
-  <p>An autonomous research loop (one headless coding agent per iteration)
-  rewrites the model and its training code, one pre-registered experiment at a
-  time, and is judged by a single frozen ruler: the <b>worst</b> median
-  position error across 6 lighting conditions × 4 German test areas — dense
-  Berlin, rural Prignitz, Munich, Frankfurt — on held-out map crops. Hamburg
-  stays blind as the generalization check. Every model must fit the
-  <b>ESP32-P4</b> flight computer: ≤ 4 MiB, within the latency budget, under
-  ~2 W.</p>
   <p>{status_line} · {n_dev} experiment{'s' if n_dev != 1 else ''},
   {n_kept} kept.</p>
   </div>
