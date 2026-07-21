@@ -97,6 +97,28 @@ infra/runpod.sh terminate   # only when truly done — destroys the volume
 Graceful stop of a running loop: `touch state/stop` on the pod (finishes
 the current iteration, then exits) — same mechanism as local.
 
+### Persistence — every experiment survives the pod
+
+Since 2026-07-21 the loop's final step each iteration commits the
+**complete iteration record** — `runs/<id>/` (experiment design, agent
+result, models, heatmaps, samples, any holdout check),
+`experiments.sqlite`, `state/` — and pushes to GitHub, for kept **and**
+reverted experiments alike. A reverted experiment's model-code diff is
+discarded by design, but its record now lives in git, not just on
+whatever disk ran it. Push failures are non-fatal (retried implicitly
+next iteration).
+
+Mechanics: binary artifacts (`runs/**/*.png`, `runs/**/*.onnx`, `*.pt`)
+go through **Git LFS** (~30 MB/iteration would sink plain git); JSON +
+SQLite stay plain. The pod pushes over a **write-scoped deploy key**
+(`~/.ssh/id_ed25519` on the pod, registered on the repo as
+"lowlight-autoresearch pod"), with a global `insteadOf` rewriting the
+https origin to ssh. `data/` and `gallery/` stay untracked (regenerable).
+
+**LFS quota:** GitHub's free tier is 1 GB LFS storage / 1 GB/mo
+bandwidth. At ~30 MB/iteration a $5/mo 50 GB data pack becomes necessary
+around experiment ~30 — buy it before the loop starts failing pushes.
+
 ### Development workflow — changing code while the pod is "production"
 
 Two writers exist: the **loop on the pod** (commits kept experiments,

@@ -181,5 +181,16 @@ $(cat "$RUN_DIR/experiment.json")" || true
   fi
 
   $PY -m autoresearch.gallery || true
+
+  # 6. Persist the complete iteration record — artifacts (incl. any holdout
+  #    check), lineage DB, state — for kept AND reverted experiments, and
+  #    push off-site. A reverted experiment's record lives only here and in
+  #    SQLite, so this commit is what makes the full research trail survive
+  #    the pod. Push failures are non-fatal: everything is committed locally
+  #    and pushes retry implicitly next iteration.
+  git add -A "$RUN_DIR" experiments.sqlite state/ 2>/dev/null || true
+  git commit -q -m "iter $i record: $RUN_ID ($METRIC m, kept=$KEEP)" || true
+  git push -q origin main 2>/dev/null || \
+    echo "WARNING: git push failed (no remote/offline?) — record is committed locally"
 done
 echo "Loop finished. Best: $(best_metric) m — see gallery/index.html"

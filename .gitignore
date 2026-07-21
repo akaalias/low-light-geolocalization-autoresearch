@@ -1,10 +1,7 @@
 .venv/
 data/
 gallery/
-runs/*/models/
-runs/*/heatmaps/
 __pycache__/
 *.pyc
 .DS_Store
-experiments.sqlite
 .env

@@ -1,0 +1,6 @@
+# Binary experiment artifacts go through Git LFS — ~30 MB/iteration would
+# bloat plain git past usable within ~100 experiments. Small JSON records
+# and experiments.sqlite stay in plain git.
+runs/**/*.png filter=lfs diff=lfs merge=lfs -text
+runs/**/*.onnx filter=lfs diff=lfs merge=lfs -text
+*.pt filter=lfs diff=lfs merge=lfs -text
