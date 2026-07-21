@@ -62,6 +62,12 @@ a:hover{border-bottom-color:var(--accent)}
 .topnav{display:flex;gap:28px;justify-content:center;align-items:baseline;
   border-bottom:1px solid var(--rule);padding:18px 0 12px;margin:0 0 6px}
 .topnav .brand{font:italic 14px var(--serif);color:var(--faint)}
+.compute-banner{max-width:960px;margin:14px auto 0;padding:8px 14px;
+  text-align:center;font:12.5px var(--serif);color:var(--muted);
+  background:rgba(140,47,31,.05);border:1px solid rgba(140,47,31,.15);
+  border-radius:3px}
+.compute-banner a{color:#8c2f1f;text-decoration:none;font-weight:600}
+.compute-banner a:hover{text-decoration:underline}
 .status-badge{display:inline-flex;align-items:center;gap:6px;
   font:600 11px var(--serif);font-feature-settings:"smcp" 1;
   letter-spacing:.08em}
@@ -531,6 +537,16 @@ def status_badge():
     return ("<span class='status-badge live' title='experiments are running "
             "and this page updates as each one lands'>"
             "<span class='dot'></span>live</span>")
+
+
+# Compute credit banner — shown on the working pages (log, paths); the
+# overview carries the same facts in its footnote. Concrete on purpose:
+# pod class, GPU, and price, so the compute story is auditable.
+COMPUTE_BANNER = (
+    "<div class='compute-banner'>experiments run around the clock on a "
+    "<a href='https://www.runpod.io'>RunPod</a> Secure Cloud pod — one "
+    "RTX 4090 (24 GB) at $0.69/hr — and every result lands on this page "
+    "automatically as the loop commits it</div>")
 
 
 def topnav(active, root=False):
@@ -1133,9 +1149,10 @@ to call, no cloud to depend on. The map is yours, and it lives in a few
 megabytes you own.</p>
 </div>
 
-<p class="psub num" style="margin-top:34px">updated {now} · experiments run
-around the clock on a rented RTX 4090; the loop commits every result to
-git as it goes</p>
+<p class="psub num" style="margin-top:34px">updated {now} · experiments run around the clock on a
+<a href='https://www.runpod.io'>RunPod</a> Secure Cloud pod — one
+RTX 4090 (24 GB) at $0.69/hr; the loop commits every result to git as
+it goes</p>
 </div>
 {CREDITS}</body></html>"""
     OVERVIEW_OUT.write_text(html_page)
@@ -1261,6 +1278,7 @@ def render_paths(exps):
 <title>Proposed Inference Paths — Low-Light Geolocalization</title>
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('paths')}
+{COMPUTE_BANNER}
 <div class="paths-wrap">
 <div class="eyebrow" style="text-align:center">Alexis Rondeau · live research log</div>
 <h1>Proposed Inference Paths</h1>
@@ -1385,6 +1403,7 @@ def render():
 <title>Low-Light Geolocalization — Autoresearch Progress</title>
 <style>{CSS}</style><script>{JS}</script></head><body>
 {topnav('log')}
+{COMPUTE_BANNER}
 <header class="dash-head">
   <div class="eyebrow">Alexis Rondeau · live research log</div>
   <h1>Can a drone find itself in the dark?</h1>
