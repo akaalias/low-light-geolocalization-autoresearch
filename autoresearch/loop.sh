@@ -27,6 +27,19 @@ STATE="state"; mkdir -p "$STATE" runs
 
 best_metric() { [ -f "$STATE/best.json" ] && $PY -c "import json;print(json.load(open('$STATE/best.json'))['primary'])" || echo 1e18; }
 
+# Real-time phase reporting for the public LIVE row: a one-file commit
+# force-pushed to refs/heads/status (plumbing objects only — main's history
+# stays untouched). The page fetches it from raw.githubusercontent.
+report_phase() {
+  printf '{"iter":%s,"iterations":%s,"iter_started":%s,"phase":"%s","phase_started":%s,"best":%s}\n' \
+    "${i:-0}" "$ITERATIONS" "${ITER_T0:-$(date +%s)}" "$1" "$(date +%s)" "$(best_metric)" \
+    > "$STATE/phase.json" || true
+  ( BLOB=$(git hash-object -w "$STATE/phase.json") &&
+    TREE=$(printf '100644 blob %s\tphase.json\n' "$BLOB" | git mktree) &&
+    COMMIT=$(git commit-tree "$TREE" -m "phase: $1") &&
+    git push -qf origin "$COMMIT:refs/heads/status" ) 2>/dev/null || true
+}
+
 # A dirty tree would blur lineage (a kept commit must contain exactly one
 # experiment's change) — but the loop itself leaves state/ modified, so
 # instead of aborting, checkpoint pending TRACKED changes into their own
@@ -97,6 +110,7 @@ for i in $(seq 1 "$ITERATIONS"); do
   # record (§7 lineage) even when SKIP_AGENT skips the calls.
   cp autoresearch/prompt.md "$RUN_DIR/prompt.md"
   cp autoresearch/prompt_impl.md "$RUN_DIR/prompt_impl.md"
+  report_phase design
   AGENT_MODEL_DESIGN=""; AGENT_MODEL_IMPL=""
   T_DESIGN=0; T_IMPL=0
   if [ "${SKIP_AGENT:-0}" != "1" ]; then
@@ -113,6 +127,7 @@ for i in $(seq 1 "$ITERATIONS"); do
       echo "design agent produced no runs/pending_experiment.json; skipping iteration"
       continue
     fi
+    report_phase implement
     T0=$(date +%s)
     "$CLAUDE_BIN" -p "$(cat "$RUN_DIR/prompt_impl.md")" \
       --model "${IMPL_MODEL:-claude-sonnet-5}" \
@@ -143,6 +158,7 @@ for i in $(seq 1 "$ITERATIONS"); do
   # 3. Train one model per development area — IN PARALLEL (areas are fully
   #    independent; per-area out-dirs avoid a write race on train_info.json,
   #    merged below) — then score (§6).
+  report_phase train
   T0=$(date +%s); FAILED=0; PIDS=""
   for area in $AREAS; do
     # Cap math-library threads per process: torch defaults each process to a
@@ -173,6 +189,7 @@ for a in sys.argv[2:]:
 (run / "train_info.json").write_text(json.dumps(merged, indent=2))
 PYMERGE
   fi
+  report_phase score
   T0=$(date +%s)
   if [ "$FAILED" = "1" ]; then
     echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
@@ -236,6 +253,7 @@ $(cat "$RUN_DIR/experiment.json")" || true
   fi
 
   T_HOLDOUT=$(( $(date +%s) - T0 ))
+  report_phase publish
   T0=$(date +%s)
   $PY -m autoresearch.gallery || true
   T_GALLERY=$(( $(date +%s) - T0 ))
@@ -269,4 +287,5 @@ PYTIMES
   git push -q origin main 2>/dev/null || \
     echo "WARNING: git push failed (no remote/offline?) — record is committed locally"
 done
+report_phase idle
 echo "Loop finished. Best: $(best_metric) m — see gallery/index.html"

@@ -66,6 +66,14 @@ a:hover{border-bottom-color:var(--accent)}
    svg (agent figures, chart) without touching the drawings themselves. */
 svg text{paint-order:stroke;stroke:var(--paper);stroke-width:2.8px;
   stroke-linejoin:round}
+.page-head{max-width:900px;margin:30px auto 4px;padding:0 16px;text-align:center}
+.page-head .eyebrow{text-align:center}
+.page-head h1{font:700 34px/1.15 var(--serif);color:var(--ink);margin:10px 0 14px;
+  letter-spacing:0}
+.page-head .page-sub{font:15.5px/1.6 var(--serif);color:var(--muted);
+  font-style:normal;margin:0 auto;max-width:820px;text-align:center}
+.page-head .page-sub b{color:var(--ink)}
+.page-head .page-sub a{color:var(--accent)}
 .hero{max-width:980px;margin:26px auto 6px;padding:0 16px}
 .hero svg{display:block;width:100%;height:auto}
 .hero svg text{stroke:none;paint-order:normal}
@@ -551,124 +559,45 @@ def status_badge():
             "<span class='dot'></span>live</span>")
 
 
-HERO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 340" font-family="Palatino,Georgia,serif">
+HERO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 380" font-family="Palatino,Georgia,serif">
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#e9e3cb"/>
-      <stop offset="0.30" stop-color="#d8c9a4"/>
-      <stop offset="0.52" stop-color="#8f7a55"/>
-      <stop offset="0.72" stop-color="#3b352a"/>
+      <stop offset="0" stop-color="#e9e3cb"/><stop offset="0.30" stop-color="#d8c9a4"/>
+      <stop offset="0.52" stop-color="#8f7a55"/><stop offset="0.72" stop-color="#3b352a"/>
       <stop offset="1" stop-color="#191813"/>
     </linearGradient>
-    <linearGradient id="ground" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#cfc9ae"/>
-      <stop offset="0.35" stop-color="#a89b74"/>
-      <stop offset="0.60" stop-color="#4a4433"/>
-      <stop offset="1" stop-color="#211f18"/>
+    <linearGradient id="mapg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ddd6bc"/><stop offset="0.34" stop-color="#b3a67d"/>
+      <stop offset="0.58" stop-color="#565040"/><stop offset="1" stop-color="#23211a"/>
     </linearGradient>
-    <clipPath id="panel"><rect x="0" y="0" width="980" height="340" rx="6"/></clipPath>
+    <clipPath id="panel"><rect x="0" y="0" width="980" height="380" rx="6"/></clipPath>
+    <clipPath id="mapclip"><rect x="16" y="252" width="948" height="96"/></clipPath>
   </defs>
-
   <g clip-path="url(#panel)">
-  <rect x="0" y="0" width="980" height="340" fill="url(#sky)"/>
-
-  <!-- setting sun, day side -->
-  <circle cx="86" cy="238" r="26" fill="#fffff8" opacity="0.55"/>
-  <circle cx="86" cy="238" r="40" fill="#fffff8" opacity="0.12"/>
-
-  <!-- stars + moon, night side only -->
+  <rect x="0" y="0" width="980" height="380" fill="url(#sky)"/>
+  <circle cx="80" cy="212" r="24" fill="#fffff8" opacity="0.55"/>
+  <circle cx="80" cy="212" r="38" fill="#fffff8" opacity="0.12"/>
   <g fill="#fffff8">
-    <circle cx="620" cy="44" r="0.7" opacity="0.25"/>
-    <circle cx="672" cy="90" r="0.7" opacity="0.3"/>
-    <circle cx="705" cy="30" r="0.8" opacity="0.35"/>
-    <circle cx="760" cy="64" r="0.7" opacity="0.4"/>
-    <circle cx="812" cy="30" r="0.8" opacity="0.5"/>
-    <circle cx="852" cy="100" r="0.7" opacity="0.4"/>
-    <circle cx="884" cy="56" r="0.9" opacity="0.55"/>
-    <circle cx="930" cy="120" r="0.7" opacity="0.45"/>
-    <circle cx="948" cy="34" r="0.8" opacity="0.55"/>
-    <circle cx="742" cy="140" r="0.6" opacity="0.3"/>
-    <circle cx="800" cy="170" r="0.6" opacity="0.3"/>
+    <circle cx="640" cy="52" r="0.7" opacity="0.3"/><circle cx="700" cy="96" r="0.7" opacity="0.35"/>
+    <circle cx="748" cy="38" r="0.8" opacity="0.4"/><circle cx="820" cy="70" r="0.7" opacity="0.45"/>
+    <circle cx="872" cy="34" r="0.9" opacity="0.55"/><circle cx="918" cy="112" r="0.7" opacity="0.45"/>
+    <circle cx="948" cy="58" r="0.8" opacity="0.55"/><circle cx="782" cy="150" r="0.6" opacity="0.3"/>
+    <circle cx="606" cy="140" r="0.6" opacity="0.25"/>
   </g>
-  <path d="M 862 64 a 13 13 0 1 0 9 22 a 10.5 10.5 0 1 1 -9 -22 Z" fill="#fffff8" opacity="0.55"/>
-
-  <!-- terrain band -->
-  <path d="M 0 262 Q 240 250 490 258 T 980 250 L 980 340 L 0 340 Z" fill="url(#ground)"/>
-  <!-- roads: one long band following the horizon, two feeders converging -->
-  <g fill="none" stroke-linecap="round">
-    <path d="M 0 296 Q 320 282 640 274 Q 820 270 980 268" stroke="#55503c" stroke-width="2.2" opacity="0.30"/>
-    <path d="M 0 296 Q 320 282 640 274 Q 820 270 980 268" stroke="#fffff8" stroke-width="2.2" opacity="0.07"/>
-    <path d="M 120 340 Q 240 300 358 276" stroke="#55503c" stroke-width="1.8" opacity="0.28"/>
-    <path d="M 470 340 Q 520 312 560 288" stroke="#55503c" stroke-width="1.6" opacity="0.22"/>
-    <path d="M 830 340 Q 780 300 742 270" stroke="#cfc9ae" stroke-width="1.6" opacity="0.12"/>
-    <path d="M 980 316 Q 890 296 820 284" stroke="#cfc9ae" stroke-width="1.4" opacity="0.10"/>
-  </g>
-  <!-- buildings, footprints aligned to the road band -->
-  <g>
-    <rect x="146" y="300" width="30" height="13" fill="#8f886b" transform="rotate(-3 161 306)"/>
-    <rect x="236" y="286" width="24" height="11" fill="#7c7458" transform="rotate(-3 248 291)"/>
-    <rect x="322" y="279" width="20" height="9" fill="#6a6349" transform="rotate(-2 332 283)"/>
-    <rect x="640" y="279" width="19" height="9" fill="#2f2d24" transform="rotate(-2 649 283)"/>
-    <rect x="645" y="281" width="2.6" height="2.6" fill="#c69b3a" opacity="0.9"/>
-    <rect x="716" y="290" width="26" height="12" fill="#292720" transform="rotate(2 729 296)"/>
-    <rect x="722" y="293" width="3" height="3" fill="#c69b3a" opacity="0.95"/>
-    <rect x="733" y="296" width="3" height="3" fill="#c69b3a" opacity="0.5"/>
-    <rect x="836" y="276" width="18" height="8" fill="#2b2921" transform="rotate(-2 845 280)"/>
-    <rect x="841" y="278" width="2.4" height="2.4" fill="#c69b3a" opacity="0.85"/>
-    <rect x="902" y="292" width="26" height="12" fill="#26241d" transform="rotate(2 915 298)"/>
-    <rect x="908" y="295" width="3" height="3" fill="#c69b3a" opacity="0.9"/>
-    <circle cx="678" cy="272" r="1.2" fill="#c69b3a"/>
-    <circle cx="678" cy="272" r="5" fill="#c69b3a" opacity="0.15"/>
-    <circle cx="806" cy="268" r="1.1" fill="#c69b3a"/>
-    <circle cx="806" cy="268" r="4.5" fill="#c69b3a" opacity="0.15"/>
-    <circle cx="942" cy="266" r="1.1" fill="#c69b3a"/>
-    <circle cx="942" cy="266" r="4.5" fill="#c69b3a" opacity="0.15"/>
-  </g>
-
-  <!-- the aircraft: a paper-dart gliding into the night -->
+  <path d="M 880 78 a 13 13 0 1 0 9 22 a 10.5 10.5 0 1 1 -9 -22 Z" fill="#fffff8" opacity="0.55"/>
+  <text x="18" y="30" font-size="9" fill="#6b6a60" letter-spacing="1.6" font-weight="600">MORNING</text>
+  <text x="470" y="30" font-size="9" fill="#efecd9" letter-spacing="1.6" font-weight="600" opacity="0.75">DUSK</text>
+  <text x="962" y="30" font-size="9" fill="#efecd9" letter-spacing="1.6" font-weight="600" text-anchor="end">NIGHT</text>
   <g transform="rotate(3 296 118)">
-    <path d="M 258 108 L 338 121 L 262 132 L 278 121 Z"
-          fill="#26251e" stroke="#fffff8" stroke-width="1.3" stroke-linejoin="round"/>
-    <path d="M 258 108 L 338 121 L 292 118 Z" fill="#3d3a2e" stroke="#fffff8"
-          stroke-width="1.1" stroke-linejoin="round"/>
+    <path d="M 258 108 L 338 121 L 262 132 L 278 121 Z" fill="#26251e" stroke="#fffff8" stroke-width="1.3" stroke-linejoin="round"/>
+    <path d="M 258 108 L 338 121 L 292 118 Z" fill="#3d3a2e" stroke="#fffff8" stroke-width="1.1" stroke-linejoin="round"/>
     <circle cx="318" cy="124" r="1.8" fill="#c0503a" stroke="none"/>
   </g>
   <text x="294" y="92" font-size="9.5" fill="#efecd9" text-anchor="middle" font-style="italic" opacity="0.9">low-light camera · one glance</text>
-
-  <!-- camera cone -->
-  <path d="M 330 126 L 420 256 L 585 256 Z" fill="#fffff8" opacity="0.07"/>
-  <path d="M 330 126 L 420 256 M 330 126 L 585 256" stroke="#dcd8c4" stroke-width="0.9"
-        stroke-dasharray="1.5 3.5" opacity="0.5" fill="none"/>
-
-  <!-- geo-box: the whole trained area, in perspective -->
   <g>
-    <path d="M 336 254 L 876 254 L 952 348 L 258 348 Z" fill="none"
-          stroke="#efecd9" stroke-width="1" stroke-dasharray="5 4" opacity="0.4"/>
-    <text x="336" y="247" font-size="8" fill="#efecd9" letter-spacing="1.3"
-          font-weight="600" opacity="0.65">GEO-BOX — THE AREA THIS MODEL MEMORIZED</text>
-  </g>
-
-  <!-- viewed patch + fix -->
-  <g>
-    <path d="M 420 256 L 585 256 L 612 298 L 396 298 Z" fill="#efecd9" fill-opacity="0.06"
-          stroke="#efecd9" stroke-width="1.3" opacity="0.9"/>
-    <text x="620" y="268" font-size="8" fill="#efecd9" letter-spacing="1.2"
-          font-weight="600" opacity="0.7">WHAT IT SEES NOW</text>
-    <circle cx="502" cy="276" r="6" fill="none" stroke="#c0503a" stroke-width="1.6"/>
-    <line x1="502" y1="266" x2="502" y2="286" stroke="#c0503a" stroke-width="1.6"/>
-    <line x1="492" y1="276" x2="512" y2="276" stroke="#c0503a" stroke-width="1.6"/>
-    <text x="504" y="320" font-size="12.5" fill="#efecd9" text-anchor="middle" font-weight="600">(lat, lon, confidence)</text>
-    <text x="504" y="333" font-size="9.5" fill="#c9c4ae" text-anchor="middle">position fix — no GPS, no maps on board</text>
-  </g>
-
-  <!-- leader to lens -->
-  <path d="M 334 118 Q 420 108 560 112" stroke="#c9c4ae" stroke-width="0.9" stroke-dasharray="2 4" fill="none" opacity="0.6"/>
-
-  <!-- magnifier lens -->
-  <g>
+    <path d="M 334 118 Q 420 108 560 112" stroke="#c9c4ae" stroke-width="0.9" stroke-dasharray="2 4" fill="none" opacity="0.6"/>
     <circle cx="712" cy="118" r="93" fill="#211f18" stroke="#efecd9" stroke-width="1.6"/>
     <line x1="560" y1="112" x2="622" y2="114" stroke="#c9c4ae" stroke-width="0.9" stroke-dasharray="2 4" opacity="0.6"/>
-    <!-- mini path -->
     <rect x="638" y="100" width="26" height="26" fill="none" stroke="#9b998c" stroke-width="1.2"/>
     <path d="M 638 118 L 664 109" stroke="#3d3a2e" stroke-width="2.2"/>
     <rect x="643" y="104" width="6" height="4" fill="#2f2d24"/>
@@ -698,15 +627,59 @@ HERO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 340" font
     <circle cx="778" cy="113" r="3.4" fill="none" stroke="#c0503a" stroke-width="1.3"/>
     <line x1="778" y1="108" x2="778" y2="118" stroke="#c0503a" stroke-width="1.3"/>
     <line x1="773" y1="113" x2="783" y2="113" stroke="#c0503a" stroke-width="1.3"/>
-    <text x="712" y="154" font-size="10.5" fill="#efecd9" text-anchor="middle" font-weight="600">inside the flight computer</text>
-    <text x="712" y="168" font-size="9" fill="#9b998c" text-anchor="middle">4 MiB of memorized terrain</text>
+    <text x="712" y="162" font-size="10.5" fill="#efecd9" text-anchor="middle" font-weight="600">inside the flight computer</text>
+    <text x="712" y="176" font-size="9" fill="#9b998c" text-anchor="middle">4 MiB of memorized terrain</text>
   </g>
-
-  <!-- captions: day side dark ink, transition annotation -->
-  <text x="18" y="30" font-size="9" fill="#6b6a60" letter-spacing="1.6" font-weight="600">MORNING</text>
-  <text x="470" y="30" font-size="9" fill="#efecd9" letter-spacing="1.6" font-weight="600" opacity="0.75">DUSK</text>
-  <text x="962" y="30" font-size="9" fill="#efecd9" letter-spacing="1.6" font-weight="600" text-anchor="end">NIGHT</text>
-  <text x="18" y="326" font-size="9" fill="#4a4433" letter-spacing="1.6" font-weight="600">FLYING DARK — ONE MODEL, EVERY LIGHT</text>
+  <path d="M 330 126 L 438 256 L 526 256 Z" fill="#fffff8" opacity="0.07"/>
+  <path d="M 330 126 L 438 256 M 330 126 L 526 256" stroke="#dcd8c4" stroke-width="0.9" stroke-dasharray="1.5 3.5" opacity="0.5" fill="none"/>
+  <rect x="16" y="252" width="948" height="96" fill="url(#mapg)"/>
+  <g clip-path="url(#mapclip)">
+    <g stroke="#fffff8" opacity="0.16" stroke-width="1">
+      <line x1="88" y1="252" x2="88" y2="348"/><line x1="168" y1="252" x2="168" y2="348"/>
+      <line x1="248" y1="252" x2="248" y2="348"/><line x1="328" y1="252" x2="328" y2="348"/>
+      <line x1="408" y1="252" x2="408" y2="348"/><line x1="568" y1="252" x2="568" y2="348"/>
+      <line x1="648" y1="252" x2="648" y2="348"/><line x1="728" y1="252" x2="728" y2="348"/>
+      <line x1="808" y1="252" x2="808" y2="348"/><line x1="888" y1="252" x2="888" y2="348"/>
+      <line x1="16" y1="284" x2="964" y2="284"/><line x1="16" y1="316" x2="964" y2="316"/>
+    </g>
+    <line x1="60" y1="348" x2="340" y2="252" stroke="#fffff8" opacity="0.2" stroke-width="1.6"/>
+    <path d="M 600 252 Q 632 300 600 348" stroke="#3a4438" opacity="0.5" stroke-width="7" fill="none"/>
+    <g>
+      <rect x="94" y="258" width="30" height="20" fill="#00000022"/>
+      <rect x="174" y="290" width="30" height="20" fill="#00000018"/>
+      <rect x="254" y="258" width="30" height="20" fill="#00000020"/>
+      <rect x="254" y="322" width="30" height="20" fill="#00000016"/>
+      <rect x="334" y="290" width="30" height="20" fill="#00000020"/>
+      <rect x="574" y="258" width="20" height="20" fill="#ffffff10"/>
+      <rect x="654" y="290" width="30" height="20" fill="#ffffff12"/>
+      <rect x="734" y="258" width="30" height="20" fill="#ffffff10"/>
+      <rect x="814" y="322" width="30" height="20" fill="#ffffff12"/>
+      <rect x="894" y="290" width="28" height="20" fill="#ffffff10"/>
+    </g>
+    <g fill="#c69b3a">
+      <rect x="660" y="295" width="2.4" height="2.4" opacity="0.9"/>
+      <rect x="672" y="301" width="2.4" height="2.4" opacity="0.55"/>
+      <rect x="740" y="263" width="2.4" height="2.4" opacity="0.95"/>
+      <rect x="752" y="270" width="2.4" height="2.4" opacity="0.5"/>
+      <rect x="820" y="327" width="2.4" height="2.4" opacity="0.85"/>
+      <rect x="900" y="295" width="2.4" height="2.4" opacity="0.9"/>
+      <circle cx="728" cy="316" r="1.1"/><circle cx="728" cy="316" r="4.5" opacity="0.15"/>
+      <circle cx="888" cy="284" r="1.1"/><circle cx="888" cy="284" r="4.5" opacity="0.15"/>
+    </g>
+  </g>
+  <rect x="16" y="252" width="948" height="96" fill="none" stroke="#fffff8" opacity="0.25" stroke-width="1"/>
+  <rect x="128" y="258" width="788" height="84" fill="none" stroke="#efecd9" stroke-width="1.2" stroke-dasharray="6 4" opacity="0.75"/>
+  <text x="128" y="248" font-size="8" fill="#6b6a60" letter-spacing="1.3" font-weight="600">GEO-BOX — THE AREA THIS MODEL MEMORIZED</text>
+  <g>
+    <rect x="438" y="256" width="88" height="88" fill="#fffff8" fill-opacity="0.10" stroke="#fffff8" stroke-width="1.8"/>
+    <text x="534" y="266" font-size="8" fill="#efecd9" letter-spacing="1.3" font-weight="600">WHAT IT SEES NOW</text>
+    <circle cx="482" cy="300" r="6" fill="none" stroke="#c0503a" stroke-width="1.7"/>
+    <line x1="482" y1="290" x2="482" y2="310" stroke="#c0503a" stroke-width="1.7"/>
+    <line x1="472" y1="300" x2="492" y2="300" stroke="#c0503a" stroke-width="1.7"/>
+  </g>
+  <text x="482" y="366" font-size="12.5" fill="#efecd9" text-anchor="middle" font-weight="600">(lat, lon, confidence)</text>
+  <text x="482" y="378" font-size="9.5" fill="#c9c4ae" text-anchor="middle">position fix — no GPS, no maps on board</text>
+  <text x="18" y="372" font-size="9" fill="#4a4433" letter-spacing="1.6" font-weight="600">FLYING DARK — ONE MODEL, EVERY LIGHT</text>
   </g>
 </svg>"""
 
@@ -764,22 +737,57 @@ def live_row(next_id):
 <td colspan="7"><span id="live-text">experiment in progress…</span></td>
 <td><span class="status-badge live"><span class="dot"></span>live</span></td></tr>
 <script>(function(){{
-  var built={built_ms}, phases={phases_js};
+  var built={built_ms}, phases={phases_js}, st=null;
+  var NAMES={{design:'designing the experiment (Fable)',
+    implement:'implementing the design (Sonnet)',
+    train:'training 4 areas in parallel',
+    score:'scoring against the frozen ruler',
+    publish:'logging + publishing the result',
+    idle:'loop idle — batch finished'}};
   var el=document.getElementById('live-text'); if(!el) return;
   var total=phases.reduce(function(a,p){{return a+p[1]}},0);
   function fmt(s){{s=Math.max(0,Math.floor(s));
     return s<60? s+' s' : Math.floor(s/60)+' m '+('0'+s%60).slice(-2)+' s';}}
+  // Live phase truth: the loop force-pushes state/phase.json to the repo's
+  // 'status' branch at every phase transition; raw.githubusercontent serves
+  // it with CORS. Elapsed counts from the iteration's true start.
+  var RAW='https://raw.githubusercontent.com/akaalias/low-light-geolocalization-autoresearch/status/phase.json';
+  function refresh(){{
+    fetch(RAW+'?t='+Date.now()).then(function(r){{return r.ok?r.json():null}})
+      .then(function(j){{if(j&&j.phase) st=j;}}).catch(function(){{}});
+  }}
+  refresh(); setInterval(refresh, 30000);
   function tick(){{
-    var t=(Date.now()-built)/1000, acc=0, ph=null;
-    for(var i=0;i<phases.length;i++){{acc+=phases[i][1];
-      if(t<acc){{ph=phases[i][0];break;}}}}
-    var msg = ph ? 'running '+fmt(t)+' · estimated phase: '+ph
-                 : 'running '+fmt(t)+' · past the usual '+fmt(total)+
-                   ' — result should land any moment (reload for it)';
+    var now=Date.now()/1000, msg;
+    if(st && st.phase==='idle'){{
+      msg='no experiment running — the batch finished; best so far stands';
+    }} else if(st && now-st.phase_started < 5400){{
+      msg='iteration '+st.iter+'/'+st.iterations
+         +' · running '+fmt(now-st.iter_started)
+         +' · phase: '+(NAMES[st.phase]||st.phase);
+    }} else if(st){{
+      msg='status is stale ('+fmt(now-st.phase_started)+' since last phase report) — the loop may be stopped';
+    }} else {{
+      var t=(Date.now()-built)/1000, acc=0, ph=null;
+      for(var i=0;i<phases.length;i++){{acc+=phases[i][1];
+        if(t<acc){{ph=phases[i][0];break;}}}}
+      msg=ph ? 'running ~'+fmt(t)+' · estimated phase: '+ph
+             : 'running ~'+fmt(t)+' · past the usual '+fmt(total)+' — result should land any moment';
+    }}
     el.textContent='experiment in progress — '+msg;
   }}
   tick(); setInterval(tick,1000);
 }})();</script>"""
+
+
+def page_header(title, sub_html):
+    """THE one header for every inner page (log, designs, lineage) — same
+    markup, same classes, no per-page typography. Do not hand-roll page
+    headers; call this."""
+    return (f"<header class='page-head'>"
+            f"<div class='eyebrow'>Alexis Rondeau · live research log</div>"
+            f"<h1>{title}</h1>"
+            f"<p class='page-sub'>{sub_html}</p></header>")
 
 
 def topnav(active, root=False):
@@ -1516,14 +1524,7 @@ def render_paths(exps):
 {topnav('paths')}
 {compute_banner()}
 <div class="paths-wrap">
-<div class="eyebrow" style="text-align:center">Alexis Rondeau · live research log</div>
-<h1>Model designs</h1>
-<p class="psub lead">Before it may train anything, every iteration of the
-research loop has to draw the model it proposes to fly — a proper technical
-figure of its <b>inference path</b>: the computation one camera frame takes
-through the deployed network, left to right, from pixels to
-<i>(lat,&nbsp;lon,&nbsp;confidence)</i>. These are those figures — every
-proposal ever made, reverted branches included.</p>
+{page_header("Model designs", "Before it may train anything, every iteration of the research loop draws the model it proposes to fly — a proper technical figure of the computation one camera frame takes through the deployed network, from pixels to <i>(lat,&nbsp;lon,&nbsp;confidence)</i>. These are those figures — every proposal ever made, reverted branches included.")}
 <div class="pnote">
 <p>Each figure is drawn by the experimenting agent itself, under one shared
 visual contract — tensors drawn as tensors (an image is pixels, a feature map
@@ -1607,121 +1608,254 @@ updated {now}</p>"""]
 
 LINEAGE_OUT = REPO_ROOT / "gallery" / "research-lineage.html"
 
+# Ported from the author's llm-heuristic-scientists-workshop lineage page
+# (static/lineage.js + lineage.css), adapted to this repo's data model:
+# nodes from experiments.sqlite, popover content inlined (no detail endpoint),
+# click-through to the research log row.
+LINEAGE_CSS = """
+.lin-head{max-width:980px;margin:0 auto;padding:0 16px}
+.lin-head .legend{margin:10px 0 4px;display:flex;flex-wrap:wrap;gap:10px 22px;
+  font-size:13px;color:var(--muted)}
+.lin-head .legend .k{display:inline-flex;align-items:center;gap:7px}
+.lin-head .legend .ldot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.lin-head .legend .larc{width:18px;height:9px;border-top:1px solid var(--rule);
+  display:inline-block;border-radius:9px 9px 0 0}
+.lin-head .legend .lring{width:10px;height:10px;border-radius:50%;
+  border:1.5px solid #8a6a1e;display:inline-block}
+#diagram{overflow-x:auto;margin-top:14px;padding:24px 28px 16px;
+  scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
+#diagram::-webkit-scrollbar{height:6px}
+#diagram::-webkit-scrollbar-thumb{background:var(--rule);border-radius:3px}
+#lin{display:block}
+#lin text{font:12px/1 var(--serif);fill:var(--muted)}
+#lin .edge{fill:none;stroke:#b2ac99;stroke-width:1}
+#lin .nd{cursor:pointer}
+#lin .nk{fill:var(--ink)}
+#lin .ndd{fill:#9b998c}
+#lin .nf{fill:var(--accent)}
+#lin .nh{fill:var(--paper);stroke:#8a6a1e;stroke-width:1.6}
+#lin .np{fill:none;stroke:#8a6a1e;stroke-width:1.5}
+#lin .nlab{fill:var(--faint);font:10px/1 var(--serif);stroke:none}
+#lin .hit{cursor:pointer}
+#lin.dim .nd,#lin.dim .edge,#lin.dim .nlab{opacity:.07}
+#lin.dim .nd.lit{opacity:.55}
+#lin.dim .nd.lit-direct{opacity:1}
+#lin.dim .nlab.lit{opacity:1;fill:var(--faint)}
+#lin.dim .nlab.lit-direct{opacity:1;fill:var(--ink)}
+#lin.dim .edge.lit{opacity:.4;stroke:var(--muted);stroke-width:1}
+#lin.dim .edge.lit-direct{opacity:1;stroke:var(--ink);stroke-width:2}
+#tip{position:fixed;z-index:30;pointer-events:none;opacity:0;transition:opacity .1s;
+  background:var(--paper);color:var(--ink);border:1px solid var(--rule);
+  box-shadow:0 6px 22px rgba(60,50,30,.16);border-radius:5px;
+  font:13px/1.45 var(--serif);padding:12px 14px;max-width:430px}
+#tip .pop-title{font-weight:700;font-size:14.5px;line-height:1.25;margin-bottom:2px}
+#tip .pop-meta{color:var(--muted);font:11px/1.3 var(--serif);
+  font-feature-settings:"smcp" 1;text-transform:uppercase;
+  letter-spacing:.04em;margin-bottom:10px}
+#tip .pop-h{font:800 10px/1 var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin-bottom:4px}
+#tip p{margin:0;font:italic 13px/1.5 var(--serif);color:var(--muted)}
+#tip .pop-sec + .pop-sec{margin-top:11px}
+#tip .pop-parent{font:600 11px/1.35 var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.03em;color:var(--accent)}
+"""
+
+LINEAGE_JS = r"""
+(function () {
+  let data = {};
+  try { data = JSON.parse(document.getElementById("lineage-data").textContent || "{}"); } catch (e) {}
+  const nodes = data.nodes || [];
+  const host = document.getElementById("diagram");
+  const tip = document.getElementById("tip");
+  if (!host) return;
+  if (!nodes.length) { host.innerHTML = '<p class="empty">No experiments yet.</p>'; return; }
+  const esc = (s) => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const fmtM = (v) => v == null ? null : (v >= 1000 ? (v/1000).toFixed(2) + " km" : v.toFixed(1) + " m");
+
+  const byKey = {}; nodes.forEach(n => byKey[n.key] = n);
+  const parentsOf = {}; nodes.forEach(n => parentsOf[n.key] = (n.parents || []).filter(p => byKey[p]));
+
+  const n = nodes.length;
+  const padX = 28, topPad = 14, CAP = 260, minSpacing = 26;
+  const labelOf = (nd) => "#" + nd.n + "  " + nd.title.slice(0, 30);
+  const maxLabelLen = Math.max(1, ...nodes.map(nd => labelOf(nd).length));
+  const labelH = Math.min(280, Math.round(maxLabelLen * 5.9) + 14);
+  const avail = Math.max(320, (host.clientWidth || 1000) - 2 * padX - 8);
+  const spacing = n > 1 ? Math.max(minSpacing, avail / (n - 1)) : 0;
+  const Wpx = Math.round(2 * padX + (n - 1) * spacing);
+  const xFor = (i) => padX + i * spacing;
+  const xOf = {}; nodes.forEach((nd, i) => xOf[nd.key] = xFor(i));
+
+  const edges = [];
+  nodes.forEach(nd => parentsOf[nd.key].forEach(pk =>
+    edges.push({ c: nd.key, p: pk, dx: Math.abs(xOf[nd.key] - xOf[pk]) })));
+  const maxRy = edges.length ? Math.min(CAP, Math.max(...edges.map(e => e.dx / 2))) : 18;
+  const baseY = topPad + maxRy;
+  const H = Math.ceil(baseY + 12 + labelH);
+
+  let g = "";
+  edges.forEach(e => {
+    const a = Math.min(xOf[e.p], xOf[e.c]), b = Math.max(xOf[e.p], xOf[e.c]);
+    const rx = (b - a) / 2, ry = Math.min(CAP, rx);
+    g += `<path class="edge" data-c="${esc(e.c)}" data-p="${esc(e.p)}" `
+       + `d="M${a.toFixed(1)},${baseY} A${rx.toFixed(1)},${ry.toFixed(1)} 0 0 1 ${b.toFixed(1)},${baseY}"/>`;
+  });
+  nodes.forEach((nd, i) => {
+    const x = xFor(i).toFixed(1);
+    const cls = nd.kind === "failed" ? "nf" : nd.kind === "kept" ? "nk"
+              : nd.kind === "holdout" ? "nh" : "ndd";
+    const r = nd.kind === "kept" ? 4 : nd.kind === "holdout" ? 4 : 3;
+    g += `<circle class="nd ${cls}" data-key="${esc(nd.key)}" cx="${x}" cy="${baseY}" r="${r}"/>`;
+    if (nd.pivot) g += `<circle class="nd np" data-key="${esc(nd.key)}" cx="${x}" cy="${baseY}" r="6.5"/>`;
+    g += `<circle class="hit" data-key="${esc(nd.key)}" cx="${x}" cy="${baseY}" r="9" fill="transparent"/>`;
+    g += `<text class="nlab" data-key="${esc(nd.key)}" x="${x}" y="${baseY + 8}" text-anchor="start" `
+       + `transform="rotate(90 ${x} ${baseY + 8})">${esc(labelOf(nd))}</text>`;
+  });
+  const viewW = host.clientWidth || window.innerWidth || 1000;
+  const trail = Math.max(0, Math.round(viewW / 2) - padX);
+  const Wsvg = Wpx + trail;
+  host.innerHTML = `<svg id="lin" width="${Wsvg}" height="${H}" viewBox="0 0 ${Wsvg} ${H}">${g}</svg>`;
+
+  const latestX = xFor(n - 1);
+  const centerTarget = () =>
+    Math.max(0, Math.min(latestX - host.clientWidth / 2, host.scrollWidth - host.clientWidth));
+  host.scrollLeft = 0;
+  let introRan = false;
+  const intro = () => {
+    if (introRan) return; introRan = true;
+    const start = host.scrollLeft, dist = centerTarget() - start, dur = 1150;
+    if (Math.abs(dist) < 1) return;
+    const ease = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    const t0 = performance.now();
+    const step = (now) => {
+      const p = Math.min(1, (now - t0) / dur);
+      host.scrollLeft = start + dist * ease(p);
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
+  window.addEventListener("load", () => { host.scrollLeft = 0; setTimeout(intro, 350); });
+
+  const svg = document.getElementById("lin");
+  const q = (k) => CSS.escape(k);
+  function lit(key){
+    const nodeSet = new Set([key]); const edgeSet = new Set();
+    const stack = [key];
+    while (stack.length){
+      const cur = stack.pop();
+      (parentsOf[cur] || []).forEach(p => {
+        edgeSet.add(cur + "|" + p);
+        if (!nodeSet.has(p)){ nodeSet.add(p); stack.push(p); }
+      });
+    }
+    const direct = new Set([key, ...(parentsOf[key] || [])]);
+    svg.classList.add("dim");
+    svg.querySelectorAll(".lit,.lit-direct").forEach(el => el.classList.remove("lit", "lit-direct"));
+    nodeSet.forEach(k => svg.querySelectorAll(`[data-key="${q(k)}"]`).forEach(el =>
+      el.classList.add(direct.has(k) ? "lit-direct" : "lit")));
+    svg.querySelectorAll(".edge").forEach(e => {
+      const c = e.getAttribute("data-c"), p = e.getAttribute("data-p");
+      if (edgeSet.has(c + "|" + p)) e.classList.add(c === key ? "lit-direct" : "lit");
+    });
+  }
+  function unlit(){ svg.classList.remove("dim"); svg.querySelectorAll(".lit,.lit-direct").forEach(el => el.classList.remove("lit", "lit-direct")); }
+
+  function placePopover(nd){
+    const svgRect = svg.getBoundingClientRect(), w = tip.offsetWidth;
+    const sx = svgRect.width / Wsvg, sy = svgRect.height / H;
+    const cx = svgRect.left + xOf[nd.key] * sx;
+    const left = Math.max(8, Math.min(cx - w / 2, window.innerWidth - w - 12));
+    const top = svgRect.top + baseY * sy + 10;
+    tip.style.left = left + "px"; tip.style.top = top + "px";
+  }
+  function showPopover(nd){
+    const met = nd.kind === "failed" ? "gated fail"
+      : (fmtM(nd.metric) || "—") + (nd.kind === "holdout" ? " · blind holdout" : "");
+    const parents = (parentsOf[nd.key] || []).map(p =>
+      `<span class="pop-parent">↳ #${esc(p)} ${esc((byKey[p] || {}).title || "").slice(0, 48)}</span>`).join("<br>");
+    tip.innerHTML =
+      `<div class="pop-title">${esc(nd.title)}</div>`
+      + `<div class="pop-meta">#${esc(nd.n)} · ${esc(nd.category || "")} · ${met}</div>`
+      + (nd.summary ? `<div class="pop-sec"><div class="pop-h">In plain words</div><p>${esc(nd.summary)}</p></div>` : "")
+      + (parents ? `<div class="pop-sec"><div class="pop-h">Built on</div>${parents}</div>` : "");
+    tip.style.opacity = "1";
+    placePopover(nd);
+  }
+
+  svg.addEventListener("mouseover", e => {
+    const m = e.target.closest("[data-key]"); if (!m) return;
+    const key = m.getAttribute("data-key");
+    lit(key);
+    const nd = byKey[key]; if (nd) showPopover(nd);
+  });
+  svg.addEventListener("mouseout", e => {
+    const m = e.target.closest("[data-key]"); if (!m) return;
+    unlit(); tip.style.opacity = "0";
+  });
+  svg.addEventListener("click", e => { const m = e.target.closest("[data-key]");
+    if (m) location.href = "index.html#r" + encodeURIComponent(m.getAttribute("data-key")); });
+})();
+"""
+
 
 def render_lineage(exps):
-    """gallery/research-lineage.html — every experiment as one node, left to
-    right in discovery order, arcs to the kept design each branched from.
-    Same idiom as the author's llm-heuristic-scientists-workshop lineage
-    page: hover traces ancestry to the root, click opens the log record."""
-    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    """gallery/research-lineage.html — the author's lineage-page idiom with
+    this project's data: scrollable arc diagram, ancestry hover, eli5
+    popovers, click-through to the log."""
     nodes = []
     last_kept = None
+    last_kept_cat = None
     for e in exps:
         gated = (e["primary_metric"] or 0) >= FAIL
         if e["kind"] == "holdout_check":
-            outcome = "holdout"
+            kind = "holdout"
         elif gated:
-            outcome = "gated"
+            kind = "failed"
         elif e["kept"]:
-            outcome = "kept"
+            kind = "kept"
         else:
-            outcome = "disc"
-        nodes.append({"id": e["id"], "parent": last_kept, "outcome": outcome,
-                      "title": e["title"] or "", "metric": e["primary_metric"]})
-        if outcome == "kept":
+            kind = "discarded"
+        cat = e["category"] or ""
+        pivot = bool(kind != "holdout" and cat and last_kept_cat
+                     and cat != last_kept_cat)
+        nodes.append({
+            "key": str(e["id"]), "n": str(e["id"]),
+            "title": e["title"] or "(untitled)",
+            "summary": (e["eli5"] or e["hypothesis"] or "")[:260],
+            "metric": (None if gated or e["primary_metric"] is None
+                       else round(e["primary_metric"], 1)),
+            "kind": kind, "pivot": pivot, "category": cat,
+            "parents": [str(last_kept)] if last_kept is not None else [],
+        })
+        if kind == "kept":
             last_kept = e["id"]
-    n = len(nodes)
-    W, H, BASE = 980, 300, 208
-    step = (W - 80) / max(n - 1, 1)
-    xs = {nd["id"]: 40 + i * step for i, nd in enumerate(nodes)}
-    fills = {"kept": "#111111", "disc": "#9b998c", "gated": "#8c2f1f",
-             "holdout": "none"}
-    svg = [f"<svg viewBox='0 0 {W} {H}' font-family='Palatino,Georgia,serif' "
-           f"id='lngraph'>"]
-    svg.append(f"<line x1='30' y1='{BASE}' x2='{W-30}' y2='{BASE}' "
-               f"stroke='#ece9da' stroke-width='1'/>")
-    for nd in nodes:
-        if nd["parent"] is None:
-            continue
-        x1, x2 = xs[nd["parent"]], xs[nd["id"]]
-        lift = min(24 + (x2 - x1) * 0.22, 150)
-        col = "#111111" if nd["outcome"] == "kept" else "#9b998c"
-        svg.append(f"<path d='M {x1:.1f} {BASE-6} Q {(x1+x2)/2:.1f} "
-                   f"{BASE-6-lift:.1f} {x2:.1f} {BASE-6}' fill='none' "
-                   f"stroke='{col}' stroke-width='1' opacity='0.45' "
-                   f"class='ln-arc' data-child='{nd['id']}'/>")
-    for nd in nodes:
-        x = xs[nd["id"]]
-        met = fmt_m(nd["metric"]) if nd["metric"] else "—"
-        label = {"kept": "kept — new best", "disc": "discarded",
-                 "gated": "gated fail", "holdout": "blind holdout check"}[nd["outcome"]]
-        tip = esc(f"#{nd['id']} {nd['title'][:70]} · {met} · {label}")
-        extra = ("stroke='#8a6a1e' stroke-width='1.6'"
-                 if nd["outcome"] == "holdout" else "stroke='none'")
-        svg.append(f"<circle cx='{x:.1f}' cy='{BASE}' r='5' "
-                   f"fill='{fills[nd['outcome']]}' {extra} class='ln-node' "
-                   f"data-id='{nd['id']}' data-parent='{nd['parent'] or ''}'>"
-                   f"<title>{tip}</title></circle>")
-        svg.append(f"<text x='{x:.1f}' y='{BASE+20}' font-size='8.5' "
-                   f"fill='#9b998c' text-anchor='middle' class='num'>"
-                   f"{nd['id']}</text>")
-    svg.append("</svg>")
-    n_dev = sum(1 for nd in nodes if nd["outcome"] != "holdout")
-    body = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+            last_kept_cat = cat or last_kept_cat
+    n_dev = sum(1 for nd in nodes if nd["kind"] != "holdout")
+    data_json = json.dumps({"nodes": nodes, "target": TARGET_M})
+    html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
 <title>Research Lineage — Low-Light Geolocalization</title>
-<style>{CSS}
-.ln-wrap{{max-width:980px;margin:0 auto;padding:0 16px}}
-#lngraph{{width:100%;height:auto;display:block}}
-.ln-node{{cursor:pointer}}
-.ln-node.on{{stroke:#8c2f1f;stroke-width:2}}
-.ln-arc.on{{stroke:#8c2f1f;opacity:.9;stroke-width:1.6}}
-.ln-legend{{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;
-  font:12px var(--serif);color:var(--muted);margin:6px 0 18px}}
-.ln-legend span{{display:inline-flex;align-items:center;gap:6px}}
-.ln-legend i{{width:9px;height:9px;border-radius:50%;display:inline-block}}
-</style></head><body>
+<style>{CSS}{LINEAGE_CSS}</style></head><body>
 {topnav('lineage')}
 {compute_banner()}
-<div class="ln-wrap">
-<div class="eyebrow" style="text-align:center;margin-top:26px">Alexis Rondeau · live research log</div>
-<h1 style="text-align:center">Research lineage</h1>
-<p class="psub lead" style="text-align:center">{n_dev} experiments, left → right in
-discovery order. Every experiment branches from the best design known at the
-time — an arc connects each to its parent. <b>Hover</b> a node to trace its
-ancestry back to the root; <b>click</b> to open its full record in the
-research log.</p>
-{''.join(svg)}
-<div class="ln-legend">
-<span><i style="background:#111111"></i>kept — new best</span>
-<span><i style="background:#9b998c"></i>discarded</span>
-<span><i style="background:#8c2f1f"></i>gated fail</span>
-<span><i style="border:1.6px solid #8a6a1e"></i>blind holdout check</span>
+{page_header("Research experiment lineage", f"{n_dev} experiments, left → right in discovery order; each arc links an experiment to the kept design it built on. <b>Hover</b> to trace its ancestry back to the root; <b>click</b> to open its full record in the <a href='index.html'>research log</a>.")}
+<div class="lin-head">
+<div class="legend">
+  <span class="k"><span class="ldot" style="background:var(--ink)"></span>Kept (new best)</span>
+  <span class="k"><span class="ldot" style="background:#9b998c"></span>Worse than best</span>
+  <span class="k"><span class="ldot" style="background:var(--accent)"></span>Gated fail</span>
+  <span class="k"><span class="lring"></span>Blind holdout check / pivot ring</span>
+  <span class="k"><span class="larc"></span>Derived from its parent</span>
 </div>
 </div>
-<script>(function(){{
-  var parents={{}};
-  document.querySelectorAll('.ln-node').forEach(function(nd){{
-    parents[nd.dataset.id]=nd.dataset.parent;
-    nd.addEventListener('click',function(){{
-      location.href='index.html#r'+nd.dataset.id;}});
-    nd.addEventListener('mouseenter',function(){{
-      var chain={{}}; var cur=nd.dataset.id;
-      while(cur){{chain[cur]=1;cur=parents[cur];}}
-      document.querySelectorAll('.ln-node').forEach(function(m){{
-        m.classList.toggle('on', chain[m.dataset.id]===1);}});
-      document.querySelectorAll('.ln-arc').forEach(function(a){{
-        a.classList.toggle('on', chain[a.dataset.child]===1);}});
-    }});
-    nd.addEventListener('mouseleave',function(){{
-      document.querySelectorAll('.on').forEach(function(m){{m.classList.remove('on');}});
-    }});
-  }});
-}})();</script>
+<div id="diagram"></div>
+<div id="tip"></div>
+<script id="lineage-data" type="application/json">{data_json}</script>
+<script>{LINEAGE_JS}</script>
 {CREDITS}</body></html>"""
     LINEAGE_OUT.parent.mkdir(exist_ok=True)
-    LINEAGE_OUT.write_text(body)
-    print(f"wrote {LINEAGE_OUT} ({n} nodes)")
+    LINEAGE_OUT.write_text(html_page)
+    print(f"wrote {LINEAGE_OUT} ({len(nodes)} nodes)")
 
 
 def render():
@@ -1759,20 +1893,8 @@ def render():
 <style>{CSS}</style><script>{JS}</script></head><body>
 {topnav('log')}
 {compute_banner()}
+{page_header("The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a rented RTX 4090 and measured against one frozen ruler: the <b>worst</b> median position error across 6 lighting conditions × 4 test areas, on held-out crops ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
 <header class="dash-head">
-  <div class="eyebrow">Alexis Rondeau · live research log</div>
-  <h1>The experiment record</h1>
-  <p class="sub">Every experiment the autonomous loop has run — kept
-  <i>and</i> discarded. Each row was pre-registered before training
-  (hypothesis, method, expected outcome, and a hand-drawn architecture
-  figure), then trained on a rented RTX 4090 and measured against one
-  frozen ruler: the <b>worst</b> median position error across 6 lighting
-  conditions × 4 test areas, on held-out crops the model has never seen
-  ({size_note}). Two agents share each iteration — one designs, one
-  implements — and nothing here is curated after the fact: failures stay
-  on the record, and this page re-publishes itself with every result.
-  New here? The project story lives on the
-  <a href="../index.html">overview</a>.</p>
   <div class="intro">
   <p>{status_line} · {n_dev} experiment{'s' if n_dev != 1 else ''},
   {n_kept} kept.</p>
