@@ -75,9 +75,6 @@ header.page-head .page-sub{font:15.5px/1.6 var(--serif);color:var(--muted);
   font-style:normal;margin:0 auto;max-width:820px;text-align:center}
 .page-head .page-sub b{color:var(--ink)}
 .page-head .page-sub a{color:var(--accent)}
-.hero{max-width:980px;margin:26px auto 6px;padding:0 16px}
-.hero svg{display:block;width:100%;height:auto}
-.hero svg text{stroke:none;paint-order:normal}
 .live-row{background:rgba(140,47,31,.045)}
 .live-row td{color:var(--muted);font-style:italic}
 .live-row .status-badge{font-style:normal}
@@ -557,131 +554,6 @@ def status_badge():
     return ("<span class='status-badge live' title='experiments are running "
             "and this page updates as each one lands'>"
             "<span class='dot'></span>live</span>")
-
-
-HERO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 380" font-family="Palatino,Georgia,serif">
-  <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#e9e3cb"/><stop offset="0.30" stop-color="#d8c9a4"/>
-      <stop offset="0.52" stop-color="#8f7a55"/><stop offset="0.72" stop-color="#3b352a"/>
-      <stop offset="1" stop-color="#191813"/>
-    </linearGradient>
-    <linearGradient id="mapg" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#ddd6bc"/><stop offset="0.34" stop-color="#b3a67d"/>
-      <stop offset="0.58" stop-color="#565040"/><stop offset="1" stop-color="#23211a"/>
-    </linearGradient>
-    <clipPath id="panel"><rect x="0" y="0" width="980" height="380" rx="6"/></clipPath>
-    <clipPath id="mapclip"><rect x="16" y="252" width="948" height="96"/></clipPath>
-  </defs>
-  <g clip-path="url(#panel)">
-  <rect x="0" y="0" width="980" height="380" fill="url(#sky)"/>
-  <circle cx="80" cy="212" r="24" fill="#fffff8" opacity="0.55"/>
-  <circle cx="80" cy="212" r="38" fill="#fffff8" opacity="0.12"/>
-  <g fill="#fffff8">
-    <circle cx="640" cy="52" r="0.7" opacity="0.3"/><circle cx="700" cy="96" r="0.7" opacity="0.35"/>
-    <circle cx="748" cy="38" r="0.8" opacity="0.4"/><circle cx="820" cy="70" r="0.7" opacity="0.45"/>
-    <circle cx="872" cy="34" r="0.9" opacity="0.55"/><circle cx="918" cy="112" r="0.7" opacity="0.45"/>
-    <circle cx="948" cy="58" r="0.8" opacity="0.55"/><circle cx="782" cy="150" r="0.6" opacity="0.3"/>
-    <circle cx="606" cy="140" r="0.6" opacity="0.25"/>
-  </g>
-  <path d="M 880 78 a 13 13 0 1 0 9 22 a 10.5 10.5 0 1 1 -9 -22 Z" fill="#fffff8" opacity="0.55"/>
-  <text x="18" y="30" font-size="9" fill="#6b6a60" letter-spacing="1.6" font-weight="600">MORNING</text>
-  <text x="470" y="30" font-size="9" fill="#efecd9" letter-spacing="1.6" font-weight="600" opacity="0.75">DUSK</text>
-  <text x="962" y="30" font-size="9" fill="#efecd9" letter-spacing="1.6" font-weight="600" text-anchor="end">NIGHT</text>
-  <g transform="rotate(3 296 118)">
-    <path d="M 258 108 L 338 121 L 262 132 L 278 121 Z" fill="#26251e" stroke="#fffff8" stroke-width="1.3" stroke-linejoin="round"/>
-    <path d="M 258 108 L 338 121 L 292 118 Z" fill="#3d3a2e" stroke="#fffff8" stroke-width="1.1" stroke-linejoin="round"/>
-    <circle cx="318" cy="124" r="1.8" fill="#c0503a" stroke="none"/>
-  </g>
-  <text x="294" y="92" font-size="9.5" fill="#efecd9" text-anchor="middle" font-style="italic" opacity="0.9">low-light camera · one glance</text>
-  <g>
-    <path d="M 334 118 Q 420 108 560 112" stroke="#c9c4ae" stroke-width="0.9" stroke-dasharray="2 4" fill="none" opacity="0.6"/>
-    <circle cx="712" cy="118" r="93" fill="#211f18" stroke="#efecd9" stroke-width="1.6"/>
-    <line x1="560" y1="112" x2="622" y2="114" stroke="#c9c4ae" stroke-width="0.9" stroke-dasharray="2 4" opacity="0.6"/>
-    <rect x="638" y="100" width="26" height="26" fill="none" stroke="#9b998c" stroke-width="1.2"/>
-    <path d="M 638 118 L 664 109" stroke="#3d3a2e" stroke-width="2.2"/>
-    <rect x="643" y="104" width="6" height="4" fill="#2f2d24"/>
-    <rect x="655" y="115" width="5" height="4" fill="#2f2d24"/>
-    <rect x="644.5" y="105" width="1.5" height="1.5" fill="#c69b3a"/>
-    <line x1="668" y1="113" x2="678" y2="113" stroke="#9b998c" stroke-width="1"/>
-    <path d="M 678 113 l -3.5 -2 v 4 Z" fill="#9b998c"/>
-    <g stroke="#efecd9" stroke-width="1.1" fill="#211f18">
-      <path d="M 682 104 h 13 v 16 h -13 Z M 682 104 l 4 -4 h 13 l -4 4 M 695 104 l 4 -4 v 16 l -4 4"/>
-      <path d="M 704 108 h 9 v 11 h -9 Z M 704 108 l 3.5 -3.5 h 9 l -3.5 3.5 M 713 108 l 3.5 -3.5 v 11 l -3.5 3.5"/>
-    </g>
-    <line x1="720" y1="113" x2="729" y2="113" stroke="#9b998c" stroke-width="1"/>
-    <path d="M 729 113 l -3.5 -2 v 4 Z" fill="#9b998c"/>
-    <g>
-      <rect x="733" y="98" width="30" height="30" fill="none" stroke="#efecd9" stroke-width="1.1"/>
-      <g stroke="#3d3a2e" stroke-width="0.5">
-        <line x1="739" y1="98" x2="739" y2="128"/><line x1="745" y1="98" x2="745" y2="128"/>
-        <line x1="751" y1="98" x2="751" y2="128"/><line x1="757" y1="98" x2="757" y2="128"/>
-        <line x1="733" y1="104" x2="763" y2="104"/><line x1="733" y1="110" x2="763" y2="110"/>
-        <line x1="733" y1="116" x2="763" y2="116"/><line x1="733" y1="122" x2="763" y2="122"/>
-      </g>
-      <rect x="745" y="104" width="6" height="6" fill="#c0503a" opacity="0.9"/>
-      <rect x="751" y="104" width="6" height="6" fill="#c0503a" opacity="0.45"/>
-      <rect x="745" y="110" width="6" height="6" fill="#c0503a" opacity="0.4"/>
-    </g>
-    <line x1="767" y1="113" x2="774" y2="113" stroke="#9b998c" stroke-width="1"/>
-    <circle cx="778" cy="113" r="3.4" fill="none" stroke="#c0503a" stroke-width="1.3"/>
-    <line x1="778" y1="108" x2="778" y2="118" stroke="#c0503a" stroke-width="1.3"/>
-    <line x1="773" y1="113" x2="783" y2="113" stroke="#c0503a" stroke-width="1.3"/>
-    <text x="712" y="162" font-size="10.5" fill="#efecd9" text-anchor="middle" font-weight="600">inside the flight computer</text>
-    <text x="712" y="176" font-size="9" fill="#9b998c" text-anchor="middle">4 MiB of memorized terrain</text>
-  </g>
-  <path d="M 330 126 L 438 256 L 526 256 Z" fill="#fffff8" opacity="0.07"/>
-  <path d="M 330 126 L 438 256 M 330 126 L 526 256" stroke="#dcd8c4" stroke-width="0.9" stroke-dasharray="1.5 3.5" opacity="0.5" fill="none"/>
-  <rect x="16" y="252" width="948" height="96" fill="url(#mapg)"/>
-  <g clip-path="url(#mapclip)">
-    <g stroke="#fffff8" opacity="0.16" stroke-width="1">
-      <line x1="88" y1="252" x2="88" y2="348"/><line x1="168" y1="252" x2="168" y2="348"/>
-      <line x1="248" y1="252" x2="248" y2="348"/><line x1="328" y1="252" x2="328" y2="348"/>
-      <line x1="408" y1="252" x2="408" y2="348"/><line x1="568" y1="252" x2="568" y2="348"/>
-      <line x1="648" y1="252" x2="648" y2="348"/><line x1="728" y1="252" x2="728" y2="348"/>
-      <line x1="808" y1="252" x2="808" y2="348"/><line x1="888" y1="252" x2="888" y2="348"/>
-      <line x1="16" y1="284" x2="964" y2="284"/><line x1="16" y1="316" x2="964" y2="316"/>
-    </g>
-    <line x1="60" y1="348" x2="340" y2="252" stroke="#fffff8" opacity="0.2" stroke-width="1.6"/>
-    <path d="M 600 252 Q 632 300 600 348" stroke="#3a4438" opacity="0.5" stroke-width="7" fill="none"/>
-    <g>
-      <rect x="94" y="258" width="30" height="20" fill="#00000022"/>
-      <rect x="174" y="290" width="30" height="20" fill="#00000018"/>
-      <rect x="254" y="258" width="30" height="20" fill="#00000020"/>
-      <rect x="254" y="322" width="30" height="20" fill="#00000016"/>
-      <rect x="334" y="290" width="30" height="20" fill="#00000020"/>
-      <rect x="574" y="258" width="20" height="20" fill="#ffffff10"/>
-      <rect x="654" y="290" width="30" height="20" fill="#ffffff12"/>
-      <rect x="734" y="258" width="30" height="20" fill="#ffffff10"/>
-      <rect x="814" y="322" width="30" height="20" fill="#ffffff12"/>
-      <rect x="894" y="290" width="28" height="20" fill="#ffffff10"/>
-    </g>
-    <g fill="#c69b3a">
-      <rect x="660" y="295" width="2.4" height="2.4" opacity="0.9"/>
-      <rect x="672" y="301" width="2.4" height="2.4" opacity="0.55"/>
-      <rect x="740" y="263" width="2.4" height="2.4" opacity="0.95"/>
-      <rect x="752" y="270" width="2.4" height="2.4" opacity="0.5"/>
-      <rect x="820" y="327" width="2.4" height="2.4" opacity="0.85"/>
-      <rect x="900" y="295" width="2.4" height="2.4" opacity="0.9"/>
-      <circle cx="728" cy="316" r="1.1"/><circle cx="728" cy="316" r="4.5" opacity="0.15"/>
-      <circle cx="888" cy="284" r="1.1"/><circle cx="888" cy="284" r="4.5" opacity="0.15"/>
-    </g>
-  </g>
-  <rect x="16" y="252" width="948" height="96" fill="none" stroke="#fffff8" opacity="0.25" stroke-width="1"/>
-  <rect x="128" y="258" width="788" height="84" fill="none" stroke="#efecd9" stroke-width="1.2" stroke-dasharray="6 4" opacity="0.75"/>
-  <text x="128" y="248" font-size="8" fill="#6b6a60" letter-spacing="1.3" font-weight="600">GEO-BOX — THE AREA THIS MODEL MEMORIZED</text>
-  <g>
-    <rect x="438" y="256" width="88" height="88" fill="#fffff8" fill-opacity="0.10" stroke="#fffff8" stroke-width="1.8"/>
-    <text x="534" y="266" font-size="8" fill="#efecd9" letter-spacing="1.3" font-weight="600">WHAT IT SEES NOW</text>
-    <circle cx="482" cy="300" r="6" fill="none" stroke="#c0503a" stroke-width="1.7"/>
-    <line x1="482" y1="290" x2="482" y2="310" stroke="#c0503a" stroke-width="1.7"/>
-    <line x1="472" y1="300" x2="492" y2="300" stroke="#c0503a" stroke-width="1.7"/>
-  </g>
-  <text x="482" y="366" font-size="12.5" fill="#efecd9" text-anchor="middle" font-weight="600">(lat, lon, confidence)</text>
-  <text x="482" y="378" font-size="9.5" fill="#c9c4ae" text-anchor="middle">position fix — no GPS, no maps on board</text>
-  <text x="18" y="372" font-size="9" fill="#4a4433" letter-spacing="1.6" font-weight="600">FLYING DARK — ONE MODEL, EVERY LIGHT</text>
-  </g>
-</svg>"""
 
 
 # Compute credit banner — full-width strip under the topnav on every page,
@@ -1323,7 +1195,6 @@ def render_overview(exps):
 {topnav('overview', root=True)}
 {compute_banner()}
 <div class="paths-wrap">
-<div class="hero">{HERO_SVG}</div>
 <div class="eyebrow" style="text-align:center">Alexis Rondeau · an autonomous research project</div>
 <h1 class="home-h1">&ldquo;Not all who wander are lost&rdquo; &mdash; a 5-inch drone learns
 to find itself in the dark, with no GPS, no maps on board, and a $4 flight
