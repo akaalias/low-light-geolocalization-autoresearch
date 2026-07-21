@@ -1084,6 +1084,35 @@ never touched by the loop — it exists only as a blind check that the
 method generalizes.</p>
 </div>
 
+<div class="sec-h">Proven alternatives — and why this project isn't using them</div>
+<div class="pnote">
+<p>GPS-denied visual localization is not an unsolved problem. The
+established, field-tested family matches live camera frames against
+<i>georeferenced reference imagery carried on the aircraft</i> — e.g.
+<a href="https://github.com/TIERS/wildnav">WildNav</a>
+(<a href="https://arxiv.org/abs/2210.09727">Vision-based GNSS-Free
+Localization for UAVs in the Wild</a>), which matches drone photographs
+against satellite tiles with deep feature matching and demonstrated
+GNSS-comparable accuracy in real flights. If you need working GPS-denied
+navigation today, start there, not here.</p>
+<p>This project deliberately walks a different road, for two reasons.
+<b>Licensing:</b> the strongest matchers in that stack — Magic Leap's
+<a href="https://github.com/magicleap/SuperGluePretrainedNetwork/blob/master/LICENSE">SuperGlue</a>
+/ <a href="https://github.com/magicleap/SuperPointPretrainedNetwork/blob/master/LICENSE">SuperPoint</a>
+pretrained networks — are licensed for noncommercial research only, without
+the right to sublicense, which is incompatible with a fully open-sourceable,
+commercially usable system (permissive alternatives like
+<a href="https://github.com/cvg/LightGlue">LightGlue</a> (Apache-2.0)
+exist, but the whole approach still means shipping reference imagery on
+the airframe — this project's hardest constraint rules that out).
+<b>Curiosity:</b> the actual motivation is ground-level research — can an
+autonomous loop of coding agents discover a genuinely different approach,
+with no reference imagery on board and the map living entirely in the
+network's weights, under a low-light premise? It may or may not end up
+competitive with the field-tested systems above. Saying so out loud is
+part of the experiment.</p>
+</div>
+
 <div class="sec-h">Explore</div>
 <div class="explore">
 <a class="card" href="gallery/index.html"><b>The research log</b>
