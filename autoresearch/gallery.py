@@ -111,7 +111,7 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
   color:#4a473e}
 .pnote p{margin:0 0 10px}
 .pnote b{color:var(--ink)}
-.stats{display:flex;flex-wrap:wrap;gap:18px 56px;justify-content:center;
+.stats{display:flex;flex-wrap:nowrap;gap:18px 36px;justify-content:center;
   margin:30px auto 10px;text-align:center}
 .stat b{display:block;font-size:34px;line-height:1.1;font-weight:600;
   font-variant-numeric:lining-nums tabular-nums}
@@ -1221,11 +1221,11 @@ pre-registered experiment at a time, keeping only what measurably helps.
 This site is its live lab notebook.</p>
 
 <div class="stats">
-  <div class="stat"><b>≤ 20 m</b><span>the goal — a median fix within 20 m</span></div>
-  <div class="stat"><b>{best_s}</b><span>current worst-case miss — {factor} to go</span></div>
-  <div class="stat"><b>{progress_s}</b><span>of the way there, in halvings of the error</span></div>
+  <div class="stat"><b>≤ 20 m</b><span>the goal</span></div>
+  <div class="stat"><b>{best_s}</b><span>today — {factor} to go</span></div>
+  <div class="stat"><b>{progress_s}</b><span>progress, log scale</span></div>
   <div class="stat"><b>{len(dev)}</b><span>experiments · {n_kept} kept</span></div>
-  <div class="stat"><b>{size_s}</b><span>deployed model · limit 4 MiB</span></div>
+  <div class="stat"><b>{size_s}</b><span>model · limit 4 MiB</span></div>
 </div>
 
 <div class="sec-h">How it works — think globally, memorize locally</div>
