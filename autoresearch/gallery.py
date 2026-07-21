@@ -1111,6 +1111,12 @@ with no reference imagery on board and the map living entirely in the
 network's weights, under a low-light premise? It may or may not end up
 competitive with the field-tested systems above. Saying so out loud is
 part of the experiment.</p>
+<p><b>The vision, if it works:</b> a novel algorithm that lets anyone draw
+a bounding box around a place they care about and generate their own tiny,
+punchy, self-contained geo-boxed model — reliable, personalized, and free.
+Open data in, open weights out; no reference imagery to license, no vendor
+to call, no cloud to depend on. The map is yours, and it lives in a few
+megabytes you own.</p>
 </div>
 
 <div class="sec-h">Explore</div>
