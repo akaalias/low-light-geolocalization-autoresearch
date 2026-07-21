@@ -1,0 +1,14 @@
+# Runtime dependencies for the frozen pipeline + autoresearch loop.
+# Local dev used torch 2.13 on MPS; any recent torch with CUDA works on a pod.
+torch>=2.4
+numpy
+onnx
+onnxruntime
+pyyaml
+pillow
+jinja2
+requests
+# fetch-time only (data/ is normally rsynced, but imports must resolve)
+rasterio
+pystac-client
+affine
