@@ -762,7 +762,8 @@ def arch_block(e):
     segs = []
     for s in (stages or []):
         chg = bool(s.get("changed"))
-        seg = f"<b{" class='chg'" if chg else ''}>{esc(s.get('name', '?'))}</b>"
+        cls = " class='chg'" if chg else ""  # 3.11-compatible (pod venv): no nested same-quote f-string
+        seg = f"<b{cls}>{esc(s.get('name', '?'))}</b>"
         if chg and s.get("detail"):
             seg += f" <span class='pd'>— {esc(s['detail'])}</span>"
         sep = (" <span class='sep'>&nbsp;+&nbsp;</span> " if s.get("train_only")

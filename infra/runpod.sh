@@ -6,14 +6,20 @@
 # lineage back. Eval data is rsynced up, NEVER re-fetched on the pod — the
 # frozen held-out eval sets must stay byte-identical to the bootstrap ones.
 #
-# Usage:  infra/runpod.sh <up|status|ssh|sync-up|pull|stop|terminate>
+# The pod's experiments.sqlite is the PRODUCTION database: it flows one way
+# only, pod -> laptop (pull). sync-up never pushes it; seed-db is the single,
+# guarded exception for bootstrapping a brand-new pod.
+#
+# Usage:  infra/runpod.sh <up|status|ssh|sync-up|seed-db|pull|stop|terminate>
 # Needs:  .env with RUNPOD_API_KEY; ssh keypair (default ~/.ssh/id_ed25519)
 #
 # up         create a Secure Cloud RTX 4090 pod (idempotent: refuses if one
 #            with the same name exists)
 # status     desired status, $/hr, ssh endpoint
 # ssh        open an interactive shell on the pod
-# sync-up    rsync repo + data/ + experiments.sqlite to the pod
+# sync-up    rsync repo + data/ to the pod (excludes experiments.sqlite)
+# seed-db    one-time: push local experiments.sqlite to a FRESH pod; refuses
+#            if the pod already has one
 # pull       rsync new runs/ + experiments.sqlite + state/ back, then
 #            fast-forward local main from the pod's git history
 # stop       stop billing for GPU time; volume (and synced data) persists
@@ -124,10 +130,29 @@ sync-up)
   fi
   # .git/lfs excluded: GitHub holds the LFS objects; the pod only ever needs
   # the working-tree files (rsynced) plus objects it creates itself on push.
+  # experiments.sqlite excluded: the pod's DB is PRODUCTION and flows one
+  # way only (pod -> laptop via pull). Local DBs are testing scratch; pushing
+  # one up would silently erase discarded-experiment rows (they have no git
+  # commit, so the guard above cannot catch them). DB fixes/migrations are
+  # run ON the pod (see archive/), never pushed from a laptop.
   rsync -a --stats -e "ssh -i $SSH_KEY -p $PORT" \
     --exclude '.venv' --exclude '__pycache__' --exclude '.env' --exclude '.DS_Store' \
-    --exclude '.git/lfs' \
+    --exclude '.git/lfs' --exclude 'experiments.sqlite' \
     ./ "root@$IP:$REMOTE_DIR/"
+  ;;
+seed-db)
+  read -r IP PORT < <(endpoint)
+  # Bootstrap a FRESH pod with the local lineage DB — the only sanctioned
+  # laptop -> pod DB transfer. Guarded: if the pod already has a DB it is
+  # production and must never be overwritten from a laptop copy.
+  if ssh -i "$SSH_KEY" -p "$PORT" "root@$IP" "test -e '$REMOTE_DIR/experiments.sqlite'"; then
+    echo "REFUSING seed-db: pod already has experiments.sqlite (production)."
+    echo "The DB flows pod -> laptop only; use 'pull'."
+    exit 1
+  fi
+  rsync -a --stats -e "ssh -i $SSH_KEY -p $PORT" \
+    ./experiments.sqlite "root@$IP:$REMOTE_DIR/experiments.sqlite"
+  echo "Seeded pod DB from local experiments.sqlite."
   ;;
 pull)
   read -r IP PORT < <(endpoint)
@@ -144,6 +169,17 @@ pull)
     git fetch "ssh://root@$IP:$PORT$REMOTE_DIR" main:refs/remotes/pod/main
   git merge --ff-only refs/remotes/pod/main || echo "NOTE: local main diverged from pod — merge manually."
   echo "Pulled. Re-render gallery locally with: .venv/bin/python -m autoresearch.gallery"
+  ;;
+seed-db)
+  # One-time DB seed for a FRESH pod (docs/infra.md §Reproduce). The pod's
+  # DB is production (one-way pod->laptop); this is the guarded exception.
+  read -r IP PORT < <(endpoint)
+  if ssh -i "$SSH_KEY" -p "$PORT" "root@$IP" "[ -f $REMOTE_DIR/experiments.sqlite ]"; then
+    echo "REFUSING: pod already has experiments.sqlite (production). Use 'pull' to fetch it."
+    exit 1
+  fi
+  rsync -a -e "ssh -i $SSH_KEY -p $PORT" experiments.sqlite "root@$IP:$REMOTE_DIR/"
+  echo "Seeded pod DB from local experiments.sqlite."
   ;;
 stop)
   ID="$(pod_id)"

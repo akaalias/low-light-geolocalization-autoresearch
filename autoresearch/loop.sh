@@ -190,6 +190,11 @@ $(cat "$RUN_DIR/experiment.json")" || true
   #    and pushes retry implicitly next iteration.
   git add -A "$RUN_DIR" experiments.sqlite state/ 2>/dev/null || true
   git commit -q -m "iter $i record: $RUN_ID ($METRIC m, kept=$KEEP)" || true
+  # Rebase onto origin first: harness/docs commits pushed from the laptop
+  # while the loop runs would otherwise permanently diverge us from origin
+  # (tree is clean here — everything above is committed).
+  git pull --rebase -q origin main 2>/dev/null || \
+    { git rebase --abort 2>/dev/null || true; }
   git push -q origin main 2>/dev/null || \
     echo "WARNING: git push failed (no remote/offline?) — record is committed locally"
 done
