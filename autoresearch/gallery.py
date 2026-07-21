@@ -516,6 +516,7 @@ function showStep(i,fade){
   var olds=[].slice.call(ovIn.children);
   ovIn.appendChild(nw);
   if(fade){void nw.getBoundingClientRect();nw.style.opacity='1';
+    olds.forEach(function(o){o.style.opacity='0'});
     setTimeout(function(){olds.forEach(function(o){o.remove()})},1150);}
   else{olds.forEach(function(o){o.remove()});}
   document.querySelector('.ov-no').textContent=
@@ -526,7 +527,7 @@ function showStep(i,fade){
 }
 function playFrom(i){
   showStep(i,true);
-  if(i<chain.length-1){playing=setTimeout(function(){playFrom(i+1)},2700);}
+  if(i<chain.length-1){playing=setTimeout(function(){playFrom(i+1)},2400);}
   else{stopPlay();}
 }
 function buildReplay(){
