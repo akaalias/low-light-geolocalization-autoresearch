@@ -101,11 +101,18 @@ you only design the experiment and edit the code.
    `id='frozen-input'`, the output text block carries `id='frozen-output'`.
    Lay the elements between them out on a running x-cursor with generous
    spacing so nothing overlaps.
-   **Readability contract:** no text may overlap other text, and no line
-   (arrows, converge fans, leader lines) may pass through a label — route
-   leaders around text with a bend, or move the label. Width is fixed at
-   980, but **height is yours**: grow the viewBox (240–640) whenever more
-   vertical room makes the layout cleaner rather than cramming.
+   **Readability contract** (figcheck verifies this geometrically): no
+   text may overlap other text, and no line (arrows, converge fans,
+   leader lines) may pass through a label — a line may END at a label,
+   never cross one. Rules distilled from review rounds: dashed leaders
+   run as orthogonal L-routes through empty lanes, never diagonally
+   across components; converge/vote lines originate at their true
+   sources (the actual dots or window cells, not generic positions);
+   every element owns its caption — adjacent columns stagger their
+   caption rows instead of colliding; prefer moving a label into empty
+   horizontal space over stacking it against a neighbor. Width is fixed
+   at 980, but **height is yours**: grow the viewBox (240–640) whenever
+   more vertical room makes the layout cleaner rather than cramming.
    **Before finishing, validate:**
    `.venv/bin/python -m autoresearch.figcheck` — it checks the anchor
    contract on runs/pending_experiment.json; revise until it prints PASS.
