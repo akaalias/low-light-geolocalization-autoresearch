@@ -24,14 +24,30 @@ squeezes the 8x8x128 feature map to 8 channels; the flattened 512-d layout
 code is concatenated with the 128-d GAP vector before the logits FC, making
 the head a low-rank linear read of the full feature map (a strict superset
 of the old GAP-only head).
+
+Exp 11: the from-scratch 4-conv stack is replaced by an ImageNet-pretrained
+MobileNetV3-Small trunk (torchvision, BSD-3-licensed; first 9 feature blocks
+= stem + 8 inverted-residual blocks, 190k params, stride 16 -> the same 8x8
+spatial grid the exp-10 head already reads, now 48 channels instead of 128).
+Weights load strict from model/pretrained/mnv3s_features8.pt (verbatim
+IMAGENET1K_V1 tensors). ImageNet mean/std normalization is baked into
+forward() as buffers so the ONNX input contract ([0,1] float, no external
+preprocessing) is unchanged. The layout-squeeze + GAP + field head are
+otherwise identical to exp 10, only re-widthed for 48 input channels.
 """
 
 import numpy as np
 import torch
 import torch.nn as nn
+from pathlib import Path
+from torchvision.models import mobilenet_v3_small
 
 GRID_K = 32              # 32x32 cells over the map (~220 m cells on a ~7 km area)
 TARGET_SIGMA_CELLS = 1.5  # Gaussian soft-target spread, in cell units
+
+PRETRAINED_TRUNK_PATH = Path(__file__).parent / "pretrained" / "mnv3s_features8.pt"
+IMAGENET_MEAN = (0.485, 0.456, 0.406)
+IMAGENET_STD = (0.229, 0.224, 0.225)
 
 
 def _grid_centers(k: int) -> tuple[torch.Tensor, torch.Tensor]:
@@ -40,31 +56,40 @@ def _grid_centers(k: int) -> tuple[torch.Tensor, torch.Tensor]:
     return centers.repeat(k), centers.repeat_interleave(k)
 
 
+def _build_pretrained_trunk() -> nn.Module:
+    """ImageNet-pretrained MobileNetV3-Small stem + first 8 inverted-residual
+    blocks (torchvision, BSD-3). 128x128 in -> 48x8x8 out (stride 16)."""
+    trunk = mobilenet_v3_small(weights=None).features[:9]
+    state_dict = torch.load(PRETRAINED_TRUNK_PATH, map_location="cpu", weights_only=True)
+    stripped = {k[len("features."):]: v for k, v in state_dict.items()}
+    trunk.load_state_dict(stripped, strict=True)
+    return trunk
+
+
 class TinyLocNet(nn.Module):
-    """~757k-param CNN: strided conv stack -> {GAP descriptor + 1x1-squeezed
-    spatial layout code} -> map-cell probability field -> soft-argmax (u, v),
-    plus a separate sigmoid conf head."""
+    """ImageNet-pretrained MobileNetV3-Small trunk (48x8x8) -> {GAP descriptor
+    + 1x1-squeezed spatial layout code} -> map-cell probability field ->
+    soft-argmax (u, v), plus a separate sigmoid conf head."""
 
     def __init__(self, grid_k: int = GRID_K, layout_ch: int = 8):
         super().__init__()
         self.grid_k = grid_k
-        chans = [3, 16, 32, 64, 128]
-        layers = []
-        for cin, cout in zip(chans, chans[1:]):
-            layers += [nn.Conv2d(cin, cout, 3, stride=2, padding=1),
-                       nn.BatchNorm2d(cout), nn.ReLU(inplace=True)]
-        self.features = nn.Sequential(*layers)
-        fmap_hw = 128 // 2 ** (len(chans) - 1)  # 8 for the frozen 128 px input
-        self.layout_squeeze = nn.Conv2d(chans[-1], layout_ch, 1)
-        self.loc_logits = nn.Linear(chans[-1] + layout_ch * fmap_hw * fmap_hw,
+        self.features = _build_pretrained_trunk()
+        self.register_buffer("norm_mean", torch.tensor(IMAGENET_MEAN).view(1, 3, 1, 1))
+        self.register_buffer("norm_std", torch.tensor(IMAGENET_STD).view(1, 3, 1, 1))
+        with torch.no_grad():
+            probe = self.features(torch.zeros(1, 3, 128, 128))
+        feat_ch, fmap_hw = probe.shape[1], probe.shape[2]
+        self.layout_squeeze = nn.Conv2d(feat_ch, layout_ch, 1)
+        self.loc_logits = nn.Linear(feat_ch + layout_ch * fmap_hw * fmap_hw,
                                     grid_k * grid_k)
-        self.conf_head = nn.Linear(chans[-1], 1)
+        self.conf_head = nn.Linear(feat_ch, 1)
         cell_u, cell_v = _grid_centers(grid_k)
         self.register_buffer("cell_u", cell_u)
         self.register_buffer("cell_v", cell_v)
 
     def forward(self, x, return_logits: bool = False):
-        fmap = self.features(x)
+        fmap = self.features((x - self.norm_mean) / self.norm_std)
         f = fmap.mean(dim=(2, 3))
         layout = self.layout_squeeze(fmap).flatten(1)
         logits = self.loc_logits(torch.cat([f, layout], dim=1))

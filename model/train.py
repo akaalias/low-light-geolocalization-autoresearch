@@ -9,6 +9,11 @@ zero training example in any given lighting bucket). The training tensor is
 held as uint8 and converted to float per minibatch — 36k float32 crops would
 be ~7 GB; uint8 is ~1.8 GB.
 
+Exp 11: the encoder is now an ImageNet-pretrained trunk (model.py), fine-tuned
+gently rather than trained from scratch — trunk params use a 10x lower LR
+than the freshly-initialized head params, so early large head gradients
+don't wash out the transferred features before they adapt.
+
 Usage: python -m model.train --area berlin --out-dir runs/<id> [--epochs 2]
 """
 
@@ -53,7 +58,13 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
     t0 = time.time()
     x, y = load_training_tensors(area, data_dir, max_crops_per_bucket, rng)
     model = build_model().to(device)
-    opt = torch.optim.Adam(model.parameters(), lr=1e-3)
+    trunk_params = list(model.features.parameters())
+    trunk_ids = {id(p) for p in trunk_params}
+    head_params = [p for p in model.parameters() if id(p) not in trunk_ids]
+    opt = torch.optim.Adam([
+        {"params": trunk_params, "lr": 1e-4},
+        {"params": head_params, "lr": 1e-3},
+    ])
     n = len(x)
     print(f"[{area}] {n} crops, device={device}")
     for epoch in range(epochs):
@@ -80,7 +91,8 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         "device": device,
         "train_seconds": round(time.time() - t0, 1),
         "onnx_bytes": onnx_path.stat().st_size,
-        "init": "from-scratch",  # §9: log init strategy per experiment
+        # §9: log init strategy per experiment
+        "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
     }
 
 
