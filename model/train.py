@@ -35,6 +35,17 @@ function (the stored eval-matched render plus two fresh re-renders), so only
 seed-stable structure stays discriminative between locations. Eval renders,
 model, losses, decode, and calibration are unchanged.
 
+Exp 20: per-epoch location resampling. The kept trainer built ONE tensor --
+6,000 locations per bucket, each at one frozen heading and one frozen relight
+realization -- and passed over it every epoch, making per-crop memorization
+the cheapest way down the training loss even though ~39k other enumerable
+train locations per bucket were never seen. Locations, headings, and
+realization assignment are now redrawn fresh at the start of every epoch
+(same per-epoch crop count and gradient-step count), raising distinct
+locations seen per bucket to ~30k over an 8-epoch run, each seen only ~1-2
+times and never twice identically. Model, losses, decode, and calibration
+are unchanged.
+
 Usage: python -m model.train --area berlin --out-dir runs/<id> [--epochs 2]
 """
 
@@ -59,12 +70,31 @@ SCORER_CONF_THRESHOLD = 0.3   # mirrors pipeline/score.py's frozen CONF_THRESHOL
 TRAIN_REALIZATIONS = 3        # exp 17: seeded relight re-renders per bucket, incl. the stored eval-matched one
 
 
-def load_training_tensors(area: str, data_dir: Path, max_crops_per_bucket: int, rng):
+def prepare_realizations(area: str, data_dir: Path, out_dir: Path) -> Path:
+    """One-time render of each bucket's extra relight realizations (exp 17's
+    seeded scheme) to <out_dir>/renders/, so per-epoch sampling only needs to
+    load cached PNGs instead of re-running the relight sim every epoch."""
+    renders_dir = Path(out_dir) / "renders"
+    renders_dir.mkdir(parents=True, exist_ok=True)
     meta = load_meta(area, data_dir)
-    crops = list_crops(area, meta["width"], meta["height"], "train")
-    xs, ys = [], []
     with rasterio.open(area_dir(area, data_dir) / "reference.tif") as src:
         ref = src.read().transpose(1, 2, 0)  # HxWx3 uint8
+    for bucket in LIGHTING_BUCKETS:
+        for r in range(1, TRAIN_REALIZATIONS):
+            img = relight(ref, LIGHTING_BUCKETS[bucket], meta["gsd_m"],
+                         stable_hash(f"{area}:{bucket}:trainreal:{r}"))
+            Image.fromarray(img).save(renders_dir / f"{bucket}_r{r}.png")
+            del img
+    del ref
+    return renders_dir
+
+
+def sample_epoch(area: str, meta: dict, crops: list[dict], renders_dir: Path,
+                 data_dir: Path, max_crops_per_bucket: int, rng):
+    """Fresh draw of locations, headings, and realization assignment for one
+    epoch (exp 20): only cues that transfer between locations reduce the
+    training loss, since no crop is seen twice identically."""
+    xs, ys = [], []
     for bucket in LIGHTING_BUCKETS:
         picks = rng.choice(len(crops), size=min(max_crops_per_bucket, len(crops)),
                            replace=False)
@@ -73,15 +103,13 @@ def load_training_tensors(area: str, data_dir: Path, max_crops_per_bucket: int, 
             if r == 0:
                 img = np.asarray(Image.open(area_dir(area, data_dir) / "relight" / f"{bucket}.png"))
             else:
-                img = relight(ref, LIGHTING_BUCKETS[bucket], meta["gsd_m"],
-                             stable_hash(f"{area}:{bucket}:trainreal:{r}"))
+                img = np.asarray(Image.open(renders_dir / f"{bucket}_r{r}.png"))
             for i in part:
                 c = crops[i]
                 angle = float(rng.uniform(0, 360))  # heading augmentation
                 xs.append(extract_crop(img, c["cx"], c["cy"], angle))
                 ys.append(crop_center_norm(meta, c["cx"], c["cy"]))
             del img
-    del ref
     x = torch.from_numpy(np.stack(xs))  # uint8 NxHxWx3; float-converted per batch
     y = torch.tensor(ys, dtype=torch.float32)
     return x, y
@@ -132,7 +160,9 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
     device = "mps" if torch.backends.mps.is_available() else \
              "cuda" if torch.cuda.is_available() else "cpu"
     t0 = time.time()
-    x, y = load_training_tensors(area, data_dir, max_crops_per_bucket, rng)
+    meta = load_meta(area, data_dir)
+    crops = list_crops(area, meta["width"], meta["height"], "train")
+    renders_dir = prepare_realizations(area, data_dir, out_dir)
     model = build_model().to(device)
     trunk_params = list(model.features.parameters())
     trunk_ids = {id(p) for p in trunk_params}
@@ -141,9 +171,13 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         {"params": trunk_params, "lr": 1e-4},
         {"params": head_params, "lr": 1e-3},
     ])
-    n = len(x)
-    print(f"[{area}] {n} crops, device={device}")
+    n = 0
     for epoch in range(epochs):
+        epoch_rng = np.random.default_rng([seed, epoch])
+        x, y = sample_epoch(area, meta, crops, renders_dir, data_dir,
+                            max_crops_per_bucket, epoch_rng)
+        n = len(x)
+        print(f"[{area}] epoch {epoch + 1}/{epochs} {n} crops, device={device}")
         perm = torch.randperm(n)
         losses = []
         for i in range(0, n, 64):
@@ -155,6 +189,7 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
             opt.zero_grad(); loss.backward(); opt.step()
             losses.append(loss.item())
         print(f"[{area}] epoch {epoch + 1}/{epochs} loss={np.mean(losses):.4f}")
+        del x, y
 
     cal = calibrate_conf_shift(model, area, data_dir, device, rng)
 
@@ -172,6 +207,7 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         # §9: log init strategy per experiment
         "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
         "train_realizations": TRAIN_REALIZATIONS,
+        "epoch_location_resampling": True,
     }
     info.update(cal)
     return info
