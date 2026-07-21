@@ -727,8 +727,14 @@ def figures(artifacts_dir, metrics):
             area = p.stem.split("_")[0]
             by_area.setdefault(area, []).append(p)
         inner = [
-            "<div class='figs-intro'>One example 256 m patch per area, rendered under the "
-            "six synthetic lighting conditions the model must handle. These illustrate the "
+            "<div class='figs-intro'>Every frame in this project is rendered as a "
+            "<b>starlight-class low-light sensor</b> (Sony STARVIS2 / IMX585 class — the "
+            "airframe's chosen camera) would see it, not as a normal camera would. That is "
+            "why the <i>night</i> renders look uncannily close to daylight: at high gain such "
+            "a sensor recovers scene structure from moonlight, skyglow and artificial "
+            "lighting, paying for it in noise, lifted shadows and washed-out color — exactly "
+            "what these renders simulate. Below, one example 256 m patch per area under the "
+            "six lighting conditions the model must handle. These illustrate the "
             "<i>dataset</i>, not this experiment's performance — the actual training set is "
             "thousands of distinct crops per area (see “training data” above), and these "
             "renderings only change when the relighting method changes.</div>"]
@@ -742,7 +748,8 @@ def figures(artifacts_dir, metrics):
             inner.append(f"<div class='figs-h'>{esc(area)}</div>"
                          f"<div class='thumbs'>{''.join(figs)}</div>")
         out.append(f"<details class='trywrap'><summary>What the six lighting conditions "
-                   f"look like (example patches — illustration, not the training set)"
+                   f"look like through the simulated low-light sensor (example patches — "
+                   f"illustration, not the training set)"
                    f"</summary>{''.join(inner)}</details>")
     return f"<div class='figs'>{''.join(out)}</div>" if out else ""
 
@@ -1021,7 +1028,12 @@ patch of it by heart. No reference imagery on the aircraft, no retrieval,
 no matching. Training data comes
 from a frozen pipeline that fetches open-licensed aerial orthophotos for
 any bounding box and re-renders them under six lighting conditions, from
-morning to night, through a synthetic low-light sensor model.</p>
+morning to night, <b>as seen by a simulated starlight-class low-light
+sensor</b> (Sony STARVIS2 / IMX585 class — the aircraft's chosen camera).
+That sensor choice is the premise of the whole project: at high gain it
+keeps daylight-like scene structure deep into the night — trading it for
+noise and washed-out color, which is exactly what the night renders below
+show — so a single compact model can localize from morning to midnight.</p>
 <p>The research loop is Karpathy-style autoresearch: each iteration, a
 headless coding agent reads the full experiment history, pre-registers ONE
 focused change — hypothesis, method, expected outcome, and a hand-drawn
