@@ -10,6 +10,8 @@
 #
 # Usage:   ./autoresearch/loop.sh [iterations]
 # Env:     AREAS          (default "berlin prignitz munich frankfurt")
+#          PATIENCE       (default 4: consecutive non-kept experiments before
+#                          the design prompt demands a pivot)
 #          EPOCHS         (default 8)
 #          HOLDOUT_EVERY  (default 5)
 #          CLAUDE_BIN     (default "claude")
@@ -110,6 +112,31 @@ for i in $(seq 1 "$ITERATIONS"); do
   # record (§7 lineage) even when SKIP_AGENT skips the calls.
   cp autoresearch/prompt.md "$RUN_DIR/prompt.md"
   cp autoresearch/prompt_impl.md "$RUN_DIR/prompt_impl.md"
+  # Patience / auto-pivot (workshop pattern): after PATIENCE consecutive
+  # non-kept experiments, the design prompt gets a mandatory-pivot preamble —
+  # the guard against refining a dead line forever. The preamble is written
+  # into the run's prompt snapshot so the record shows the prompt actually
+  # used.
+  PLATEAU=$(sqlite3 experiments.sqlite "SELECT COUNT(*) FROM experiments \
+    WHERE kind='development' AND id > \
+    (SELECT COALESCE(MAX(id),0) FROM experiments \
+     WHERE kept=1 AND kind='development');" 2>/dev/null || echo 0)
+  if [ "${PLATEAU:-0}" -ge "${PATIENCE:-4}" ]; then
+    echo "PIVOT: $PLATEAU consecutive experiments without a new best — pivot directive injected"
+    cat - "$RUN_DIR/prompt.md" > "$RUN_DIR/prompt.md.tmp" <<PIVOTNOTE
+## PATIENCE SPENT — THIS ITERATION MUST PIVOT
+
+$PLATEAU consecutive experiments have failed to beat the current best.
+Do NOT refine the champion's current mechanism again this round. Step back
+and propose from a design family ABSENT from the last $PLATEAU experiments
+— the spec (§3) explicitly invites, among others: dispatcher + lighting-
+condition-specialist models, learned relighting, a different coordinate
+parameterization, quantization-aware capacity changes, or training-data
+strategy overhauls. Genuine novelty over incremental tuning.
+
+PIVOTNOTE
+    mv "$RUN_DIR/prompt.md.tmp" "$RUN_DIR/prompt.md"
+  fi
   report_phase design
   AGENT_MODEL_DESIGN=""; AGENT_MODEL_IMPL=""
   T_DESIGN=0; T_IMPL=0
