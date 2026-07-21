@@ -60,7 +60,7 @@ a:hover{border-bottom-color:var(--accent)}
 #gh-ribbon:hover{background:#8c2f1f;color:#fffff8}
 
 .topnav{display:flex;gap:28px;justify-content:center;align-items:baseline;
-  border-bottom:1px solid var(--rule);padding:18px 0 12px;margin:0 0 6px}
+  border-bottom:1px solid var(--rule);padding:18px 0 12px;margin:0}
 .topnav .brand{font:italic 14px var(--serif);color:var(--faint)}
 .compute-banner{padding:7px 18px;text-align:center;
   font:12.5px var(--serif);color:var(--muted);
