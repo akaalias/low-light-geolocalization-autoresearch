@@ -1084,6 +1084,20 @@ never touched by the loop — it exists only as a blind check that the
 method generalizes.</p>
 </div>
 
+<div class="sec-h">Explore</div>
+<div class="explore">
+<a class="card" href="gallery/index.html"><b>The research log</b>
+<span>Every experiment ever run, failures included: pre-registered
+hypotheses, results, per-area × lighting scoreboards, the exact prompts
+the agents received, and one real worked example per experiment — the same
+night crop through each model's actual deployed weights.</span></a>
+<a class="card" href="gallery/inference-paths.html"><b>Proposed inference
+paths</b>
+<span>The technical figures: each experiment's model design, drawn by the
+agent itself before training, in one shared visual language — frozen
+endpoints aligned so you can scroll and compare designs directly.</span></a>
+</div>
+
 <div class="sec-h">Proven alternatives — and why this project isn't using them</div>
 <div class="pnote">
 <p>GPS-denied visual localization is not an unsolved problem. The
@@ -1117,20 +1131,6 @@ punchy, self-contained geo-boxed model — reliable, personalized, and free.
 Open data in, open weights out; no reference imagery to license, no vendor
 to call, no cloud to depend on. The map is yours, and it lives in a few
 megabytes you own.</p>
-</div>
-
-<div class="sec-h">Explore</div>
-<div class="explore">
-<a class="card" href="gallery/index.html"><b>The research log</b>
-<span>Every experiment ever run, failures included: pre-registered
-hypotheses, results, per-area × lighting scoreboards, the exact prompts
-the agents received, and one real worked example per experiment — the same
-night crop through each model's actual deployed weights.</span></a>
-<a class="card" href="gallery/inference-paths.html"><b>Proposed inference
-paths</b>
-<span>The technical figures: each experiment's model design, drawn by the
-agent itself before training, in one shared visual language — frozen
-endpoints aligned so you can scroll and compare designs directly.</span></a>
 </div>
 
 <p class="psub num" style="margin-top:34px">updated {now} · experiments run
