@@ -7,6 +7,12 @@ you only design the experiment and edit the code.
 
 ## Your job, in order
 
+0. **Skim the library (optional input).** `autoresearch/library.md` holds
+   the human researcher's inspiration notes. They do not fix your answer
+   and you are free to ignore them — pick an entry up only when it
+   genuinely fits your read of the history, and if you build on one, say
+   so in your hypothesis.
+
 1. **Review the research history.** Query the lineage DB:
    `sqlite3 experiments.sqlite "SELECT id, title, category, hypothesis, expected_outcome, result, conclusion, primary_metric, kept FROM experiments ORDER BY id DESC LIMIT 15;"`
    Note which hypotheses were supported/refuted. Do not repeat a refuted
