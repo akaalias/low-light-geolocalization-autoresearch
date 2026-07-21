@@ -62,10 +62,11 @@ a:hover{border-bottom-color:var(--accent)}
 .topnav{display:flex;gap:28px;justify-content:center;align-items:baseline;
   border-bottom:1px solid var(--rule);padding:18px 0 12px;margin:0 0 6px}
 .topnav .brand{font:italic 14px var(--serif);color:var(--faint)}
-.compute-banner{max-width:960px;margin:14px auto 0;padding:8px 14px;
-  text-align:center;font:12.5px var(--serif);color:var(--muted);
-  background:rgba(140,47,31,.05);border:1px solid rgba(140,47,31,.15);
-  border-radius:3px}
+.compute-banner{padding:7px 18px;text-align:center;
+  font:12.5px var(--serif);color:var(--muted);
+  background:rgba(140,47,31,.045);
+  border-bottom:1px solid rgba(140,47,31,.12)}
+.compute-banner .status-badge{margin-right:10px;vertical-align:baseline}
 .compute-banner a{color:#8c2f1f;text-decoration:none;font-weight:600}
 .compute-banner a:hover{text-decoration:underline}
 .status-badge{display:inline-flex;align-items:center;gap:6px;
@@ -539,14 +540,21 @@ def status_badge():
             "<span class='dot'></span>live</span>")
 
 
-# Compute credit banner — shown on the working pages (log, paths); the
-# overview carries the same facts in its footnote. Concrete on purpose:
-# pod class, GPU, and price, so the compute story is auditable.
-COMPUTE_BANNER = (
-    "<div class='compute-banner'>experiments run around the clock on a "
-    "<a href='https://www.runpod.io'>RunPod</a> Secure Cloud pod — one "
-    "RTX 4090 (24 GB) at $0.69/hr — and every result lands on this page "
-    "automatically as the loop commits it</div>")
+# Compute credit banner — full-width strip under the topnav on every page,
+# carrying the LIVE/FINISHED badge. Concrete on purpose: pod class, GPU,
+# and price, so the compute story is auditable.
+def compute_banner():
+    state, _ = research_status()
+    pod = ("<a href='https://www.runpod.io'>RunPod</a> Secure Cloud pod "
+           "— one RTX 4090 (24 GB) at $0.69/hr")
+    if state == "finished":
+        text = (f"experiments ran around the clock on a {pod}; the research "
+                "is concluded and the record below is complete")
+    else:
+        text = (f"experiments are running around the clock on a {pod} — "
+                "every result lands on this page automatically as the loop "
+                "commits it")
+    return f"<div class='compute-banner'>{status_badge()}{text}</div>"
 
 
 def topnav(active, root=False):
@@ -559,8 +567,7 @@ def topnav(active, root=False):
         cls = " class='on'" if key == active else ""
         links.append(f"<a href='{hrefs[key]}'{cls}>{label}</a>")
     return ("<nav class='topnav'><span class='brand'>Low-Light "
-            "Geolocalization</span>" + "".join(links) + status_badge()
-            + "</nav>")
+            "Geolocalization</span>" + "".join(links) + "</nav>")
 
 
 def fmt_dur(s):
@@ -1050,6 +1057,7 @@ def render_overview(exps):
 <title>Not all who wander are lost — Low-Light Geolocalization</title>
 <style>{CSS}</style></head><body>
 {topnav('overview', root=True)}
+{compute_banner()}
 <div class="paths-wrap">
 <div class="eyebrow" style="text-align:center">Alexis Rondeau · an autonomous research project</div>
 <h1>&ldquo;Not all who wander are lost&rdquo; &mdash; a 5-inch drone learns
@@ -1278,7 +1286,7 @@ def render_paths(exps):
 <title>Proposed Inference Paths — Low-Light Geolocalization</title>
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('paths')}
-{COMPUTE_BANNER}
+{compute_banner()}
 <div class="paths-wrap">
 <div class="eyebrow" style="text-align:center">Alexis Rondeau · live research log</div>
 <h1>Proposed Inference Paths</h1>
@@ -1403,7 +1411,7 @@ def render():
 <title>Low-Light Geolocalization — Autoresearch Progress</title>
 <style>{CSS}</style><script>{JS}</script></head><body>
 {topnav('log')}
-{COMPUTE_BANNER}
+{compute_banner()}
 <header class="dash-head">
   <div class="eyebrow">Alexis Rondeau · live research log</div>
   <h1>Can a drone find itself in the dark?</h1>

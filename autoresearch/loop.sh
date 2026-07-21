@@ -143,6 +143,11 @@ for i in $(seq 1 "$ITERATIONS"); do
   #    merged below) — then score (§6).
   T0=$(date +%s); FAILED=0; PIDS=""
   for area in $AREAS; do
+    # Cap math-library threads per process: torch defaults each process to a
+    # thread pool sized to ALL host cores, so 4 concurrent trainings spawn
+    # ~4x96 threads on a small cgroup quota and thrash (observed: GPU 10%,
+    # 45+ min wall). TRAIN_THREADS overrides the default cap.
+    OMP_NUM_THREADS="${TRAIN_THREADS:-8}" MKL_NUM_THREADS="${TRAIN_THREADS:-8}" \
     $PY -m model.train --area "$area" --out-dir "$RUN_DIR/train_$area" \
       --epochs "$EPOCHS" >"$RUN_DIR/train_$area.log" 2>&1 &
     PIDS="$PIDS $!"
