@@ -62,6 +62,16 @@ a:hover{border-bottom-color:var(--accent)}
 .topnav{display:flex;gap:28px;justify-content:center;align-items:baseline;
   border-bottom:1px solid var(--rule);padding:18px 0 12px;margin:0 0 6px}
 .topnav .brand{font:italic 14px var(--serif);color:var(--faint)}
+.status-badge{display:inline-flex;align-items:center;gap:6px;
+  font:600 11px var(--serif);font-feature-settings:"smcp" 1;
+  letter-spacing:.08em}
+.status-badge .dot{width:7px;height:7px;border-radius:50%}
+.status-badge.live{color:#8c2f1f}
+.status-badge.live .dot{background:#8c2f1f;animation:livepulse 1.8s ease-out infinite}
+.status-badge.finished{color:var(--muted)}
+.status-badge.finished .dot{background:var(--muted)}
+@keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(140,47,31,.45)}
+  70%{box-shadow:0 0 0 7px rgba(140,47,31,0)}100%{box-shadow:0 0 0 0 rgba(140,47,31,0)}}
 .topnav a{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
   border-bottom:2px solid transparent;padding-bottom:3px}
@@ -496,6 +506,33 @@ NAV_PAGES = (("overview", "overview"),
              ("paths", "inference paths"))
 
 
+def research_status():
+    """LIVE until a human calls the research finished (convergence, success,
+    or budget) by writing 'finished[: reason]' to state/research_status and
+    pushing. Missing file or any other content means the loop is still the
+    story: LIVE."""
+    p = REPO_ROOT / "state" / "research_status"
+    try:
+        txt = p.read_text().strip()
+    except OSError:
+        txt = ""
+    if txt.lower().startswith("finished"):
+        reason = txt.split(":", 1)[1].strip() if ":" in txt else ""
+        return "finished", reason
+    return "live", ""
+
+
+def status_badge():
+    state, reason = research_status()
+    if state == "finished":
+        title = f" title='{esc(reason)}'" if reason else ""
+        return (f"<span class='status-badge finished'{title}>"
+                f"<span class='dot'></span>finished</span>")
+    return ("<span class='status-badge live' title='experiments are running "
+            "and this page updates as each one lands'>"
+            "<span class='dot'></span>live</span>")
+
+
 def topnav(active, root=False):
     hrefs = {"overview": "index.html" if root else "../index.html",
              "log": "gallery/index.html" if root else "index.html",
@@ -506,7 +543,8 @@ def topnav(active, root=False):
         cls = " class='on'" if key == active else ""
         links.append(f"<a href='{hrefs[key]}'{cls}>{label}</a>")
     return ("<nav class='topnav'><span class='brand'>Low-Light "
-            "Geolocalization</span>" + "".join(links) + "</nav>")
+            "Geolocalization</span>" + "".join(links) + status_badge()
+            + "</nav>")
 
 
 def fmt_dur(s):
