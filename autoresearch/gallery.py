@@ -1050,6 +1050,35 @@ def figures(artifacts_dir, metrics):
     return f"<div class='figs'>{''.join(out)}</div>" if out else ""
 
 
+def timings_block(artifacts_dir):
+    """Where the iteration's wall time went — from the per-run timings.json
+    the loop commits with every record (pod-era runs onward)."""
+    p = REPO_ROOT / (artifacts_dir or "") / "timings.json"
+    if not p.exists():
+        return ""
+    try:
+        t = json.loads(p.read_text())
+    except (OSError, json.JSONDecodeError):
+        return ""
+    parts = [("design (Fable)", t.get("agent_design_s")),
+             ("implement (Sonnet)", t.get("agent_impl_s")),
+             ("train 4 areas", t.get("train_wall_s")),
+             ("score", t.get("score_s")),
+             ("samples", t.get("samples_s")),
+             ("holdout", t.get("holdout_s")),
+             ("publish", t.get("gallery_s"))]
+    segs = [f"{esc(n)} <b class='num'>{fmt_dur(v)}</b>"
+            for n, v in parts if v]
+    if not segs:
+        return ""
+    total = t.get("total_s")
+    tail = (f" · whole iteration <b class='num'>{fmt_dur(total)}</b>"
+            if total else "")
+    return ("<div class='score-sub' style='margin-top:10px'>"
+            "<b>Where this iteration's time went:</b> "
+            + " · ".join(segs) + tail + "</div>")
+
+
 def train_block(artifacts_dir):
     """Summarize the actual training data used, from train_info.json."""
     p = REPO_ROOT / (artifacts_dir or "") / "train_info.json"
@@ -1966,6 +1995,7 @@ red = failed cell, ink = at target</div>
 {cells_table(metrics)}
 {gates_block(e, metrics)}
 {train_block(e['artifacts_dir'])}
+{timings_block(e['artifacts_dir'])}
 <div class="provenance">ts {esc(e['ts'][:19])} · commit {esc(e['git_commit'][:12])} ·
 parent {esc((e['parent_commit'] or '')[:12]) or '—'} · artifacts {esc(e['artifacts_dir'] or '—')} ·
 agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duration_s'))}</div>
