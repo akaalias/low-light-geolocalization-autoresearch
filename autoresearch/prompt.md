@@ -68,9 +68,19 @@ you only design the experiment and edit the code.
    experiments' figures line up when compared down the gallery page: the
    camera-frame square starts at x=26 (its captions centered on x=53), and
    the output is right-anchored — decode crosshair at x=812, the
-   (lat, lon, confidence) text block text-anchor=start at x=828. Lay the
-   elements between them out on a running x-cursor with generous spacing
-   so nothing overlaps.
+   (lat, lon, confidence) text block text-anchor=start at x=828. Mark the
+   anchors machine-checkably: the camera-frame rect carries
+   `id='frozen-input'`, the output text block carries `id='frozen-output'`.
+   Lay the elements between them out on a running x-cursor with generous
+   spacing so nothing overlaps.
+   **Readability contract:** no text may overlap other text, and no line
+   (arrows, converge fans, leader lines) may pass through a label — route
+   leaders around text with a bend, or move the label. Width is fixed at
+   980, but **height is yours**: grow the viewBox (240–640) whenever more
+   vertical room makes the layout cleaner rather than cramming.
+   **Before finishing, validate:**
+   `.venv/bin/python -m autoresearch.figcheck` — it checks the anchor
+   contract on runs/pending_experiment.json; revise until it prints PASS.
    Consecutive conv layers must be tied by kernel-projection lines (small
    kernel square on one face, faint lines converging to a cell on the
    next) so the encoder reads as one computation, not boxes in a row.

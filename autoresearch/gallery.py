@@ -62,6 +62,13 @@ a:hover{border-bottom-color:var(--accent)}
 .topnav{display:flex;gap:28px;justify-content:center;align-items:baseline;
   border-bottom:1px solid var(--rule);padding:18px 0 12px;margin:0}
 .topnav .brand{font:italic 14px var(--serif);color:var(--faint)}
+/* Halo: mask any line passing behind a label — applies to every inline
+   svg (agent figures, chart) without touching the drawings themselves. */
+svg text{paint-order:stroke;stroke:var(--paper);stroke-width:2.8px;
+  stroke-linejoin:round}
+.live-row{background:rgba(140,47,31,.045)}
+.live-row td{color:var(--muted);font-style:italic}
+.live-row .status-badge{font-style:normal}
 .compute-banner{padding:7px 18px;text-align:center;
   font:12.5px var(--serif);color:var(--muted);
   background:rgba(140,47,31,.045);
@@ -555,6 +562,60 @@ def compute_banner():
                 "every result lands on this page automatically as the loop "
                 "commits it")
     return f"<div class='compute-banner'>{status_badge()}{text}</div>"
+
+
+def live_row(next_id):
+    """Pulsing in-progress row atop the research-log table. The page is
+    rebuilt at each iteration's end — i.e. moments before the NEXT
+    experiment starts — so 'elapsed since build' ≈ elapsed of the run in
+    flight, and the current phase is estimated from the median phase
+    durations of recent runs (runs/*/timings.json). Client JS ticks the
+    clock; wording stays explicit that the phase is an estimate."""
+    state, _ = research_status()
+    if state == "finished":
+        return ""
+    med = {}
+    files = sorted(REPO_ROOT.glob("runs/*/timings.json"))[-5:]
+    if files:
+        acc = {}
+        for f in files:
+            try:
+                for k, v in json.loads(f.read_text()).items():
+                    acc.setdefault(k, []).append(float(v))
+            except (OSError, json.JSONDecodeError, ValueError):
+                continue
+        med = {k: sorted(v)[len(v) // 2] for k, v in acc.items()}
+    phases = [
+        ("starting up", 90),
+        ("designing the experiment (Fable)", med.get("agent_design_s", 900)),
+        ("implementing the design (Sonnet)", med.get("agent_impl_s", 120)),
+        ("training 4 areas in parallel", med.get("train_wall_s", 600)),
+        ("scoring against the frozen ruler", med.get("score_s", 240)),
+        ("logging + publishing", med.get("samples_s", 60) + med.get("gallery_s", 60)),
+    ]
+    phases_js = json.dumps([[n, round(s)] for n, s in phases])
+    built_ms = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
+    return f"""<tr class="live-row" id="live-row">
+<td></td><td class="num">{next_id}</td>
+<td colspan="7"><span id="live-text">experiment in progress…</span></td>
+<td><span class="status-badge live"><span class="dot"></span>live</span></td></tr>
+<script>(function(){{
+  var built={built_ms}, phases={phases_js};
+  var el=document.getElementById('live-text'); if(!el) return;
+  var total=phases.reduce(function(a,p){{return a+p[1]}},0);
+  function fmt(s){{s=Math.max(0,Math.floor(s));
+    return s<60? s+' s' : Math.floor(s/60)+' m '+('0'+s%60).slice(-2)+' s';}}
+  function tick(){{
+    var t=(Date.now()-built)/1000, acc=0, ph=null;
+    for(var i=0;i<phases.length;i++){{acc+=phases[i][1];
+      if(t<acc){{ph=phases[i][0];break;}}}}
+    var msg = ph ? 'running '+fmt(t)+' · estimated phase: '+ph
+                 : 'running '+fmt(t)+' · past the usual '+fmt(total)+
+                   ' — result should land any moment (reload for it)';
+    el.textContent='experiment in progress — '+msg;
+  }}
+  tick(); setInterval(tick,1000);
+}})();</script>"""
 
 
 def topnav(active, root=False):
@@ -1457,6 +1518,7 @@ def render():
 <th title="Single-frame inference on one CPU thread - a documented proxy for the flight computer, budget 250 ms.">Latency</th>
 <th title="Wall time of the whole iteration: agent design + training all areas + scoring.">Time</th>
 <th>Status</th></tr></thead><tbody>"""]
+    body.append(live_row((max((e["id"] for e in exps), default=0) or 0) + 1))
 
     for e in reversed(exps):
         kept_cls = " kept-row" if (e["kept"] and e["kind"] != "holdout_check") else ""

@@ -122,6 +122,8 @@ for i in $(seq 1 "$ITERATIONS"); do
       || { echo "impl agent failed; skipping iteration"
            git checkout -- model/ 2>/dev/null || true; continue; }
     T_IMPL=$(( $(date +%s) - T0 ))
+    $PY -m autoresearch.figcheck runs/pending_experiment.json || \
+      echo "WARNING: figure violates the anchor contract (cosmetic — continuing)"
     AGENT_MODEL_DESIGN="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_design.json" 2>/dev/null || echo "${DESIGN_MODEL:-claude-fable-5}")"
     AGENT_MODEL_IMPL="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_impl.json" 2>/dev/null || echo "${IMPL_MODEL:-claude-sonnet-5}")"
     echo "agents finished (design: $AGENT_MODEL_DESIGN ${T_DESIGN}s, impl: $AGENT_MODEL_IMPL ${T_IMPL}s)"
