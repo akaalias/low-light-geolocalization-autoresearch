@@ -1,1 +1,1 @@
-{"iter":6,"iterations":23,"iter_started":1784648177,"phase":"train","phase_started":1784649223,"best":1054.9}
+{"iter":0,"iterations":0,"iter_started":1784650830,"phase":"idle","phase_started":1784650830,"best":1054.9,"note":"paused — waiting for the Claude usage window to reset; experiments resume after that"}
