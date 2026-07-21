@@ -172,6 +172,28 @@ scripts) are run *on the pod*, then flow back via `pull`. (c) GitHub is
 the off-site archive: `git push` after every `pull` so kept experiments
 land there.
 
+## Deployment assumptions & known sim-to-real gaps (2026-07-21)
+
+What the frozen harness covers and deliberately does not, re: viewpoint —
+written down so nobody flies this with wrong expectations:
+
+- **Heading (yaw): covered.** Eval crops carry deterministic per-crop
+  0–360° rotations (`pipeline/dataset.py` — heading-agnostic eval from
+  day 1); training uses random rotation augmentation about the crop
+  center. The §6 metric already measures heading-invariant accuracy.
+- **Camera tilt (off-nadir): NOT modeled.** Orthophotos are nadir; no
+  perspective augmentation exists. A freestyle frame pitches 10–25°+ in
+  cruise, so real frames are perspective-distorted vs training data.
+  Intended mitigation (deployment-side, pipeline unchanged): IMU-known
+  attitude → homography rectification to synthetic nadir on the P4, plus
+  attitude-gating fixes to low-pitch moments (the adaptive fix schedule
+  already allows choosing when to fix). Perspective augmentation in
+  training is a possible loop experiment (approximate — ignores building
+  parallax).
+- **Altitude/scale: fixed at ~1 m/px (≈100 m AGL).** Real AGL variation
+  changes ground sampling distance; mitigation is baro-based rescale of
+  the frame to 1 m/px before inference, same rectification step.
+
 ## Publishing roadmap (planned, not yet built)
 
 As results come in, two **separate, shareable HTML pages** will be written
