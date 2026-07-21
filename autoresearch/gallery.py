@@ -551,151 +551,153 @@ def status_badge():
 
 
 HERO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 340" font-family="Palatino,Georgia,serif">
-  <!-- night panel -->
-  <rect x="0" y="0" width="980" height="340" rx="6" fill="#1b1a15"/>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#e9e3cb"/>
+      <stop offset="0.30" stop-color="#d8c9a4"/>
+      <stop offset="0.52" stop-color="#8f7a55"/>
+      <stop offset="0.72" stop-color="#3b352a"/>
+      <stop offset="1" stop-color="#191813"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#cfc9ae"/>
+      <stop offset="0.35" stop-color="#a89b74"/>
+      <stop offset="0.60" stop-color="#4a4433"/>
+      <stop offset="1" stop-color="#211f18"/>
+    </linearGradient>
+    <clipPath id="panel"><rect x="0" y="0" width="980" height="340" rx="6"/></clipPath>
+  </defs>
 
-  <!-- stars -->
+  <g clip-path="url(#panel)">
+  <rect x="0" y="0" width="980" height="340" fill="url(#sky)"/>
+
+  <!-- setting sun, day side -->
+  <circle cx="86" cy="238" r="26" fill="#fffff8" opacity="0.55"/>
+  <circle cx="86" cy="238" r="40" fill="#fffff8" opacity="0.12"/>
+
+  <!-- stars + moon, night side only -->
   <g fill="#fffff8">
-    <circle cx="60" cy="38" r="0.9" opacity="0.5"/>
-    <circle cx="150" cy="70" r="0.7" opacity="0.35"/>
-    <circle cx="235" cy="30" r="0.8" opacity="0.45"/>
-    <circle cx="330" cy="58" r="0.7" opacity="0.3"/>
-    <circle cx="420" cy="26" r="0.9" opacity="0.5"/>
-    <circle cx="505" cy="66" r="0.7" opacity="0.35"/>
-    <circle cx="590" cy="34" r="0.8" opacity="0.4"/>
-    <circle cx="95" cy="120" r="0.7" opacity="0.3"/>
-    <circle cx="285" cy="105" r="0.7" opacity="0.3"/>
-    <circle cx="380" cy="128" r="0.6" opacity="0.25"/>
-    <circle cx="545" cy="112" r="0.7" opacity="0.3"/>
-    <circle cx="638" cy="90" r="0.7" opacity="0.35"/>
-    <circle cx="905" cy="40" r="0.8" opacity="0.45"/>
-    <circle cx="945" cy="90" r="0.7" opacity="0.3"/>
+    <circle cx="620" cy="44" r="0.7" opacity="0.25"/>
+    <circle cx="672" cy="90" r="0.7" opacity="0.3"/>
+    <circle cx="705" cy="30" r="0.8" opacity="0.35"/>
+    <circle cx="760" cy="64" r="0.7" opacity="0.4"/>
+    <circle cx="812" cy="30" r="0.8" opacity="0.5"/>
+    <circle cx="852" cy="100" r="0.7" opacity="0.4"/>
+    <circle cx="884" cy="56" r="0.9" opacity="0.55"/>
+    <circle cx="930" cy="120" r="0.7" opacity="0.45"/>
+    <circle cx="948" cy="34" r="0.8" opacity="0.55"/>
+    <circle cx="742" cy="140" r="0.6" opacity="0.3"/>
+    <circle cx="800" cy="170" r="0.6" opacity="0.3"/>
   </g>
-  <!-- crescent moon -->
-  <path d="M 924 26 a 13 13 0 1 0 9 22 a 10.5 10.5 0 1 1 -9 -22 Z" fill="#fffff8" opacity="0.5"/>
+  <path d="M 862 64 a 13 13 0 1 0 9 22 a 10.5 10.5 0 1 1 -9 -22 Z" fill="#fffff8" opacity="0.55"/>
 
   <!-- terrain band -->
-  <path d="M 0 262 Q 240 248 490 258 T 980 252 L 980 340 L 0 340 Z" fill="#26251e"/>
-  <!-- streets: faint perspective network -->
-  <g stroke="#3d3a2e" stroke-width="1.4" fill="none" opacity="0.9">
+  <path d="M 0 262 Q 240 250 490 258 T 980 250 L 980 340 L 0 340 Z" fill="url(#ground)"/>
+  <!-- streets -->
+  <g stroke="#000000" stroke-width="1.3" fill="none" opacity="0.12">
     <path d="M 40 336 L 250 266"/>
     <path d="M 190 338 L 320 268"/>
-    <path d="M 0 300 Q 300 282 620 272 T 980 268"/>
+    <path d="M 0 300 Q 300 284 620 274 T 980 268"/>
     <path d="M 560 338 L 470 264"/>
+    <path d="M 340 318 Q 600 302 980 296"/>
+  </g>
+  <g stroke="#fffff8" stroke-width="1.2" fill="none" opacity="0.10">
     <path d="M 760 338 L 700 262"/>
-    <path d="M 340 316 Q 600 300 980 296"/>
+    <path d="M 620 320 Q 800 306 980 302"/>
   </g>
-  <!-- building footprints with a few lit windows -->
+  <!-- buildings: day side plain, night side lit -->
   <g>
-    <rect x="120" y="290" width="26" height="14" fill="#2f2d24"/>
-    <rect x="126" y="294" width="3" height="3" fill="#8a6a1e" opacity="0.95"/>
-    <rect x="136" y="297" width="3" height="3" fill="#8a6a1e" opacity="0.6"/>
-    <rect x="262" y="274" width="20" height="10" fill="#2f2d24" transform="rotate(-6 272 279)"/>
-    <rect x="268" y="277" width="2.6" height="2.6" fill="#8a6a1e" opacity="0.8"/>
-    <rect x="380" y="284" width="30" height="13" fill="#2f2d24" transform="rotate(3 395 290)"/>
-    <rect x="388" y="288" width="3" height="3" fill="#8a6a1e" opacity="0.9"/>
-    <rect x="399" y="290" width="3" height="3" fill="#8a6a1e" opacity="0.5"/>
+    <rect x="120" y="290" width="26" height="14" fill="#8f886b"/>
+    <rect x="252" y="276" width="20" height="10" fill="#7c7458" transform="rotate(-6 262 281)"/>
+    <rect x="368" y="286" width="28" height="12" fill="#5c553f" transform="rotate(3 382 292)"/>
     <rect x="600" y="278" width="24" height="11" fill="#2f2d24" transform="rotate(-4 612 283)"/>
-    <rect x="607" y="281" width="2.6" height="2.6" fill="#8a6a1e" opacity="0.85"/>
+    <rect x="607" y="281" width="2.6" height="2.6" fill="#c69b3a" opacity="0.9"/>
     <rect x="702" y="296" width="34" height="15" fill="#2f2d24" transform="rotate(2 719 303)"/>
-    <rect x="710" y="300" width="3" height="3" fill="#8a6a1e" opacity="0.9"/>
-    <rect x="724" y="303" width="3" height="3" fill="#8a6a1e" opacity="0.55"/>
-    <rect x="850" y="282" width="22" height="10" fill="#2f2d24"/>
-    <rect x="856" y="285" width="2.6" height="2.6" fill="#8a6a1e" opacity="0.8"/>
-    <!-- streetlights -->
-    <circle cx="330" cy="272" r="1.2" fill="#8a6a1e"/>
-    <circle cx="330" cy="272" r="5" fill="#8a6a1e" opacity="0.14"/>
-    <circle cx="536" cy="268" r="1.2" fill="#8a6a1e"/>
-    <circle cx="536" cy="268" r="5" fill="#8a6a1e" opacity="0.14"/>
-    <circle cx="796" cy="264" r="1.1" fill="#8a6a1e"/>
-    <circle cx="796" cy="264" r="4.5" fill="#8a6a1e" opacity="0.14"/>
+    <rect x="710" y="300" width="3" height="3" fill="#c69b3a" opacity="0.95"/>
+    <rect x="724" y="303" width="3" height="3" fill="#c69b3a" opacity="0.55"/>
+    <rect x="850" y="282" width="22" height="10" fill="#2b2921"/>
+    <rect x="856" y="285" width="2.6" height="2.6" fill="#c69b3a" opacity="0.85"/>
+    <circle cx="668" cy="270" r="1.2" fill="#c69b3a"/>
+    <circle cx="668" cy="270" r="5" fill="#c69b3a" opacity="0.15"/>
+    <circle cx="806" cy="264" r="1.1" fill="#c69b3a"/>
+    <circle cx="806" cy="264" r="4.5" fill="#c69b3a" opacity="0.15"/>
+    <circle cx="918" cy="268" r="1.1" fill="#c69b3a"/>
+    <circle cx="918" cy="268" r="4.5" fill="#c69b3a" opacity="0.15"/>
   </g>
 
-  <!-- camera light cone from drone down to the viewed patch -->
-  <path d="M 291 141 L 420 262 L 540 262 Z" fill="#fffff8" opacity="0.07"/>
-  <path d="M 291 141 L 420 262 M 291 141 L 540 262" stroke="#9b998c" stroke-width="0.9"
-        stroke-dasharray="1.5 3.5" opacity="0.55" fill="none"/>
+  <!-- the aircraft: a slender blade flying into the night -->
+  <g transform="rotate(-4 295 118)">
+    <path d="M 252 121 Q 290 110 334 117 Q 298 127 252 121 Z"
+          fill="#26251e" stroke="#fffff8" stroke-width="1.3" stroke-linejoin="round"/>
+    <path d="M 264 108 q 13 -3.5 26 -0.5" stroke="#fffff8" stroke-width="1.1" fill="none" opacity="0.75"/>
+    <path d="M 300 106 q 12 -3 24 -0.5" stroke="#fffff8" stroke-width="1.1" fill="none" opacity="0.75"/>
+    <circle cx="322" cy="121" r="2" fill="none" stroke="#c0503a" stroke-width="1.4"/>
+  </g>
+  <text x="294" y="92" font-size="9.5" fill="#efecd9" text-anchor="middle" font-style="italic" opacity="0.9">low-light camera · one glance</text>
 
-  <!-- viewed ground patch (perspective parallelogram) + position fix -->
+  <!-- camera cone -->
+  <path d="M 320 125 L 430 262 L 550 262 Z" fill="#fffff8" opacity="0.07"/>
+  <path d="M 320 125 L 430 262 M 320 125 L 550 262" stroke="#dcd8c4" stroke-width="0.9"
+        stroke-dasharray="1.5 3.5" opacity="0.5" fill="none"/>
+
+  <!-- viewed patch + fix -->
   <g>
-    <path d="M 420 262 L 540 262 L 560 292 L 402 292 Z" fill="none"
-          stroke="#e8e5d6" stroke-width="1.3" opacity="0.85"/>
-    <!-- crosshair -->
-    <circle cx="480" cy="277" r="5.5" fill="none" stroke="#c0503a" stroke-width="1.6"/>
-    <line x1="480" y1="268" x2="480" y2="286" stroke="#c0503a" stroke-width="1.6"/>
-    <line x1="471" y1="277" x2="489" y2="277" stroke="#c0503a" stroke-width="1.6"/>
-    <text x="480" y="318" font-size="12.5" fill="#e8e5d6" text-anchor="middle" font-weight="600">(lat, lon, confidence)</text>
-    <text x="480" y="331" font-size="9.5" fill="#9b998c" text-anchor="middle">position fix — no GPS, no maps on board</text>
+    <path d="M 430 262 L 550 262 L 570 292 L 412 292 Z" fill="none"
+          stroke="#efecd9" stroke-width="1.3" opacity="0.9"/>
+    <circle cx="490" cy="277" r="5.5" fill="none" stroke="#c0503a" stroke-width="1.6"/>
+    <line x1="490" y1="268" x2="490" y2="286" stroke="#c0503a" stroke-width="1.6"/>
+    <line x1="481" y1="277" x2="499" y2="277" stroke="#c0503a" stroke-width="1.6"/>
+    <text x="490" y="318" font-size="12.5" fill="#efecd9" text-anchor="middle" font-weight="600">(lat, lon, confidence)</text>
+    <text x="490" y="331" font-size="9.5" fill="#c9c4ae" text-anchor="middle">position fix — no GPS, no maps on board</text>
   </g>
 
-  <!-- the quad, side view, light ink -->
-  <g stroke="#e8e5d6" fill="none" stroke-width="1.5">
-    <!-- arms -->
-    <path d="M 258 118 L 282 126 L 306 118"/>
-    <!-- body -->
-    <path d="M 270 122 L 294 122 L 290 132 L 274 132 Z" fill="#1b1a15"/>
-    <!-- props -->
-    <ellipse cx="258" cy="114" rx="15" ry="1.7"/><circle cx="258" cy="114" r="1" fill="#e8e5d6"/>
-    <ellipse cx="306" cy="114" rx="15" ry="1.7"/><circle cx="306" cy="114" r="1" fill="#e8e5d6"/>
-    <line x1="258" y1="118" x2="258" y2="112" />
-    <line x1="306" y1="118" x2="306" y2="112" />
-    <!-- camera pod under body, angled down-right -->
-    <path d="M 286 132 L 296 132 L 294 140 L 288 140 Z" fill="#1b1a15"/>
-    <circle cx="291" cy="136" r="1.6" stroke="#c0503a" stroke-width="1.2"/>
-  </g>
-  <text x="282" y="100" font-size="9.5" fill="#9b998c" text-anchor="middle" font-style="italic">low-light camera · one glance</text>
+  <!-- leader to lens -->
+  <path d="M 334 118 Q 420 108 560 112" stroke="#c9c4ae" stroke-width="0.9" stroke-dasharray="2 4" fill="none" opacity="0.6"/>
 
-  <!-- leader from drone to the lens -->
-  <path d="M 310 126 H 560 " stroke="#9b998c" stroke-width="0.9" stroke-dasharray="2 4" fill="none" opacity="0.7"/>
-
-  <!-- magnifier lens: inside the navigation controller -->
+  <!-- magnifier lens -->
   <g>
-    <circle cx="700" cy="126" r="93" fill="#211f18" stroke="#e8e5d6" stroke-width="1.6"/>
-    <line x1="560" y1="126" x2="612" y2="126" stroke="#9b998c" stroke-width="0.9" stroke-dasharray="2 4" opacity="0.7"/>
-    <!-- mini inference path inside the lens -->
-    <!-- tiny camera frame -->
-    <rect x="626" y="108" width="26" height="26" fill="none" stroke="#9b998c" stroke-width="1.2"/>
-    <path d="M 626 126 L 652 117" stroke="#3d3a2e" stroke-width="2.2"/>
-    <rect x="631" y="112" width="6" height="4" fill="#2f2d24"/>
-    <rect x="643" y="123" width="5" height="4" fill="#2f2d24"/>
-    <rect x="632.5" y="113" width="1.5" height="1.5" fill="#8a6a1e"/>
-    <!-- arrow -->
-    <line x1="656" y1="121" x2="666" y2="121" stroke="#9b998c" stroke-width="1"/>
-    <path d="M 666 121 l -3.5 -2 v 4 Z" fill="#9b998c"/>
-    <!-- two conv slabs -->
-    <g stroke="#e8e5d6" stroke-width="1.1" fill="#211f18">
-      <path d="M 670 112 h 13 v 16 h -13 Z M 670 112 l 4 -4 h 13 l -4 4 M 683 112 l 4 -4 v 16 l -4 4"/>
-      <path d="M 692 116 h 9 v 11 h -9 Z M 692 116 l 3.5 -3.5 h 9 l -3.5 3.5 M 701 116 l 3.5 -3.5 v 11 l -3.5 3.5"/>
+    <circle cx="712" cy="118" r="93" fill="#211f18" stroke="#efecd9" stroke-width="1.6"/>
+    <line x1="560" y1="112" x2="622" y2="114" stroke="#c9c4ae" stroke-width="0.9" stroke-dasharray="2 4" opacity="0.6"/>
+    <!-- mini path -->
+    <rect x="638" y="100" width="26" height="26" fill="none" stroke="#9b998c" stroke-width="1.2"/>
+    <path d="M 638 118 L 664 109" stroke="#3d3a2e" stroke-width="2.2"/>
+    <rect x="643" y="104" width="6" height="4" fill="#2f2d24"/>
+    <rect x="655" y="115" width="5" height="4" fill="#2f2d24"/>
+    <rect x="644.5" y="105" width="1.5" height="1.5" fill="#c69b3a"/>
+    <line x1="668" y1="113" x2="678" y2="113" stroke="#9b998c" stroke-width="1"/>
+    <path d="M 678 113 l -3.5 -2 v 4 Z" fill="#9b998c"/>
+    <g stroke="#efecd9" stroke-width="1.1" fill="#211f18">
+      <path d="M 682 104 h 13 v 16 h -13 Z M 682 104 l 4 -4 h 13 l -4 4 M 695 104 l 4 -4 v 16 l -4 4"/>
+      <path d="M 704 108 h 9 v 11 h -9 Z M 704 108 l 3.5 -3.5 h 9 l -3.5 3.5 M 713 108 l 3.5 -3.5 v 11 l -3.5 3.5"/>
     </g>
-    <!-- arrow -->
-    <line x1="708" y1="121" x2="717" y2="121" stroke="#9b998c" stroke-width="1"/>
-    <path d="M 717 121 l -3.5 -2 v 4 Z" fill="#9b998c"/>
-    <!-- probability field with hot cells -->
+    <line x1="720" y1="113" x2="729" y2="113" stroke="#9b998c" stroke-width="1"/>
+    <path d="M 729 113 l -3.5 -2 v 4 Z" fill="#9b998c"/>
     <g>
-      <rect x="721" y="106" width="30" height="30" fill="none" stroke="#e8e5d6" stroke-width="1.1"/>
+      <rect x="733" y="98" width="30" height="30" fill="none" stroke="#efecd9" stroke-width="1.1"/>
       <g stroke="#3d3a2e" stroke-width="0.5">
-        <line x1="727" y1="106" x2="727" y2="136"/><line x1="733" y1="106" x2="733" y2="136"/>
-        <line x1="739" y1="106" x2="739" y2="136"/><line x1="745" y1="106" x2="745" y2="136"/>
-        <line x1="721" y1="112" x2="751" y2="112"/><line x1="721" y1="118" x2="751" y2="118"/>
-        <line x1="721" y1="124" x2="751" y2="124"/><line x1="721" y1="130" x2="751" y2="130"/>
+        <line x1="739" y1="98" x2="739" y2="128"/><line x1="745" y1="98" x2="745" y2="128"/>
+        <line x1="751" y1="98" x2="751" y2="128"/><line x1="757" y1="98" x2="757" y2="128"/>
+        <line x1="733" y1="104" x2="763" y2="104"/><line x1="733" y1="110" x2="763" y2="110"/>
+        <line x1="733" y1="116" x2="763" y2="116"/><line x1="733" y1="122" x2="763" y2="122"/>
       </g>
-      <rect x="733" y="112" width="6" height="6" fill="#c0503a" opacity="0.9"/>
-      <rect x="739" y="112" width="6" height="6" fill="#c0503a" opacity="0.45"/>
-      <rect x="733" y="118" width="6" height="6" fill="#c0503a" opacity="0.4"/>
+      <rect x="745" y="104" width="6" height="6" fill="#c0503a" opacity="0.9"/>
+      <rect x="751" y="104" width="6" height="6" fill="#c0503a" opacity="0.45"/>
+      <rect x="745" y="110" width="6" height="6" fill="#c0503a" opacity="0.4"/>
     </g>
-    <!-- decode to tiny crosshair -->
-    <line x1="755" y1="121" x2="762" y2="121" stroke="#9b998c" stroke-width="1"/>
-    <circle cx="766" cy="121" r="3.4" fill="none" stroke="#c0503a" stroke-width="1.3"/>
-    <line x1="766" y1="116" x2="766" y2="126" stroke="#c0503a" stroke-width="1.3"/>
-    <line x1="761" y1="121" x2="771" y2="121" stroke="#c0503a" stroke-width="1.3"/>
-    <!-- lens captions -->
-    <text x="700" y="162" font-size="10.5" fill="#e8e5d6" text-anchor="middle" font-weight="600">inside the flight computer</text>
-    <text x="700" y="176" font-size="9" fill="#9b998c" text-anchor="middle">4 MiB of memorized terrain</text>
-    
+    <line x1="767" y1="113" x2="774" y2="113" stroke="#9b998c" stroke-width="1"/>
+    <circle cx="778" cy="113" r="3.4" fill="none" stroke="#c0503a" stroke-width="1.3"/>
+    <line x1="778" y1="108" x2="778" y2="118" stroke="#c0503a" stroke-width="1.3"/>
+    <line x1="773" y1="113" x2="783" y2="113" stroke="#c0503a" stroke-width="1.3"/>
+    <text x="712" y="154" font-size="10.5" fill="#efecd9" text-anchor="middle" font-weight="600">inside the flight computer</text>
+    <text x="712" y="168" font-size="9" fill="#9b998c" text-anchor="middle">4 MiB of memorized terrain</text>
   </g>
 
-  <!-- bottom-left eyebrow -->
-  <text x="18" y="326" font-size="9" fill="#9b998c" letter-spacing="1.6" font-weight="600">FLYING DARK — HOW A FIX HAPPENS</text>
+  <!-- captions: day side dark ink, transition annotation -->
+  <text x="18" y="30" font-size="9" fill="#6b6a60" letter-spacing="1.6" font-weight="600">MORNING</text>
+  <text x="470" y="30" font-size="9" fill="#efecd9" letter-spacing="1.6" font-weight="600" opacity="0.75">DUSK</text>
+  <text x="962" y="30" font-size="9" fill="#efecd9" letter-spacing="1.6" font-weight="600" text-anchor="end">NIGHT</text>
+  <text x="18" y="326" font-size="9" fill="#4a4433" letter-spacing="1.6" font-weight="600">FLYING DARK — ONE MODEL, EVERY LIGHT</text>
+  </g>
 </svg>"""
 
 
