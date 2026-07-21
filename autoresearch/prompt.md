@@ -72,24 +72,26 @@ you only design the experiment and edit the code.
    128²×3 is the model input crop, ~1 m/px, not the sensor's native
    resolution):
    ```svg
-   <g><rect id='frozen-input' x='26' y='Y' width='76' height='76'
-      fill='#f6f4ea' stroke='#9b998c' stroke-width='1.6'/>
-   <path d='M26 Y+50 L102 Y+24' stroke='#e6e3d4' stroke-width='6' fill='none'/>
-   <path d='M62 Y+2 L48 Y+74' stroke='#e6e3d4' stroke-width='4' fill='none'/>
-   <rect x='33' y='Y+8' width='13' height='9' fill='#d9d5c3' transform='rotate(-8 39 Y+12)'/>
-   <rect x='79' y='Y+7' width='10' height='12' fill='#cfccbd'/>
-   <rect x='34' y='Y+58' width='14' height='9' fill='#d9d5c3'/>
-   <rect x='76' y='Y+50' width='11' height='10' fill='#cfccbd' transform='rotate(6 81 Y+55)'/>
-   <rect x='55' y='Y+32' width='9' height='8' fill='#d9d5c3' opacity='.85'/>
-   <ellipse cx='88' cy='Y+66' rx='10' ry='7' fill='#8a6a1e' opacity='.12'/>
+   <g id='cam-terrain'><rect id='frozen-input' x='26' y='Y' width='76'
+      height='76' fill='#f6f4ea' stroke='#9b998c' stroke-width='1.6'/>
+   <path d='M31 Y+47 L97 Y+27' stroke='#e6e3d4' stroke-width='5' fill='none'/>
+   <path d='M59 Y+6 L49 Y+70' stroke='#e6e3d4' stroke-width='3.5' fill='none'/>
+   <rect x='34' y='Y+9' width='12' height='8' fill='#d9d5c3' transform='rotate(-8 40 Y+13)'/>
+   <rect x='78' y='Y+8' width='10' height='11' fill='#cfccbd'/>
+   <rect x='35' y='Y+57' width='13' height='8' fill='#d9d5c3'/>
+   <rect x='75' y='Y+50' width='10' height='9' fill='#cfccbd' transform='rotate(6 80 Y+54)'/>
+   <rect x='54' y='Y+31' width='9' height='8' fill='#d9d5c3' opacity='.85'/>
+   <ellipse cx='86' cy='Y+63' rx='8' ry='6' fill='#8a6a1e' opacity='.12'/>
    <circle cx='40' cy='Y+28' r='.7' fill='#6b6a60' opacity='.5'/>
    <circle cx='70' cy='Y+14' r='.7' fill='#6b6a60' opacity='.5'/>
-   <circle cx='92' cy='Y+34' r='.7' fill='#6b6a60' opacity='.5'/>
-   <circle cx='52' cy='Y+50' r='.7' fill='#6b6a60' opacity='.5'/>
-   <circle cx='83' cy='Y+70' r='.7' fill='#6b6a60' opacity='.5'/>
-   <circle cx='31' cy='Y+44' r='.7' fill='#6b6a60' opacity='.5'/></g>
+   <circle cx='92' cy='Y+36' r='.7' fill='#6b6a60' opacity='.5'/>
+   <circle cx='52' cy='Y+52' r='.7' fill='#6b6a60' opacity='.5'/>
+   <circle cx='82' cy='Y+70' r='.7' fill='#6b6a60' opacity='.5'/>
+   <circle cx='31' cy='Y+42' r='.7' fill='#6b6a60' opacity='.5'/></g>
    ```
-   (Y+n means the literal number Y plus n — compute the values.) Draw your
+   (Y+n means the literal number Y plus n — compute the values. Every glyph
+   element stays strictly INSIDE the frame border — figcheck rejects a
+   figure without the `cam-terrain` group.) Draw your
    receptive-field square and kernel-projection lines on top of it as
    usual.
    **Anchor the frozen endpoints identically in every figure** so all

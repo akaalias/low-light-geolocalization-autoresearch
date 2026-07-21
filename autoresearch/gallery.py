@@ -66,11 +66,12 @@ a:hover{border-bottom-color:var(--accent)}
    svg (agent figures, chart) without touching the drawings themselves. */
 svg text{paint-order:stroke;stroke:var(--paper);stroke-width:2.8px;
   stroke-linejoin:round}
-.page-head{max-width:900px;margin:30px auto 4px;padding:0 16px;text-align:center}
-.page-head .eyebrow{text-align:center}
-.page-head h1{font:700 34px/1.15 var(--serif);color:var(--ink);margin:10px 0 14px;
-  letter-spacing:0}
-.page-head .page-sub{font:15.5px/1.6 var(--serif);color:var(--muted);
+header.page-head{max-width:900px;margin:34px auto 4px;padding:0 16px;
+  text-align:center;display:block}
+header.page-head .eyebrow{text-align:center;margin:0}
+header.page-head h1{font:700 34px/1.15 var(--serif);color:var(--ink);
+  margin:10px 0 14px;letter-spacing:0}
+header.page-head .page-sub{font:15.5px/1.6 var(--serif);color:var(--muted);
   font-style:normal;margin:0 auto;max-width:820px;text-align:center}
 .page-head .page-sub b{color:var(--ink)}
 .page-head .page-sub a{color:var(--accent)}
@@ -104,7 +105,7 @@ svg text{paint-order:stroke;stroke:var(--paper);stroke-width:2.8px;
 .topnav a.on{color:var(--ink);border-bottom-color:var(--ink)}
 
 .paths-wrap{max-width:1080px;margin:0 auto;padding:14px 28px 96px}
-.paths-wrap h1{font-weight:400;font-size:44px;line-height:1.15;
+.paths-wrap h1.home-h1{font-weight:400;font-size:44px;line-height:1.15;
   letter-spacing:-.01em;text-align:center;margin:26px 0 14px}
 p.psub{text-align:center;font-style:italic;color:var(--muted);
   font-size:15.5px;line-height:1.7;margin:0 auto 8px;max-width:820px}
@@ -192,7 +193,6 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .dash-head{max-width:92vw;margin:0 auto;padding:18px 0 6px}
 .eyebrow{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:10px}
-.dash-head h1{font-size:34px;margin:0 0 8px;font-weight:600}
 .dash-head .sub{margin:0 0 6px;color:var(--muted);max-width:960px}
 .dash-head .sub b{color:var(--ink)}
 .intro{max-width:960px;font-size:14.5px;line-height:1.6;color:#4a473e;margin:10px 0 16px}
@@ -1325,7 +1325,7 @@ def render_overview(exps):
 <div class="paths-wrap">
 <div class="hero">{HERO_SVG}</div>
 <div class="eyebrow" style="text-align:center">Alexis Rondeau · an autonomous research project</div>
-<h1>&ldquo;Not all who wander are lost&rdquo; &mdash; a 5-inch drone learns
+<h1 class="home-h1">&ldquo;Not all who wander are lost&rdquo; &mdash; a 5-inch drone learns
 to find itself in the dark, with no GPS, no maps on board, and a $4 flight
 computer</h1>
 <p class="psub lead">Where other aircraft ask satellites, this one
@@ -1552,8 +1552,8 @@ def render_paths(exps):
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('paths')}
 {compute_banner()}
-<div class="paths-wrap">
 {page_header("Model designs", "Before it may train anything, every iteration of the research loop draws the model it proposes to fly — a proper technical figure of the computation one camera frame takes through the deployed network, from pixels to <i>(lat,&nbsp;lon,&nbsp;confidence)</i>. These are those figures — every proposal ever made, reverted branches included.")}
+<div class="paths-wrap">
 <div class="pnote">
 <p>Each figure is drawn by the experimenting agent itself, under one shared
 visual contract — tensors drawn as tensors (an image is pixels, a feature map

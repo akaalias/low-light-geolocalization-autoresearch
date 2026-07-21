@@ -150,6 +150,9 @@ def check(svg: str) -> list[str]:
     elif not re.search(r"\bx=['\"]26['\"]", tag.group(0)):
         errs.append("frozen-input element must sit at x=26 (left-flush anchor)")
 
+    if not re.search(r"id=['\"]cam-terrain['\"]", svg):
+        errs.append("camera frame must be the canonical terrain glyph from the "
+                    "prompt (missing <g id='cam-terrain'>) — copy it verbatim")
     tag = re.search(r"<[^>]*id=['\"]frozen-output['\"][^>]*>", svg)
     if not tag:
         errs.append("missing id='frozen-output' on the output text block "
