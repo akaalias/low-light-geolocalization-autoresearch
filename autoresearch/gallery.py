@@ -973,23 +973,23 @@ def render_overview(exps):
     factor = (f"{best/TARGET_M:,.0f}×" if best and best > TARGET_M
               else "at goal" if best else "—")
 
-    wander = (f"Not all who wander are lost. (This one was, by {best_s}.)"
-              if best is not None else "Not all who wander are lost.")
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
-<title>{wander} — Low-Light Geolocalization</title>
+<title>Not all who wander are lost — Low-Light Geolocalization</title>
 <style>{CSS}</style></head><body>
 {topnav('overview', root=True)}
 <div class="paths-wrap">
 <div class="eyebrow" style="text-align:center">Alexis Rondeau · an autonomous research project</div>
-<h1>&ldquo;{wander}&rdquo;</h1>
-<p class="psub lead">A 5-inch drone built to fly at night <b>without GPS</b>:
-in place of satellite navigation, a low-light camera and a neural network
-small enough for a $4 flight computer — a network that has <i>memorized its
-flight area</i> and turns one downward glance into
+<h1>&ldquo;Not all who wander are lost&rdquo; &mdash; a 5-inch drone learns
+to find itself in the dark, with no GPS, no maps on board, and a $4 flight
+computer</h1>
+<p class="psub lead">Where other aircraft ask satellites, this one
+<i>remembers</i>: a neural network small enough to fit in 4&nbsp;MiB has
+memorized what its flight area looks like from above — by day, by dusk, by
+night — and turns one glance of a low-light camera into
 <i>(lat,&nbsp;lon,&nbsp;confidence)</i>. No satellites to jam or lose, no
-maps on board, no internet. And the research to get there is not done by me:
-an <b>autonomous loop of coding agents</b> designs, trains, and scores one
+internet. And the research to get there is not done by me: an
+<b>autonomous loop of coding agents</b> designs, trains, and scores one
 pre-registered experiment at a time, keeping only what measurably helps.
 This site is its live lab notebook.</p>
 
