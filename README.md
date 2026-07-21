@@ -20,7 +20,7 @@ metric. Full context: `CLAUDE.md`.
 | `FROZEN` | — | the exact list of files the loop may never touch (enforced by `loop.sh` via git revert) |
 | `runs/` | generated | per-experiment artifacts (models, metrics, heatmaps, samples) |
 | `experiments.sqlite` | generated | full experiment lineage: hypothesis, method, expected outcome, result, conclusion, all metrics |
-| `gallery/index.html` | generated | self-refreshing visual lineage (samples + error heatmaps) |
+| `gallery/` | generated | self-refreshing pages: research log (`index.html`, samples + error heatmaps) and proposed inference paths (`inference-paths.html`, every experiment's pre-registered architecture figure) |
 
 ## Quickstart (already proven end-to-end by the bootstrap run)
 

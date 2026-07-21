@@ -8,7 +8,14 @@ interlinked chart <-> table (hover highlights, click opens the detail row).
 Not frozen (presentation only — the data it renders comes solely from
 experiments.sqlite and runs/ artifacts).
 
-Usage: python -m autoresearch.gallery   # writes gallery/index.html
+Renders two pages sharing the airloom top-navigation pattern:
+  gallery/index.html            — the research log (chart + lineage table)
+  gallery/inference-paths.html  — "Proposed Inference Paths": every
+                                  pre-registered architecture figure
+Planned but deliberately held out for now: a lineage page and a results
+page (see the publishing roadmap).
+
+Usage: python -m autoresearch.gallery   # writes both pages
 """
 
 import datetime
@@ -43,7 +50,85 @@ a:hover{border-bottom-color:var(--accent)}
 .num{font-variant-numeric:lining-nums tabular-nums}
 .mono{font-family:var(--mono);font-size:12px}
 
-.dash-head{max-width:92vw;margin:0 auto;padding:40px 0 6px}
+.topnav{display:flex;gap:28px;justify-content:center;align-items:baseline;
+  border-bottom:1px solid var(--rule);padding:18px 0 12px;margin:0 0 6px}
+.topnav .brand{font:italic 14px var(--serif);color:var(--faint)}
+.topnav a{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
+  border-bottom:2px solid transparent;padding-bottom:3px}
+.topnav a:hover{color:var(--ink);border-bottom-color:transparent}
+.topnav a.on{color:var(--ink);border-bottom-color:var(--ink)}
+
+.paths-wrap{max-width:1080px;margin:0 auto;padding:14px 28px 96px}
+.paths-wrap h1{font-weight:400;font-size:44px;line-height:1.15;
+  letter-spacing:-.01em;text-align:center;margin:26px 0 14px}
+p.psub{text-align:center;font-style:italic;color:var(--muted);
+  font-size:15.5px;line-height:1.7;margin:0 auto 8px;max-width:820px}
+p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
+.pnote{max-width:780px;margin:20px auto 0;font-size:14.5px;line-height:1.7;
+  color:#4a473e}
+.pnote p{margin:0 0 10px}
+.pnote b{color:var(--ink)}
+.contract-fig{max-width:980px;margin:34px auto 4px}
+.contract-fig svg{width:100%;height:auto;display:block}
+.contract-cap{max-width:760px;margin:10px auto 0;font-size:13px;
+  line-height:1.65;color:var(--muted);text-align:center;font-style:italic}
+.pkey{display:flex;flex-wrap:wrap;gap:8px 26px;justify-content:center;
+  font-size:13.5px;color:var(--muted);margin:22px auto 4px}
+.pkey .sw{display:inline-block;width:16px;height:0;border-top:3px solid;
+  vertical-align:middle;margin-right:7px}
+.fig-entry{margin:54px 0 0;border-left:2px solid var(--rule-soft);
+  padding:4px 0 8px 26px}
+.fig-entry.kept{border-left-color:var(--ink)}
+.fig-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;
+  margin:0 0 2px}
+.fig-no{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--faint);
+  white-space:nowrap}
+.fig-title{font-size:19px;font-weight:600;line-height:1.35}
+.fig-status{font-size:13px;color:var(--faint);font-style:italic;
+  white-space:nowrap}
+.fig-status b{color:var(--ink)}
+.fig-status .fail{color:var(--accent);font-weight:600}
+.chip-cur{display:inline-block;font:600 10.5px var(--serif);font-style:normal;
+  font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--paper);background:var(--ink);padding:2px 8px 3px;
+  border-radius:2px;vertical-align:1px}
+.fig-svg{margin:10px 0 4px;overflow-x:auto;cursor:zoom-in}
+.fig-svg svg{width:100%;min-width:720px;height:auto;display:block}
+.contract-fig>svg{cursor:zoom-in}
+
+#svgov{position:fixed;inset:0;background:var(--paper);z-index:60;
+  display:none;flex-direction:column}
+#svgov.on{display:flex}
+.ov-bar{display:flex;align-items:baseline;gap:16px;padding:12px 26px;
+  border-bottom:1px solid var(--rule);flex:none}
+.ov-no{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--faint);
+  white-space:nowrap}
+.ov-title{font-size:15px;font-weight:600;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.ov-hint{margin-left:auto;font:600 10.5px var(--serif);
+  font-feature-settings:"smcp" 1;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--faint);white-space:nowrap}
+.ov-close{cursor:pointer;font:600 12px var(--serif);
+  font-feature-settings:"smcp" 1;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--muted);background:none;
+  border:1px solid var(--rule);border-radius:2px;padding:4px 12px}
+.ov-close:hover{color:var(--ink);border-color:var(--ink)}
+.ov-canvas{flex:1;overflow:hidden;cursor:grab;touch-action:none;
+  user-select:none;-webkit-user-select:none}
+.ov-canvas.dragging{cursor:grabbing}
+.ov-inner{width:100%;height:100%;transform-origin:0 0}
+.ov-inner svg{width:100%;height:100%;display:block}
+.fig-cap{max-width:880px;font-size:14.5px;line-height:1.65;color:#4a473e}
+.fig-cap p{margin:0 0 4px}
+.fig-cap .fig-lead{font-weight:600;color:var(--ink)}
+.fig-meta{font-size:12.5px;color:var(--faint);margin-top:2px}
+.fig-meta .chg{color:var(--accent)}
+.fig-meta a{white-space:nowrap}
+
+.dash-head{max-width:92vw;margin:0 auto;padding:18px 0 6px}
 .eyebrow{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin-bottom:10px}
 .dash-head h1{font-size:34px;margin:0 0 8px;font-weight:600}
@@ -254,6 +339,17 @@ function showTip(ev,el){
 }
 window.addEventListener('load',function(){
   tip=document.getElementById('tip');
+  // deep link from other pages: index.html#r<id> opens + flashes that row
+  var hm=location.hash.match(/^#r(\\d+)$/);
+  if(hm){
+    var hr=document.getElementById('r'+hm[1]),
+        hd=document.getElementById('d'+hm[1]);
+    if(hr){
+      if(hd&&hd.style.display==='none')toggle(+hm[1]);
+      hr.scrollIntoView({behavior:'smooth',block:'center'});
+      hr.classList.add('row-flash');
+    }
+  }
   try{JSON.parse(sessionStorage.getItem('open')||'[]').forEach(function(id){
     var d=document.getElementById('d'+id);
     if(d){d.style.display='table-row';
@@ -303,8 +399,82 @@ window.addEventListener('load',function(){
 """
 
 
+# Zoom/pan overlay for the inference-paths page: click any figure to open it
+# full-screen (SVG, so zoom is lossless); wheel = zoom about the cursor,
+# drag = pan, double-click = reset, Esc or the close button to exit.
+PATHS_JS = """
+var ov,ovIn,ovCv,sc=1,px=0,py=0,drag=null;
+function ovApply(){ovIn.style.transform=
+  'translate('+px+'px,'+py+'px) scale('+sc+')'}
+function ovOpen(svg,no,title){
+  ovIn.innerHTML='';ovIn.appendChild(svg.cloneNode(true));
+  document.querySelector('.ov-no').textContent=no;
+  document.querySelector('.ov-title').textContent=title;
+  sc=1;px=0;py=0;ovApply();
+  ov.classList.add('on');document.body.style.overflow='hidden';
+}
+function ovClose(){ov.classList.remove('on');
+  document.body.style.overflow='';ovIn.innerHTML=''}
+window.addEventListener('load',function(){
+  ov=document.getElementById('svgov');
+  ovIn=ov.querySelector('.ov-inner');
+  ovCv=ov.querySelector('.ov-canvas');
+  document.querySelectorAll('.fig-entry').forEach(function(sec){
+    var holder=sec.querySelector('.fig-svg'),svg=holder&&holder.querySelector('svg');
+    if(!svg)return;
+    holder.addEventListener('click',function(){
+      ovOpen(svg,sec.querySelector('.fig-no').textContent,
+             sec.querySelector('.fig-title').textContent)});
+  });
+  var cf=document.querySelector('.contract-fig>svg');
+  if(cf)cf.addEventListener('click',function(){
+    ovOpen(cf,'','The frozen contract — where the experiments happen')});
+  ov.querySelector('.ov-close').addEventListener('click',ovClose);
+  window.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&ov.classList.contains('on'))ovClose()});
+  ovCv.addEventListener('wheel',function(e){
+    e.preventDefault();
+    var r=ovCv.getBoundingClientRect(),
+        mx=e.clientX-r.left,my=e.clientY-r.top,
+        ns=Math.min(16,Math.max(0.5,sc*Math.exp(-e.deltaY*0.002))),
+        k=ns/sc;
+    px=mx-k*(mx-px);py=my-k*(my-py);sc=ns;ovApply();
+  },{passive:false});
+  ovCv.addEventListener('pointerdown',function(e){
+    drag={x:e.clientX,y:e.clientY,px:px,py:py};
+    ovCv.setPointerCapture(e.pointerId);
+    ovCv.classList.add('dragging');
+  });
+  ovCv.addEventListener('pointermove',function(e){
+    if(!drag)return;
+    px=drag.px+e.clientX-drag.x;py=drag.py+e.clientY-drag.y;ovApply();
+  });
+  ovCv.addEventListener('pointerup',function(){
+    drag=null;ovCv.classList.remove('dragging')});
+  ovCv.addEventListener('dblclick',function(){sc=1;px=0;py=0;ovApply()});
+});
+"""
+
+
 def esc(s):
     return html.escape(str(s if s is not None else ""))
+
+
+# Shared top navigation, airloom pattern (centered, italic brand, smallcaps
+# links, active page underlined in ink). Lineage + results pages are planned
+# but held out for now — add them here when they exist so every page's nav
+# updates together.
+NAV_PAGES = (("index.html", "research log"),
+             ("inference-paths.html", "inference paths"))
+
+
+def topnav(active):
+    links = []
+    for href, label in NAV_PAGES:
+        cls = " class='on'" if href == active else ""
+        links.append(f"<a href='{href}'{cls}>{label}</a>")
+    return ("<nav class='topnav'><span class='brand'>Low-Light "
+            "Geolocalization</span>" + "".join(links) + "</nav>")
 
 
 def fmt_dur(s):
@@ -746,6 +916,218 @@ actually looked at.</div>
 </details>"""
 
 
+PATHS_OUT = REPO_ROOT / "gallery" / "inference-paths.html"
+
+
+def contract_svg():
+    """The meta-figure at the top of the inference-paths page: the frozen
+    contract (camera frame in, (u, v, conf) out, both gray) with a dashed
+    placeholder box for everything an experiment may redraw, and the ochre
+    training-signals lane beneath it. Same glyph geometry and palette as the
+    per-experiment figures (see archive/arch_svg_reference.py)."""
+    INK, MUT, FAINT, ACC, OCH = ("#111111", "#6b6a60", "#9b998c",
+                                 "#8c2f1f", "#8a6a1e")
+    FONT = "Palatino,Georgia,serif"
+    IC = 112  # inference lane center y
+
+    def txt(x, y, s, size=10, color=MUT, w=400, anchor="middle", style=""):
+        return (f"<text x='{x:.0f}' y='{y:.0f}' font-family='{FONT}' "
+                f"font-size='{size}' fill='{color}' font-weight='{w}' "
+                f"text-anchor='{anchor}' {style}>{s}</text>")
+
+    def harrow(x1, x2, y, color=FAINT):
+        return (f"<line x1='{x1}' y1='{y}' x2='{x2 - 5}' y2='{y}' "
+                f"stroke='{color}' stroke-width='1'/>"
+                f"<path d='M {x2},{y} l -6,-3 v 6 Z' fill='{color}'/>")
+
+    b = []
+    # lane labels, identical to the per-experiment figures
+    b.append(txt(8, 26, "INFERENCE PATH — WHAT FLIES", 9, FAINT, 600, "start",
+                 "letter-spacing='1.8'"))
+    b.append(txt(8, 236, "TRAINING SIGNALS — NEVER FLY", 9, OCH, 600, "start",
+                 "letter-spacing='1.8'"))
+    # frozen input: pixel-textured camera frame (gray)
+    x0, s = 26, 54
+    y0 = IC - s / 2
+    b.append(f"<rect x='{x0}' y='{y0}' width='{s}' height='{s}' "
+             f"fill='#00000008' stroke='{FAINT}' stroke-width='1.4'/>")
+    n = 6
+    for i in range(1, n):
+        b.append(f"<line x1='{x0 + i * s / n:.0f}' y1='{y0}' "
+                 f"x2='{x0 + i * s / n:.0f}' y2='{y0 + s}' stroke='{FAINT}' "
+                 f"stroke-width='0.4' opacity='0.3'/>")
+        b.append(f"<line x1='{x0}' y1='{y0 + i * s / n:.0f}' x2='{x0 + s}' "
+                 f"y2='{y0 + i * s / n:.0f}' stroke='{FAINT}' "
+                 f"stroke-width='0.4' opacity='0.3'/>")
+    for (a, c, o) in ((1, 2, .35), (3, 1, .5), (2, 4, .4), (4, 3, .3), (0, 4, .25)):
+        b.append(f"<rect x='{x0 + a * s / n:.0f}' y='{y0 + c * s / n:.0f}' "
+                 f"width='{s / n:.0f}' height='{s / n:.0f}' fill='{FAINT}' "
+                 f"opacity='{o * 0.35}'/>")
+    b.append(txt(53, IC - 40, "128²×3", 9, FAINT))
+    b.append(txt(53, IC + 48, "camera frame", 10.5, MUT, 600))
+    b.append(txt(53, IC + 60, "one night exposure", 9.5, FAINT))
+    b.append(txt(53, IC + 73, "frozen contract", 8.5, FAINT,
+                 style="font-style='italic'"))
+    b.append(harrow(x0 + s + 8, 176, IC))
+    # the placeholder: everything between the endpoints is the search space
+    bx, by, bw, bh = 180, 40, 560, 144
+    b.append(f"<rect x='{bx}' y='{by}' width='{bw}' height='{bh}' fill='none' "
+             f"stroke='{ACC}' stroke-width='1.6' stroke-dasharray='9 7'/>")
+    cx = bx + bw / 2
+    b.append(txt(cx, IC - 14, "the experiment goes here", 14, INK, 600))
+    b.append(txt(cx, IC + 6,
+                 "architecture · feature extraction · decode · confidence — "
+                 "the agent may redraw all of it", 10, MUT))
+    b.append(txt(cx, IC + 22,
+                 "each figure below is one proposal for the inside of this box",
+                 9.5, FAINT, style="font-style='italic'"))
+    # deployment gate note, hanging off the box like a margin annotation
+    b.append(txt(972, by + bh + 16,
+                 "whatever fills the box must export to one ONNX file "
+                 "≤ 4 MiB and answer in ≤ 250 ms", 9, FAINT, anchor="end",
+                 style="font-style='italic'"))
+    # frozen output
+    b.append(harrow(bx + bw + 6, 796, IC))
+    ox = 812
+    b.append(f"<line x1='{ox - 7}' y1='{IC}' x2='{ox + 7}' y2='{IC}' "
+             f"stroke='{FAINT}' stroke-width='1.4'/>"
+             f"<line x1='{ox}' y1='{IC - 7}' x2='{ox}' y2='{IC + 7}' "
+             f"stroke='{FAINT}' stroke-width='1.4'/>"
+             f"<circle cx='{ox}' cy='{IC}' r='3.9' fill='none' "
+             f"stroke='{FAINT}' stroke-width='1.4'/>"
+             f"<circle cx='{ox}' cy='{IC}' r='1.5' fill='{FAINT}'/>")
+    b.append(txt(ox + 16, IC - 18, "frozen contract", 8.5, FAINT,
+                 anchor="start", style="font-style='italic'"))
+    b.append(txt(ox + 16, IC - 2, "(lat, lon, confidence)", 13, MUT, 600, "start"))
+    b.append(txt(ox + 16, IC + 12, "position fix + confidence", 9, FAINT,
+                 anchor="start"))
+    # training-signals lane: scaffolding attached to the box, discarded later
+    for lx in (cx - 90, cx + 90):
+        b.append(f"<line x1='{lx}' y1='{by + bh}' x2='{lx}' y2='{252}' "
+                 f"stroke='{OCH}' stroke-width='1' stroke-dasharray='2 4'/>")
+    b.append(txt(cx, 250, "losses · supervision targets · samplers", 10, OCH, 600))
+    b.append(txt(cx, 263,
+                 "scaffolding that shapes the weights during training — torn "
+                 "down before flight, never in the exported model", 9.5, OCH))
+    return ("<svg viewBox='0 0 980 290' xmlns='http://www.w3.org/2000/svg' "
+            "role='img'>" + "".join(b) + "</svg>")
+
+
+def paths_status(e, is_current):
+    if e["primary_metric"] is not None and e["primary_metric"] >= FAIL:
+        return "<span class='fail'>gated fail</span> — reverted"
+    if e["kept"]:
+        cur = " <span class='chip-cur'>current design</span>" if is_current else ""
+        return f"<b>kept</b> — new best, <b class='num'>{fmt_m(e['primary_metric'])}</b>{cur}"
+    return f"discarded — <span class='num'>{fmt_m(e['primary_metric'])}</span>, reverted"
+
+
+def render_paths(exps):
+    """gallery/inference-paths.html — every experiment's pre-registered
+    architecture figure (the `architecture_svg` each agent must draw before
+    training), presented chronologically as one evolving design record."""
+    figs = [e for e in exps
+            if e["kind"] != "holdout_check"
+            and (e.get("arch_svg") or "").lstrip().startswith("<svg")]
+    n_kept = sum(1 for e in figs if e["kept"])
+    current_id = next((e["id"] for e in reversed(figs) if e["kept"]), None)
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=1100">
+<title>Proposed Inference Paths — Low-Light Geolocalization</title>
+<style>{CSS}</style><script>{PATHS_JS}</script></head><body>
+{topnav('inference-paths.html')}
+<div class="paths-wrap">
+<div class="eyebrow" style="text-align:center">Alexis Rondeau · live research log</div>
+<h1>Proposed Inference Paths</h1>
+<p class="psub lead">Before it may train anything, every iteration of the
+research loop has to draw the model it proposes to fly — a proper technical
+figure of its <b>inference path</b>: the computation one camera frame takes
+through the deployed network, left to right, from pixels to
+<i>(lat,&nbsp;lon,&nbsp;confidence)</i>. These are those figures — every
+proposal ever made, reverted branches included.</p>
+<div class="pnote">
+<p>Each figure is drawn by the experimenting agent itself, under one shared
+visual contract — tensors drawn as tensors (an image is pixels, a feature map
+is a slab, a vector is a bar of ticks), operations as operations, no labeled
+boxes — so independent proposals read like figures from a single paper. The
+two endpoints are gray because they are the <b>frozen contract</b>: the
+camera crop coming in and the coordinate going out are fixed by the harness,
+outside the search space. Everything in ink between them is that
+experiment's design; red is reserved for the one thing the experiment
+changed; ochre exists only during training and never flies.</p>
+<p>Read top to bottom and you watch the design evolve: a <b>kept</b>
+proposal (ink rule on the left) becomes the trunk the next experiment
+branches from; a <b>discarded</b> one was trained, scored, and reverted —
+drawn to the same standard, because the dead branches are part of the record
+too. Each caption is the experiment's own pre-registered plain-words
+explanation; the full record (hypothesis, method, scoreboard) is one click
+away in the <a href="index.html">research log</a>. (One honesty note:
+figures 1–6 predate the loop — those experiments were designed
+interactively during the bootstrap phase and pre-registered their designs
+as text; their figures were drawn to this standard after the fact. From
+experiment 7 on, every figure is the headless agent's own, drawn before
+training ran.)</p>
+</div>
+<div class="contract-fig">{contract_svg()}
+<p class="contract-cap">The shape every figure on this page shares. The gray
+endpoints are the harness's frozen contract — one low-light camera crop in,
+one <i>(lat,&nbsp;lon,&nbsp;confidence)</i> answer out — and the dashed box
+is the entire search space: each experiment below is one way of filling it.
+The ochre lane underneath holds the training signals: the losses, targets
+and samplers that shape the weights during training and are torn down before
+flight — they never board the aircraft.</p>
+</div>
+<div class="pkey">
+  <span class="k"><span class="sw" style="border-top-color:var(--faint)"></span>frozen contract — harness endpoints</span>
+  <span class="k"><span class="sw" style="border-top-color:var(--ink)"></span>the design under test</span>
+  <span class="k"><span class="sw" style="border-top-color:var(--accent)"></span>what this experiment changed</span>
+  <span class="k"><span class="sw" style="border-top-color:var(--ochre)"></span>training-only — never flies</span>
+</div>
+<p class="psub num">{len(figs)} proposals · {n_kept} kept ·
+updated {now}</p>"""]
+
+    for e in figs:
+        try:
+            arch = json.loads(e.get("arch_json") or "null")
+        except (TypeError, json.JSONDecodeError):
+            arch = None
+        stages = arch.get("stages") if isinstance(arch, dict) else None
+        changed = [s.get("name", "?") for s in (stages or []) if s.get("changed")]
+        chg = (f"<span class='chg'>changed: {esc(', '.join(changed))}</span> · "
+               if changed else "")
+        kept_cls = " kept" if e["kept"] else ""
+        eli5 = (f"<p><span class='fig-lead'>In plain words.</span> "
+                f"{esc(e['eli5'])}</p>" if e.get("eli5") else "")
+        body.append(f"""<section class="fig-entry{kept_cls}" id="e{e['id']}">
+<div class="fig-head">
+  <span class="fig-no num">Fig. {e['id']}</span>
+  <span class="fig-title">{esc(e['title'])}</span>
+  <span class="fig-status">{paths_status(e, e['id'] == current_id)}</span>
+</div>
+<div class="fig-svg">{e['arch_svg']}</div>
+<div class="fig-cap">
+{eli5}
+<p class="fig-meta">{esc(e['category'] or '—')} · {esc(e['init_strategy'] or '—')}
+· {chg}{esc(e['ts'][:10])} · commit
+<span class="mono">{esc(e['git_commit'][:8])}</span> ·
+<a href="index.html#r{e['id']}">full experiment record →</a></p>
+</div>
+</section>""")
+
+    body.append("""</div>
+<div id="svgov"><div class="ov-bar"><span class="ov-no"></span>
+<span class="ov-title"></span>
+<span class="ov-hint">scroll to zoom · drag to pan · double-click to reset</span>
+<button class="ov-close">Esc · close</button></div>
+<div class="ov-canvas"><div class="ov-inner"></div></div></div>
+</body></html>""")
+    PATHS_OUT.parent.mkdir(exist_ok=True)
+    PATHS_OUT.write_text("\n".join(body))
+    print(f"wrote {PATHS_OUT} ({len(figs)} figures)")
+
+
 def render():
     conn = connect()
     conn.row_factory = lambda cur, row: {d[0]: row[i] for i, d in enumerate(cur.description)}
@@ -779,6 +1161,7 @@ def render():
 <meta name="viewport" content="width=1100">
 <title>Low-Light Geolocalization — Autoresearch Progress</title>
 <style>{CSS}</style><script>{JS}</script></head><body>
+{topnav('index.html')}
 <header class="dash-head">
   <div class="eyebrow">Alexis Rondeau · live research log</div>
   <h1>Can a drone find itself in the dark?</h1>
@@ -882,6 +1265,7 @@ agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duratio
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text("\n".join(body))
     print(f"wrote {OUT} ({len(exps)} experiments)")
+    render_paths(exps)
 
 
 if __name__ == "__main__":

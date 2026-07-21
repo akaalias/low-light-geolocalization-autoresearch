@@ -53,9 +53,9 @@ you only design the experiment and edit the code.
    Losses/targets/samplers live in a lane below the inference path,
    annotated with slanted dashed leader lines to small text — no boxes
    around them. Draw the two FROZEN endpoints — the camera-frame input and
-   the (u, v, conf) output — entirely in #9b998c with a small italic
-   “frozen contract” tag: they are fixed by the harness and outside your
-   search space. Everything between them is your design: draw it in ink,
+   the (lat, lon, confidence) output — entirely in #9b998c with a small
+   italic “frozen contract” tag: they are fixed by the harness and outside
+   your search space. Everything between them is your design: draw it in ink,
    with red only on what THIS experiment changes. Style contract, so all experiments' figures read as one
    paper: viewBox width 980 (height ~300–360); transparent background; ink
    #111111, captions #6b6a60, annotations/arrows #9b998c; **#8c2f1f (red)
@@ -63,8 +63,14 @@ you only design the experiment and edit the code.
    elements in #8a6a1e (or red if changed); font-family
    Palatino,Georgia,serif; stroke-width ≈1.2 elements, 1 arrows; fills only
    faint tints (opacity ≤ .12); no gradients, no icons, no emoji. Inference
-   flows left → right from camera frame to (u, v, conf). Lay elements out
-   on a running x-cursor with generous spacing so nothing overlaps.
+   flows left → right from camera frame to (lat, lon, confidence).
+   **Anchor the frozen endpoints identically in every figure** so all
+   experiments' figures line up when compared down the gallery page: the
+   camera-frame square starts at x=26 (its captions centered on x=53), and
+   the output is right-anchored — decode crosshair at x=812, the
+   (lat, lon, confidence) text block text-anchor=start at x=828. Lay the
+   elements between them out on a running x-cursor with generous spacing
+   so nothing overlaps.
    Consecutive conv layers must be tied by kernel-projection lines (small
    kernel square on one face, faint lines converging to a cell on the
    next) so the encoder reads as one computation, not boxes in a row.

@@ -228,7 +228,7 @@ def conf_branch(bar_x, out_x, color=FAINT):
 def output_part(x, sub="position fix + confidence"):
     return (txt(x, IC - 18, "frozen contract", 8.5, FAINT, anchor="start",
                 style="font-style='italic'")
-            + txt(x, IC - 2, "(u, v, conf)", 13, MUT, 600, "start")
+            + txt(x, IC - 2, "(lat, lon, confidence)", 13, MUT, 600, "start")
             + txt(x, IC + 12, sub, 9, FAINT, anchor="start"))
 
 
@@ -256,13 +256,12 @@ def exp1():
     b.append(fan(fx, 64, fx + 56, 18)); b.append(g)
     b.append(cap(fx + 60, IC + 84, "FC 128 → 3", "sigmoid"))
     x = fx + 70
-    b.append(harrow(x, x + 36, IC, "one shot"))
-    b.append(crosspt(x + 52, IC, INK))
-    b.append(output_part(x + 68))
-    b.append(cap(x + 52, IC + 34, "", None))
+    b.append(harrow(x, 796, IC, "one shot"))
+    b.append(crosspt(812, IC, INK))
+    b.append(output_part(828))
     b.append(loss_note(fx + 60, IC + 14, 380, ("mean-squared error on (u, v)",
              "the whole map supervises one number pair"), OCH))
-    b.append(loss_note(x + 52, IC + 20, 660, ("BCE ×0.1 on confidence",), OCH))
+    b.append(loss_note(812, IC + 20, 660, ("BCE ×0.1 on confidence",), OCH))
     b.append(txt(968, LOSS_Y - 12, "starting design — nothing changed yet", 9.5, FAINT,
                  anchor="end", style="font-style='italic'"))
     return svgwrap(330, "".join(b))
@@ -291,11 +290,11 @@ def field_chain(fc_color, field_color, dec_color, dec_cells, dec_name, dec_sub):
     b.append(g)
     b.append(cap(gx + 38, IC + 56, "probability field", "32×32 cells over the map",
                  name_color=field_color if field_color == ACC else None))
-    tx = gx + gs + 96
+    tx = 812  # shared right anchor: every figure's output lines up
     b.append(converge(gx, 76, tx, dec_color, cells=dec_cells))
     b.append(cap((gx + gs + tx) / 2 + 4, IC - 54, dec_name, dec_sub,
                  name_color=dec_color if dec_color == ACC else None))
-    b.append(output_part(tx + 18))
+    b.append(output_part(828))
     b.append(conf_branch(bar_x, tx + 18))
     return b, gx, gs, tx, bar_x
 
@@ -357,11 +356,11 @@ def exp4():
             b.append(f"<circle cx='{cx:.1f}' cy='{cy:.1f}' r='1.3' fill='{ACC}'/>")
     b.append(cap(gx + gs / 2, IC + 72, "64 per-patch coordinates",
                  "1×1 conv + σ (8×8×2)", name_color=ACC))
-    tx = gx + gs + 200
+    tx = 812  # shared right anchor
     b.append(converge(gx, gs, tx, ACC, cells="all"))
     b.append(cap((gx + gs + tx) / 2, IC - 54, "mean of 64 answers",
                  "one committee answer from 64 votes", name_color=ACC))
-    b.append(output_part(tx + 18))
+    b.append(output_part(828))
     # confidence branch, anchored under the dilated-context stage
     cx0 = dil_x + 19
     ex = tx + 46
