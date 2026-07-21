@@ -97,6 +97,9 @@ infra/runpod.sh ssh         # then: tmux attach -t loop
 # after a batch:
 infra/runpod.sh pull        # runs/ + sqlite + state/ back, ff-merge pod commits
 infra/runpod.sh stop        # stop paying $0.69/hr; volume persists
+infra/runpod.sh resume      # NOTE: a stopped pod's GPU is NOT reserved —
+                            # resume fails with 'not enough free GPUs' until
+                            # the host frees one; retry, sometimes for a while
 infra/runpod.sh terminate   # only when truly done — destroys the volume
 ```
 
