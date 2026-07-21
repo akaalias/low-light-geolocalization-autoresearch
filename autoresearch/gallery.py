@@ -178,8 +178,23 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .ov-canvas{flex:1;overflow:hidden;cursor:grab;touch-action:none;
   user-select:none;-webkit-user-select:none}
 .ov-canvas.dragging{cursor:grabbing}
-.ov-inner{width:100%;height:100%;transform-origin:0 0}
-.ov-inner svg{width:100%;height:100%;display:block}
+.ov-inner{width:100%;height:100%;transform-origin:0 0;position:relative}
+.ov-inner svg{width:100%;height:100%;display:block;position:absolute;
+  inset:0;transition:opacity .5s ease}
+.ov-replay{position:fixed;left:0;right:0;bottom:0;z-index:65;display:none;
+  align-items:center;gap:14px;padding:10px 18px;background:var(--paper);
+  border-top:1px solid var(--rule)}
+#svgov.on .ov-replay.has-chain{display:flex}
+.ov-play{font:14px var(--serif);border:1px solid var(--rule);
+  background:none;color:var(--ink);width:34px;height:30px;cursor:pointer;
+  border-radius:3px}
+.ov-play:hover{border-color:var(--ink)}
+.ov-steps{display:flex;gap:8px;flex-wrap:wrap}
+.ov-step{font:600 11px var(--serif);font-feature-settings:"smcp" 1;
+  letter-spacing:.06em;color:var(--muted);border:1px solid var(--rule);
+  border-radius:3px;padding:4px 9px;cursor:pointer;background:none}
+.ov-step.on{color:var(--ink);border-color:var(--ink)}
+.ov-step:hover{border-color:var(--ink)}
 .fig-cap{max-width:880px;font-size:14.5px;line-height:1.65;color:#4a473e}
 .fig-cap p{margin:0 0 4px}
 .fig-cap .fig-lead{font-weight:600;color:var(--ink)}
@@ -462,16 +477,57 @@ window.addEventListener('load',function(){
 # drag = pan, double-click = reset, Esc or the close button to exit.
 PATHS_JS = """
 var ov,ovIn,ovCv,sc=1,px=0,py=0,drag=null;
+var figReg={},chain=[],step=-1,playing=null;
 function ovApply(){ovIn.style.transform=
   'translate('+px+'px,'+py+'px) scale('+sc+')'}
-function ovOpen(svg,no,title){
+function stopPlay(){if(playing){clearTimeout(playing);playing=null;
+  var b=ov.querySelector('.ov-play');if(b)b.textContent='\u25B6';}}
+function showStep(i,fade){
+  if(i<0||i>=chain.length)return;
+  step=i;var f=figReg[chain[i]];if(!f)return;
+  var nw=f.svg.cloneNode(true);
+  if(fade){nw.style.opacity='0';}
+  var olds=[].slice.call(ovIn.children);
+  ovIn.appendChild(nw);
+  if(fade){void nw.getBoundingClientRect();nw.style.opacity='1';
+    setTimeout(function(){olds.forEach(function(o){o.remove()})},520);}
+  else{olds.forEach(function(o){o.remove()});}
+  document.querySelector('.ov-no').textContent=
+    'step '+(i+1)+' of '+chain.length+' \u00B7 '+f.no;
+  document.querySelector('.ov-title').textContent=f.title;
+  ov.querySelectorAll('.ov-step').forEach(function(c,j){
+    c.classList.toggle('on',j===i)});
+}
+function playFrom(i){
+  showStep(i,true);
+  if(i<chain.length-1){playing=setTimeout(function(){playFrom(i+1)},1250);}
+  else{stopPlay();}
+}
+function buildReplay(){
+  var bar=document.getElementById('ov-replay'),
+      steps=bar.querySelector('.ov-steps');
+  steps.innerHTML='';
+  bar.classList.toggle('has-chain',chain.length>1);
+  chain.forEach(function(id,i){
+    var b=document.createElement('button');
+    b.className='ov-step';b.textContent='#'+id;
+    b.addEventListener('click',function(){stopPlay();showStep(i,true)});
+    steps.appendChild(b);
+  });
+}
+function ovOpen(svg,no,title,chainIds){
+  stopPlay();
+  chain=chainIds||[];buildReplay();
   ovIn.innerHTML='';ovIn.appendChild(svg.cloneNode(true));
   document.querySelector('.ov-no').textContent=no;
   document.querySelector('.ov-title').textContent=title;
+  step=chain.length-1;
+  ov.querySelectorAll('.ov-step').forEach(function(c,j){
+    c.classList.toggle('on',j===step)});
   sc=1;px=0;py=0;ovApply();
   ov.classList.add('on');document.body.style.overflow='hidden';
 }
-function ovClose(){ov.classList.remove('on');
+function ovClose(){stopPlay();ov.classList.remove('on');
   document.body.style.overflow='';ovIn.innerHTML=''}
 window.addEventListener('load',function(){
   ov=document.getElementById('svgov');
@@ -480,9 +536,19 @@ window.addEventListener('load',function(){
   document.querySelectorAll('.fig-entry').forEach(function(sec){
     var holder=sec.querySelector('.fig-svg'),svg=holder&&holder.querySelector('svg');
     if(!svg)return;
+    figReg[sec.dataset.id]={svg:svg,
+      no:sec.querySelector('.fig-no').textContent,
+      title:sec.querySelector('.fig-title').textContent};
     holder.addEventListener('click',function(){
       ovOpen(svg,sec.querySelector('.fig-no').textContent,
-             sec.querySelector('.fig-title').textContent)});
+             sec.querySelector('.fig-title').textContent,
+             (sec.dataset.chain||'').split(',').filter(function(x){
+               return figReg[x]}))});
+  });
+  var pb=ov.querySelector('.ov-play');
+  if(pb)pb.addEventListener('click',function(){
+    if(playing){stopPlay();}
+    else{pb.textContent='\u25A0';playFrom(0);}
   });
   var cf=document.querySelector('.contract-fig>svg');
   if(cf)cf.addEventListener('click',function(){
@@ -1500,7 +1566,9 @@ updated {now}</p>"""]
         kept_cls = " kept" if e["kept"] else ""
         eli5 = (f"<p><span class='fig-lead'>In plain words.</span> "
                 f"{esc(e['eli5'])}</p>" if e.get("eli5") else "")
-        body.append(f"""<section class="fig-entry{kept_cls}" id="e{e['id']}">
+        chain = [str(k["id"]) for k in figs
+                 if k["kept"] and k["id"] < e["id"]] + [str(e["id"])]
+        body.append(f"""<section class="fig-entry{kept_cls}" id="e{e['id']}" data-id="{e['id']}" data-chain="{','.join(chain)}">
 <div class="fig-head">
   <span class="fig-no num">Fig. {e['id']}</span>
   <span class="fig-title">{esc(e['title'])}</span>
@@ -1521,7 +1589,8 @@ updated {now}</p>"""]
 <span class="ov-title"></span>
 <span class="ov-hint">scroll to zoom · drag to pan · double-click to reset</span>
 <button class="ov-close">Esc · close</button></div>
-<div class="ov-canvas"><div class="ov-inner"></div></div></div>
+<div class="ov-canvas"><div class="ov-inner"></div></div>
+<div class="ov-replay" id="ov-replay"><button class="ov-play" title="replay the lineage: oldest ancestor first, fading forward to this design">▶</button><div class="ov-steps"></div></div></div>
 """ + CREDITS + "</body></html>")
     PATHS_OUT.parent.mkdir(exist_ok=True)
     PATHS_OUT.write_text("\n".join(body))
