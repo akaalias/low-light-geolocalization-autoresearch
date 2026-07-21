@@ -612,10 +612,9 @@ def live_row(next_id):
   var built={built_ms}, phases={phases_js}, st=null;
   var NAMES={{design:'designing the experiment (Fable)',
     implement:'implementing the design (Sonnet)',
-    train:'training 4 areas in parallel',
+    train:'training all 4 areas in parallel',
     score:'scoring against the frozen ruler',
-    publish:'logging + publishing the result',
-    idle:'loop idle — batch finished'}};
+    publish:'logging + publishing the result'}};
   var el=document.getElementById('live-text'); if(!el) return;
   var total=phases.reduce(function(a,p){{return a+p[1]}},0);
   function fmt(s){{s=Math.max(0,Math.floor(s));
@@ -632,11 +631,12 @@ def live_row(next_id):
   function tick(){{
     var now=Date.now()/1000, msg;
     if(st && st.phase==='idle'){{
-      msg='no experiment running — the batch finished; best so far stands';
+      msg='no experiment running right now — the last batch finished; the best result stands';
+    }} else if(st && (st.phase==='waiting')){{
+      msg='paused — waiting for agent capacity; resumes automatically';
     }} else if(st && now-st.phase_started < 5400){{
-      msg='iteration '+st.iter+'/'+st.iterations
-         +' · running '+fmt(now-st.iter_started)
-         +' · phase: '+(NAMES[st.phase]||st.phase);
+      msg='running '+fmt(now-st.iter_started)+' total · now '
+         +(NAMES[st.phase]||st.phase);
     }} else if(st){{
       msg='status is stale ('+fmt(now-st.phase_started)+' since last phase report) — the loop may be stopped';
     }} else {{
@@ -646,7 +646,7 @@ def live_row(next_id):
       msg=ph ? 'running ~'+fmt(t)+' · estimated phase: '+ph
              : 'running ~'+fmt(t)+' · past the usual '+fmt(total)+' — result should land any moment';
     }}
-    el.textContent='experiment in progress — '+msg;
+    el.textContent='experiment #'+{next_id}+' — '+msg;
   }}
   tick(); setInterval(tick,1000);
 }})();</script>"""
