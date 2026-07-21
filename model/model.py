@@ -77,6 +77,20 @@ trained to predict whether the committed decode lands within
 GOOD_ERR_UV. A registered conf_shift buffer (calibrated post-training by
 train.py, baked into the ONNX export) converts that hit probability into
 the frozen 0.3 abstention threshold with a per-bucket >= 40% keep floor.
+
+Exp 16: the frozen eval set is heading-agnostic (each held-out crop gets a
+deterministic random rotation), but training shows each location at exactly
+one random heading, frozen for the whole run -- so at eval time the model
+must recognize places across up to 180 degrees of heading mismatch with a
+head that has no rotational structure. Teaching invariance by data (fresh
+rotations every epoch, exp 6) was tried and reverted -- it made the
+memorization task harder without helping. Instead the field is now made
+invariant by construction: the crop and its three exact 90-degree pixel
+rotations all pass through the same trunk/heads, and the four resulting
+field logit maps are averaged (a geometric-mean vote) before the unchanged
+sharpened decode. One of the four evaluated views always lies within 45
+degrees of the one trained heading, and a lookalike cell that only fires at
+one heading is multiplicatively suppressed by the other three.
 """
 
 import numpy as np
@@ -109,6 +123,15 @@ def _build_pretrained_trunk() -> nn.Module:
     stripped = {k[len("features."):]: v for k, v in state_dict.items()}
     trunk.load_state_dict(stripped, strict=True)
     return trunk
+
+
+def _c4_stack(x):
+    """[N,3,H,W] -> [4N,3,H,W]: x with its three 90-degree pixel rotations
+    (exact permutations via transpose+flip; rotation-major block order)."""
+    r90 = x.transpose(2, 3).flip(2)
+    r180 = x.flip(2).flip(3)
+    r270 = x.transpose(2, 3).flip(3)
+    return torch.cat([x, r90, r180, r270], dim=0)
 
 
 class TinyLocNet(nn.Module):
@@ -148,14 +171,19 @@ class TinyLocNet(nn.Module):
         self.register_buffer("cell_v", cell_v)
 
     def forward(self, x, return_logits: bool = False):
-        lum = x.mean(dim=(1, 2, 3)).unsqueeze(1)  # raw-pixel brightness, [N,1] in [0,1]
-        fmap = self.features((x - self.norm_mean) / self.norm_std)
-        f = fmap.mean(dim=(2, 3))
-        layout = self.layout_squeeze(fmap).flatten(1)
-        bright_logits = self.loc_logits(torch.cat([f, layout], dim=1))
-        dark_logits = self.dark_logits(f)
-        g = torch.sigmoid(self.gate(torch.cat([lum, f], dim=1)))
-        logits = (1 - g) * bright_logits + g * dark_logits
+        n = x.shape[0]
+        lum = x.mean(dim=(1, 2, 3)).unsqueeze(1)  # raw-pixel brightness, [N,1] in [0,1], rotation-invariant
+        x4 = _c4_stack(x)
+        fmap = self.features((x4 - self.norm_mean) / self.norm_std)
+        f4 = fmap.mean(dim=(2, 3))
+        layout4 = self.layout_squeeze(fmap).flatten(1)
+        lum4 = lum.repeat(4, 1)
+        bright_logits4 = self.loc_logits(torch.cat([f4, layout4], dim=1))
+        dark_logits4 = self.dark_logits(f4)
+        g4 = torch.sigmoid(self.gate(torch.cat([lum4, f4], dim=1)))
+        logits4 = (1 - g4) * bright_logits4 + g4 * dark_logits4  # [4N, K*K] per-turn gated blend
+        logits = logits4.reshape(4, n, -1).mean(dim=0)  # C4 logit average (geometric-mean vote)
+        f = f4.reshape(4, n, -1).mean(dim=0)  # averaged GAP descriptor for the conf head
         p = torch.softmax(DECODE_BETA * logits, dim=1)
         u = (p * self.cell_u).sum(dim=1, keepdim=True)
         v = (p * self.cell_v).sum(dim=1, keepdim=True)
