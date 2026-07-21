@@ -716,9 +716,24 @@ def live_row(next_id):
   // 'status' branch at every phase transition; raw.githubusercontent serves
   // it with CORS. Elapsed counts from the iteration's true start.
   var RAW='https://raw.githubusercontent.com/akaalias/low-light-geolocalization-autoresearch/status/phase.json';
+  function freshen(j){{
+    // GitHub Pages pins Cache-Control to 10 min and headers are not
+    // configurable — but the CDN caches per-URL, so redirecting to a
+    // ?v=<iteration> URL it has never seen always fetches the fresh build.
+    // Trigger whenever the running iteration began after this page was
+    // built (i.e. a newer build exists), on first load or mid-session.
+    var v=String(j.iter_started);
+    var cur=new URLSearchParams(location.search).get('v');
+    if(j.iter_started*1000>built+90000 && cur!==v){{
+      location.replace(location.pathname+'?v='+v+location.hash);
+    }}
+  }}
   function refresh(){{
     fetch(RAW+'?t='+Date.now()).then(function(r){{return r.ok?r.json():null}})
-      .then(function(j){{if(j&&j.phase) st=j;}}).catch(function(){{}});
+      .then(function(j){{
+        if(!(j&&j.phase))return;
+        st=j;freshen(j);
+      }}).catch(function(){{}});
   }}
   refresh(); setInterval(refresh, 30000);
   function tick(){{
