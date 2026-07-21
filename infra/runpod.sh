@@ -111,23 +111,35 @@ ssh)
   ;;
 sync-up)
   read -r IP PORT < <(endpoint)
-  rsync -az --stats -e "ssh -i $SSH_KEY -p $PORT" \
+  # Guard: sync-up mirrors local state INCLUDING .git refs onto the pod. If
+  # the pod holds kept-experiment commits that local main doesn't have yet,
+  # that would orphan them — refuse until they've been pulled.
+  if GIT_SSH_COMMAND="ssh -i $SSH_KEY" \
+     git fetch "ssh://root@$IP:$PORT$REMOTE_DIR" main:refs/remotes/pod/main 2>/dev/null; then
+    if ! git merge-base --is-ancestor refs/remotes/pod/main HEAD; then
+      echo "REFUSING sync-up: the pod has commits local main lacks (kept experiments?)."
+      echo "Run 'infra/runpod.sh pull' first, then retry."
+      exit 1
+    fi
+  fi
+  rsync -a --stats -e "ssh -i $SSH_KEY -p $PORT" \
     --exclude '.venv' --exclude '__pycache__' --exclude '.env' --exclude '.DS_Store' \
     ./ "root@$IP:$REMOTE_DIR/"
   ;;
 pull)
   read -r IP PORT < <(endpoint)
-  rsync -az --stats -e "ssh -i $SSH_KEY -p $PORT" \
+  rsync -a --stats -e "ssh -i $SSH_KEY -p $PORT" \
     "root@$IP:$REMOTE_DIR/experiments.sqlite" \
     "root@$IP:$REMOTE_DIR/state/" ./state-pod-tmp/
-  rsync -az --stats -e "ssh -i $SSH_KEY -p $PORT" \
+  rsync -a --stats -e "ssh -i $SSH_KEY -p $PORT" \
     "root@$IP:$REMOTE_DIR/runs/" ./runs/
   mv ./state-pod-tmp/experiments.sqlite ./experiments.sqlite
   rsync -a ./state-pod-tmp/ ./state/ --exclude experiments.sqlite
   rm -rf ./state-pod-tmp
   # Kept improvements are commits on the pod; fast-forward local main onto them.
-  git fetch "ssh://root@$IP:$PORT$REMOTE_DIR" main:refs/remotes/pod/main
-  git merge --ff-only pod/main || echo "NOTE: local main diverged from pod — merge manually."
+  GIT_SSH_COMMAND="ssh -i $SSH_KEY" \
+    git fetch "ssh://root@$IP:$PORT$REMOTE_DIR" main:refs/remotes/pod/main
+  git merge --ff-only refs/remotes/pod/main || echo "NOTE: local main diverged from pod — merge manually."
   echo "Pulled. Re-render gallery locally with: .venv/bin/python -m autoresearch.gallery"
   ;;
 stop)

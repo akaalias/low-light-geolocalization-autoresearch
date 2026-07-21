@@ -97,6 +97,38 @@ infra/runpod.sh terminate   # only when truly done — destroys the volume
 Graceful stop of a running loop: `touch state/stop` on the pod (finishes
 the current iteration, then exits) — same mechanism as local.
 
+### Development workflow — changing code while the pod is "production"
+
+Two writers exist: the **loop on the pod** (commits kept experiments,
+only ever touches `model/`) and **you locally** (harness, pipeline,
+infra, docs). The rule that keeps git history linear: **one side writes
+at a time, and `pull` before `sync-up` — always.** `sync-up` enforces
+this: it refuses to run if the pod holds commits local main lacks.
+
+Rolling out a local change:
+
+```bash
+# 1. stop the loop at an iteration boundary (on the pod):
+infra/runpod.sh ssh   # then inside: touch <repo>/state/stop
+# 2. bring the pod's results + kept commits home:
+infra/runpod.sh pull  && git push
+# 3. edit + verify locally — MPS still works for a cheap end-to-end proof:
+EPOCHS=1 SKIP_AGENT=1 ./autoresearch/loop.sh 1   # harness smoke, no agent
+# 4. commit locally, roll out, relaunch:
+git commit … && infra/runpod.sh sync-up
+infra/runpod.sh ssh   # tmux new -s loop; CLAUDE_CODE_OAUTH_TOKEN=… ./autoresearch/loop.sh 25
+```
+
+Caveats: (a) **frozen-file changes are era events** — anything touching
+`pipeline/` or scoring makes metrics incomparable with earlier rows, so
+note it here and expect a baseline re-seed, as in the bootstrap era
+resets. (b) A `SKIP_AGENT=1` smoke run writes a throwaway row into
+`experiments.sqlite`, and sync-up pushes your local DB onto the pod —
+so either accept the smoke row in the permanent lineage or delete it
+(`sqlite3 experiments.sqlite "DELETE FROM experiments WHERE id=…"` plus
+its `area_results` rows) before `sync-up`. (c) GitHub is the off-site
+archive: `git push` after every `pull` so kept experiments land there.
+
 ## Publishing roadmap (planned, not yet built)
 
 As results come in, two **separate, shareable HTML pages** will be written
