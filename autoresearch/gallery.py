@@ -520,7 +520,8 @@ def esc(s):
 # add them here when they exist so every page's nav updates together.
 NAV_PAGES = (("overview", "overview"),
              ("log", "research log"),
-             ("paths", "inference paths"))
+             ("paths", "model designs"),
+             ("lineage", "research lineage"))
 
 
 def research_status():
@@ -639,10 +640,20 @@ HERO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 340" font
   <path d="M 330 126 L 420 256 M 330 126 L 585 256" stroke="#dcd8c4" stroke-width="0.9"
         stroke-dasharray="1.5 3.5" opacity="0.5" fill="none"/>
 
+  <!-- geo-box: the whole trained area, in perspective -->
+  <g>
+    <path d="M 336 254 L 876 254 L 952 348 L 258 348 Z" fill="none"
+          stroke="#efecd9" stroke-width="1" stroke-dasharray="5 4" opacity="0.4"/>
+    <text x="336" y="247" font-size="8" fill="#efecd9" letter-spacing="1.3"
+          font-weight="600" opacity="0.65">GEO-BOX — THE AREA THIS MODEL MEMORIZED</text>
+  </g>
+
   <!-- viewed patch + fix -->
   <g>
-    <path d="M 420 256 L 585 256 L 612 298 L 396 298 Z" fill="none"
+    <path d="M 420 256 L 585 256 L 612 298 L 396 298 Z" fill="#efecd9" fill-opacity="0.06"
           stroke="#efecd9" stroke-width="1.3" opacity="0.9"/>
+    <text x="620" y="268" font-size="8" fill="#efecd9" letter-spacing="1.2"
+          font-weight="600" opacity="0.7">WHAT IT SEES NOW</text>
     <circle cx="502" cy="276" r="6" fill="none" stroke="#c0503a" stroke-width="1.6"/>
     <line x1="502" y1="266" x2="502" y2="286" stroke="#c0503a" stroke-width="1.6"/>
     <line x1="492" y1="276" x2="512" y2="276" stroke="#c0503a" stroke-width="1.6"/>
@@ -775,7 +786,9 @@ def topnav(active, root=False):
     hrefs = {"overview": "index.html" if root else "../index.html",
              "log": "gallery/index.html" if root else "index.html",
              "paths": ("gallery/inference-paths.html" if root
-                       else "inference-paths.html")}
+                       else "inference-paths.html"),
+             "lineage": ("gallery/research-lineage.html" if root
+                         else "research-lineage.html")}
     links = []
     for key, label in NAV_PAGES:
         cls = " class='on'" if key == active else ""
@@ -1330,8 +1343,8 @@ method generalizes.</p>
 hypotheses, results, per-area × lighting scoreboards, the exact prompts
 the agents received, and one real worked example per experiment — the same
 night crop through each model's actual deployed weights.</span></a>
-<a class="card" href="gallery/inference-paths.html"><b>Proposed inference
-paths</b>
+<a class="card" href="gallery/inference-paths.html"><b>Model
+designs</b>
 <span>The technical figures: each experiment's model design, drawn by the
 agent itself before training, in one shared visual language — frozen
 endpoints aligned so you can scroll and compare designs directly.</span></a>
@@ -1498,13 +1511,13 @@ def render_paths(exps):
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
-<title>Proposed Inference Paths — Low-Light Geolocalization</title>
+<title>Model Designs — Low-Light Geolocalization</title>
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('paths')}
 {compute_banner()}
 <div class="paths-wrap">
 <div class="eyebrow" style="text-align:center">Alexis Rondeau · live research log</div>
-<h1>Proposed Inference Paths</h1>
+<h1>Model designs</h1>
 <p class="psub lead">Before it may train anything, every iteration of the
 research loop has to draw the model it proposes to fly — a proper technical
 figure of its <b>inference path</b>: the computation one camera frame takes
@@ -1590,6 +1603,125 @@ updated {now}</p>"""]
     PATHS_OUT.parent.mkdir(exist_ok=True)
     PATHS_OUT.write_text("\n".join(body))
     print(f"wrote {PATHS_OUT} ({len(figs)} figures)")
+
+
+LINEAGE_OUT = REPO_ROOT / "gallery" / "research-lineage.html"
+
+
+def render_lineage(exps):
+    """gallery/research-lineage.html — every experiment as one node, left to
+    right in discovery order, arcs to the kept design each branched from.
+    Same idiom as the author's llm-heuristic-scientists-workshop lineage
+    page: hover traces ancestry to the root, click opens the log record."""
+    now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    nodes = []
+    last_kept = None
+    for e in exps:
+        gated = (e["primary_metric"] or 0) >= FAIL
+        if e["kind"] == "holdout_check":
+            outcome = "holdout"
+        elif gated:
+            outcome = "gated"
+        elif e["kept"]:
+            outcome = "kept"
+        else:
+            outcome = "disc"
+        nodes.append({"id": e["id"], "parent": last_kept, "outcome": outcome,
+                      "title": e["title"] or "", "metric": e["primary_metric"]})
+        if outcome == "kept":
+            last_kept = e["id"]
+    n = len(nodes)
+    W, H, BASE = 980, 300, 208
+    step = (W - 80) / max(n - 1, 1)
+    xs = {nd["id"]: 40 + i * step for i, nd in enumerate(nodes)}
+    fills = {"kept": "#111111", "disc": "#9b998c", "gated": "#8c2f1f",
+             "holdout": "none"}
+    svg = [f"<svg viewBox='0 0 {W} {H}' font-family='Palatino,Georgia,serif' "
+           f"id='lngraph'>"]
+    svg.append(f"<line x1='30' y1='{BASE}' x2='{W-30}' y2='{BASE}' "
+               f"stroke='#ece9da' stroke-width='1'/>")
+    for nd in nodes:
+        if nd["parent"] is None:
+            continue
+        x1, x2 = xs[nd["parent"]], xs[nd["id"]]
+        lift = min(24 + (x2 - x1) * 0.22, 150)
+        col = "#111111" if nd["outcome"] == "kept" else "#9b998c"
+        svg.append(f"<path d='M {x1:.1f} {BASE-6} Q {(x1+x2)/2:.1f} "
+                   f"{BASE-6-lift:.1f} {x2:.1f} {BASE-6}' fill='none' "
+                   f"stroke='{col}' stroke-width='1' opacity='0.45' "
+                   f"class='ln-arc' data-child='{nd['id']}'/>")
+    for nd in nodes:
+        x = xs[nd["id"]]
+        met = fmt_m(nd["metric"]) if nd["metric"] else "—"
+        label = {"kept": "kept — new best", "disc": "discarded",
+                 "gated": "gated fail", "holdout": "blind holdout check"}[nd["outcome"]]
+        tip = esc(f"#{nd['id']} {nd['title'][:70]} · {met} · {label}")
+        extra = ("stroke='#8a6a1e' stroke-width='1.6'"
+                 if nd["outcome"] == "holdout" else "stroke='none'")
+        svg.append(f"<circle cx='{x:.1f}' cy='{BASE}' r='5' "
+                   f"fill='{fills[nd['outcome']]}' {extra} class='ln-node' "
+                   f"data-id='{nd['id']}' data-parent='{nd['parent'] or ''}'>"
+                   f"<title>{tip}</title></circle>")
+        svg.append(f"<text x='{x:.1f}' y='{BASE+20}' font-size='8.5' "
+                   f"fill='#9b998c' text-anchor='middle' class='num'>"
+                   f"{nd['id']}</text>")
+    svg.append("</svg>")
+    n_dev = sum(1 for nd in nodes if nd["outcome"] != "holdout")
+    body = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=1100">
+<title>Research Lineage — Low-Light Geolocalization</title>
+<style>{CSS}
+.ln-wrap{{max-width:980px;margin:0 auto;padding:0 16px}}
+#lngraph{{width:100%;height:auto;display:block}}
+.ln-node{{cursor:pointer}}
+.ln-node.on{{stroke:#8c2f1f;stroke-width:2}}
+.ln-arc.on{{stroke:#8c2f1f;opacity:.9;stroke-width:1.6}}
+.ln-legend{{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;
+  font:12px var(--serif);color:var(--muted);margin:6px 0 18px}}
+.ln-legend span{{display:inline-flex;align-items:center;gap:6px}}
+.ln-legend i{{width:9px;height:9px;border-radius:50%;display:inline-block}}
+</style></head><body>
+{topnav('lineage')}
+{compute_banner()}
+<div class="ln-wrap">
+<div class="eyebrow" style="text-align:center;margin-top:26px">Alexis Rondeau · live research log</div>
+<h1 style="text-align:center">Research lineage</h1>
+<p class="psub lead" style="text-align:center">{n_dev} experiments, left → right in
+discovery order. Every experiment branches from the best design known at the
+time — an arc connects each to its parent. <b>Hover</b> a node to trace its
+ancestry back to the root; <b>click</b> to open its full record in the
+research log.</p>
+{''.join(svg)}
+<div class="ln-legend">
+<span><i style="background:#111111"></i>kept — new best</span>
+<span><i style="background:#9b998c"></i>discarded</span>
+<span><i style="background:#8c2f1f"></i>gated fail</span>
+<span><i style="border:1.6px solid #8a6a1e"></i>blind holdout check</span>
+</div>
+</div>
+<script>(function(){{
+  var parents={{}};
+  document.querySelectorAll('.ln-node').forEach(function(nd){{
+    parents[nd.dataset.id]=nd.dataset.parent;
+    nd.addEventListener('click',function(){{
+      location.href='index.html#r'+nd.dataset.id;}});
+    nd.addEventListener('mouseenter',function(){{
+      var chain={{}}; var cur=nd.dataset.id;
+      while(cur){{chain[cur]=1;cur=parents[cur];}}
+      document.querySelectorAll('.ln-node').forEach(function(m){{
+        m.classList.toggle('on', chain[m.dataset.id]===1);}});
+      document.querySelectorAll('.ln-arc').forEach(function(a){{
+        a.classList.toggle('on', chain[a.dataset.child]===1);}});
+    }});
+    nd.addEventListener('mouseleave',function(){{
+      document.querySelectorAll('.on').forEach(function(m){{m.classList.remove('on');}});
+    }});
+  }});
+}})();</script>
+{CREDITS}</body></html>"""
+    LINEAGE_OUT.parent.mkdir(exist_ok=True)
+    LINEAGE_OUT.write_text(body)
+    print(f"wrote {LINEAGE_OUT} ({n} nodes)")
 
 
 def render():
@@ -1729,6 +1861,7 @@ agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duratio
     OUT.write_text("\n".join(body))
     print(f"wrote {OUT} ({len(exps)} experiments)")
     render_paths(exps)
+    render_lineage(exps)
     render_overview(exps)
 
 
