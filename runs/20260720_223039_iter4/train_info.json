@@ -1,0 +1,38 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "mps",
+    "train_seconds": 197.3,
+    "onnx_bytes": 3031495,
+    "init": "from-scratch"
+  },
+  {
+    "area": "prignitz",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "mps",
+    "train_seconds": 196.3,
+    "onnx_bytes": 3031495,
+    "init": "from-scratch"
+  },
+  {
+    "area": "munich",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "mps",
+    "train_seconds": 217.7,
+    "onnx_bytes": 3031495,
+    "init": "from-scratch"
+  },
+  {
+    "area": "frankfurt",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "mps",
+    "train_seconds": 1120.7,
+    "onnx_bytes": 3031495,
+    "init": "from-scratch"
+  }
+]
