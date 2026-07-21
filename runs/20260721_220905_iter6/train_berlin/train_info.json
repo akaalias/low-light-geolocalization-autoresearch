@@ -1,0 +1,26 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2686.9,
+    "onnx_bytes": 3091446,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..10] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "conf_shift": 3.556551218032837,
+    "cal_logit_threshold": 2.709353303909301,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.75,
+      "midday": 0.74,
+      "afternoon": 0.7375,
+      "early_evening": 0.7075,
+      "evening": 0.6775,
+      "night": 0.4
+    }
+  }
+]
