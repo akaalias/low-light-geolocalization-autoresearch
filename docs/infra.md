@@ -169,16 +169,32 @@ way `autoresearch/gallery.py` does (single source of truth, no hand-copied
 numbers), and follow the same Tufte-style visual vocabulary as the
 existing gallery and the author's prior research pages.
 
-**Publish target: public GitHub Pages**, in the style of the author's
-[airloom](https://github.com/akaalias/airloom) page. Confirmed feasible
-with today's code: the gallery is fully static and uses only relative
-paths (`../runs/...` from `gallery/index.html`), so a publish step just
-needs to bundle `gallery/` + the referenced `runs/` artifacts (heatmaps,
-samples — small PNGs) + `experiments.sqlite` (sub-MB) into the Pages
-tree, preserving that directory shape. No server, no build framework.
-`data/` (4.3 GB imagery) stays out of the published tree and out of git;
-if any published artifact ever exceeds GitHub's 100 MB file limit, Git
-LFS is the known fallback (used by the author before). Anyone can
-regenerate their own `data/` from scratch — README "Quickstart" +
-"Adding a new deployment area" document the credential-free
-fetch/relight path for arbitrary bboxes.
+**Publish target: public GitHub Pages** (built 2026-07-21, dormant until
+the repo goes public), in the style of the author's
+[airloom](https://github.com/akaalias/airloom) page.
+
+**Parity contract:** `infra/build_site.sh` is the single site assembler —
+run it locally and open `_site/gallery/index.html` to preview *exactly*
+what deploys; `.github/workflows/pages.yml` runs the same script on every
+push. All presentation logic lives in `autoresearch/gallery.py` (one
+renderer for local + live); the build script only packages its output
+next to `runs/` PNGs/JSON with their existing relative paths. Change the
+renderer → verify locally → push → live pages update. The workflow's
+build job runs on every push as a render smoke-test; the deploy job is
+gated on the repo variable `PAGES_ENABLED=true`.
+
+**Going public — the switch list:** (1) set repo visibility public,
+(2) Settings → Pages → Source: GitHub Actions, (3) set repo variable
+`PAGES_ENABLED=true`, (4) buy the LFS data pack. Licensing is ready:
+MIT `LICENSE` for code + NOTICE for imagery-derived artifacts; both
+gallery pages carry the required attribution footer (dl-de/by-2-0,
+CC BY 4.0, Copernicus, torchvision BSD-3).
+
+**Known ceilings:** GitHub Pages sites have a ~1 GB soft limit — the
+PNG-only site is ~340 MB at experiment 10 and grows ~25 MB/experiment,
+so expect to prune (e.g., full artifacts for kept experiments only)
+around experiment ~35. LFS in CI goes through the Actions cache, so only
+each iteration's new objects hit the bandwidth quota. `data/` (4.3 GB
+imagery) stays out of git and out of the site; anyone can regenerate it
+— README "Quickstart" + "Adding a new deployment area" document the
+credential-free fetch/relight path for arbitrary bboxes.
