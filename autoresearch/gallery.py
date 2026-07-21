@@ -1187,6 +1187,17 @@ def render_overview(exps):
     size_s = f"{best_size/1024:,.0f} KB" if best_size else "—"
     factor = (f"{best/TARGET_M:,.0f}×" if best and best > TARGET_M
               else "at goal" if best else "—")
+    baseline = next((e["primary_metric"] for e in dev
+                     if e["primary_metric"] and e["primary_metric"] < FAIL),
+                    None)
+    if best and baseline and baseline > TARGET_M and best < baseline:
+        progress = (math.log(baseline / best)
+                    / math.log(baseline / TARGET_M) * 100)
+        progress_s = f"{progress:,.0f}%"
+    elif best and best <= TARGET_M:
+        progress_s = "100%"
+    else:
+        progress_s = "0%"
 
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
@@ -1210,8 +1221,9 @@ pre-registered experiment at a time, keeping only what measurably helps.
 This site is its live lab notebook.</p>
 
 <div class="stats">
-  <div class="stat"><b>{best_s}</b><span>worst-case median miss, best model</span></div>
-  <div class="stat"><b>≤ 20 m</b><span>the goal — {factor} to go</span></div>
+  <div class="stat"><b>≤ 20 m</b><span>the goal — a median fix within 20 m</span></div>
+  <div class="stat"><b>{best_s}</b><span>current worst-case miss — {factor} to go</span></div>
+  <div class="stat"><b>{progress_s}</b><span>of the way there, in halvings of the error</span></div>
   <div class="stat"><b>{len(dev)}</b><span>experiments · {n_kept} kept</span></div>
   <div class="stat"><b>{size_s}</b><span>deployed model · limit 4 MiB</span></div>
 </div>
