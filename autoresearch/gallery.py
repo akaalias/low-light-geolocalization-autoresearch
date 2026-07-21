@@ -1251,6 +1251,11 @@ method generalizes.</p>
 hypotheses, results, per-area × lighting scoreboards, the exact prompts
 the agents received, and one real worked example per experiment — the same
 night crop through each model's actual deployed weights.</span></a>
+<a class="card" href="gallery/research-lineage.html"><b>Research
+lineage</b>
+<span>The family tree of the search: every experiment as one node in
+discovery order, arcs to the design it built on — hover any node to trace
+its ancestry, kept trunk and dead branches alike.</span></a>
 <a class="card" href="gallery/inference-paths.html"><b>Model
 designs</b>
 <span>The technical figures: each experiment's model design, drawn by the
@@ -1330,29 +1335,33 @@ def contract_svg():
                  "letter-spacing='1.8'"))
     b.append(txt(8, 236, "TRAINING SIGNALS — NEVER FLY", 9, OCH, 600, "start",
                  "letter-spacing='1.8'"))
-    # frozen input: pixel-textured camera frame (gray)
-    x0, s = 26, 54
-    y0 = IC - s / 2
-    b.append(f"<rect x='{x0}' y='{y0}' width='{s}' height='{s}' "
-             f"fill='#00000008' stroke='{FAINT}' stroke-width='1.4'/>")
-    n = 6
-    for i in range(1, n):
-        b.append(f"<line x1='{x0 + i * s / n:.0f}' y1='{y0}' "
-                 f"x2='{x0 + i * s / n:.0f}' y2='{y0 + s}' stroke='{FAINT}' "
-                 f"stroke-width='0.4' opacity='0.3'/>")
-        b.append(f"<line x1='{x0}' y1='{y0 + i * s / n:.0f}' x2='{x0 + s}' "
-                 f"y2='{y0 + i * s / n:.0f}' stroke='{FAINT}' "
-                 f"stroke-width='0.4' opacity='0.3'/>")
-    for (a, c, o) in ((1, 2, .35), (3, 1, .5), (2, 4, .4), (4, 3, .3), (0, 4, .25)):
-        b.append(f"<rect x='{x0 + a * s / n:.0f}' y='{y0 + c * s / n:.0f}' "
-                 f"width='{s / n:.0f}' height='{s / n:.0f}' fill='{FAINT}' "
-                 f"opacity='{o * 0.35}'/>")
-    b.append(txt(53, IC - 40, "128²×3", 9, FAINT))
-    b.append(txt(53, IC + 48, "camera frame", 10.5, MUT, 600))
-    b.append(txt(53, IC + 60, "one night exposure", 9.5, FAINT))
-    b.append(txt(53, IC + 73, "frozen contract", 8.5, FAINT,
+    # frozen input: the canonical terrain camera frame (glyph v2 — identical
+    # geometry to the per-experiment figures and the prompt snippet)
+    Y = IC - 38
+    b.append(
+        f"<g id='cam-terrain'>"
+        f"<rect id='frozen-input' x='26' y='{Y}' width='76' height='76' "
+        f"fill='#f6f4ea' stroke='{FAINT}' stroke-width='1.6'/>"
+        f"<path d='M31 {Y+47} L97 {Y+27}' stroke='#e6e3d4' stroke-width='5' fill='none'/>"
+        f"<path d='M59 {Y+6} L49 {Y+70}' stroke='#e6e3d4' stroke-width='3.5' fill='none'/>"
+        f"<rect x='34' y='{Y+9}' width='12' height='8' fill='#d9d5c3' transform='rotate(-8 40 {Y+13})'/>"
+        f"<rect x='78' y='{Y+8}' width='10' height='11' fill='#cfccbd'/>"
+        f"<rect x='35' y='{Y+57}' width='13' height='8' fill='#d9d5c3'/>"
+        f"<rect x='75' y='{Y+50}' width='10' height='9' fill='#cfccbd' transform='rotate(6 80 {Y+54})'/>"
+        f"<rect x='54' y='{Y+31}' width='9' height='8' fill='#d9d5c3' opacity='.85'/>"
+        f"<ellipse cx='86' cy='{Y+63}' rx='8' ry='6' fill='{OCH}' opacity='.12'/>"
+        f"<circle cx='40' cy='{Y+28}' r='.7' fill='{MUT}' opacity='.5'/>"
+        f"<circle cx='70' cy='{Y+14}' r='.7' fill='{MUT}' opacity='.5'/>"
+        f"<circle cx='92' cy='{Y+36}' r='.7' fill='{MUT}' opacity='.5'/>"
+        f"<circle cx='52' cy='{Y+52}' r='.7' fill='{MUT}' opacity='.5'/>"
+        f"<circle cx='82' cy='{Y+70}' r='.7' fill='{MUT}' opacity='.5'/>"
+        f"<circle cx='31' cy='{Y+42}' r='.7' fill='{MUT}' opacity='.5'/></g>")
+    b.append(txt(64, IC - 44, "128²×3", 9, FAINT))
+    b.append(txt(64, IC + 50, "camera frame", 10.5, MUT, 600))
+    b.append(txt(64, IC + 62, "one night exposure", 9.5, FAINT))
+    b.append(txt(64, IC + 75, "frozen contract", 8.5, FAINT,
                  style="font-style='italic'"))
-    b.append(harrow(x0 + s + 8, 176, IC))
+    b.append(harrow(108, 176, IC))
     # the placeholder: everything between the endpoints is the search space
     bx, by, bw, bh = 180, 40, 560, 144
     b.append(f"<rect x='{bx}' y='{by}' width='{bw}' height='{bh}' fill='none' "
