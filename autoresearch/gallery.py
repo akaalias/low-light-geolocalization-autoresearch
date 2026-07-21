@@ -1210,13 +1210,14 @@ def render_overview(exps):
 <h1 class="home-h1">&ldquo;Not all who wander are lost&rdquo; &mdash; a 5-inch drone learns
 to find itself in the dark, with no GPS, no maps on board, and a $4 flight
 computer</h1>
-<p class="psub lead">Where other aircraft ask satellites, this one
-<i>remembers</i>: a neural network small enough to fit in 4&nbsp;MiB has
-memorized what its flight area looks like from above — by day, by dusk, by
-night — and turns one glance of a low-light camera into
-<i>(lat,&nbsp;lon,&nbsp;confidence)</i>. No satellites to jam or lose, no
-internet. And the research to get there is not done by me: an
-<b>autonomous loop of coding agents</b> designs, trains, and scores one
+<p class="psub lead">Where other aircraft ask satellites, this one would
+have to <i>remember</i>. The open question: can a neural network small
+enough to fit in 4&nbsp;MiB memorize what its flight area looks like from
+above — by day, by dusk, by night — well enough to turn one glance of a
+low-light camera into <i>(lat,&nbsp;lon,&nbsp;confidence)</i>? No
+satellites to jam or lose, no internet — if it can be done at all. Nobody
+knows yet; finding out is the project. And the research is not done by me:
+an <b>autonomous loop of coding agents</b> designs, trains, and scores one
 pre-registered experiment at a time, keeping only what measurably helps.
 This site is its live lab notebook.</p>
 
