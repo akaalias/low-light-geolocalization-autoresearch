@@ -789,6 +789,15 @@ def live_row(next_id):
       }}).catch(function(){{}});
   }}
   refresh(); setInterval(refresh, 30000);
+  // Backgrounded tabs get setInterval throttled by the browser (often to
+  // minutes, not 30s) — so a tab left open in the background can sit on a
+  // stale st.iter_started from an iteration that already finished, then
+  // jump to the real value once it catches up. Force a fetch the instant
+  // the tab becomes visible again instead of waiting for the throttled
+  // interval, so returning to the tab never shows stale-then-jumping time.
+  document.addEventListener('visibilitychange', function(){{
+    if(document.visibilityState==='visible') refresh();
+  }});
   function tick(){{
     var now=Date.now()/1000, msg;
     if(st && st.phase==='idle'){{
