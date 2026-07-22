@@ -1,0 +1,52 @@
+/workspace/low-light-geolocalization-autoresearch/model/model.py:225: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_logits:
+WARNING:root:Please consider to run pre-processing before quantization. Refer to example: https://github.com/microsoft/onnxruntime-inference-examples/blob/main/quantization/image_classification/cpu/ReadMe.md 
+[prignitz] epoch 1/24 36000 crops, device=cuda
+[prignitz] epoch 1/24 loss=6.2779
+[prignitz] epoch 2/24 36000 crops, device=cuda
+[prignitz] epoch 2/24 loss=5.6141
+[prignitz] epoch 3/24 36000 crops, device=cuda
+[prignitz] epoch 3/24 loss=5.3750
+[prignitz] epoch 4/24 36000 crops, device=cuda
+[prignitz] epoch 4/24 loss=5.2143
+[prignitz] epoch 5/24 36000 crops, device=cuda
+[prignitz] epoch 5/24 loss=5.0941
+[prignitz] epoch 6/24 36000 crops, device=cuda
+[prignitz] epoch 6/24 loss=5.0085
+[prignitz] epoch 7/24 36000 crops, device=cuda
+[prignitz] epoch 7/24 loss=4.9317
+[prignitz] epoch 8/24 36000 crops, device=cuda
+[prignitz] epoch 8/24 loss=4.8701
+[prignitz] epoch 9/24 36000 crops, device=cuda
+[prignitz] epoch 9/24 loss=4.8303
+[prignitz] epoch 10/24 36000 crops, device=cuda
+[prignitz] epoch 10/24 loss=4.7765
+[prignitz] epoch 11/24 36000 crops, device=cuda
+[prignitz] epoch 11/24 loss=4.7357
+[prignitz] epoch 12/24 36000 crops, device=cuda
+[prignitz] epoch 12/24 loss=4.6995
+[prignitz] epoch 13/24 36000 crops, device=cuda
+[prignitz] epoch 13/24 loss=4.6918
+[prignitz] epoch 14/24 36000 crops, device=cuda
+[prignitz] epoch 14/24 loss=4.6489
+[prignitz] epoch 15/24 36000 crops, device=cuda
+[prignitz] epoch 15/24 loss=4.6449
+[prignitz] epoch 16/24 36000 crops, device=cuda
+[prignitz] epoch 16/24 loss=4.6109
+[prignitz] epoch 17/24 36000 crops, device=cuda
+[prignitz] epoch 17/24 loss=4.6063
+[prignitz] epoch 18/24 36000 crops, device=cuda
+[prignitz] epoch 18/24 loss=4.5900
+[prignitz] epoch 19/24 36000 crops, device=cuda
+[prignitz] epoch 19/24 loss=4.5801
+[prignitz] epoch 20/24 36000 crops, device=cuda
+[prignitz] epoch 20/24 loss=4.5766
+[prignitz] epoch 21/24 36000 crops, device=cuda
+[prignitz] epoch 21/24 loss=4.5631
+[prignitz] epoch 22/24 36000 crops, device=cuda
+[prignitz] epoch 22/24 loss=4.5608
+[prignitz] epoch 23/24 36000 crops, device=cuda
+[prignitz] epoch 23/24 loss=4.5422
+[prignitz] epoch 24/24 36000 crops, device=cuda
+[prignitz] epoch 24/24 loss=4.5641
+{"area": "prignitz", "n_train_crops": 36000, "epochs": 8, "device": "cuda", "train_seconds": 2542.4, "onnx_bytes": 2550153, "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3); fresh-initialized day/dusk/night specialist heads + supervised dispatcher", "dispatch_ce_weight": 0.3, "regimes": "day{morning,midday,afternoon} dusk{early_evening,evening} night{night}", "train_realizations": 3, "epoch_location_resampling": true, "total_epochs_run": 24, "epoch_mult": 3, "lr_schedule": "cosine-per-step to 0 over 13512 steps", "conf_shift": 0.38872525095939636, "cal_logit_threshold": -0.4584726095199588, "cal_keep_rate_per_bucket": {"morning": 0.855, "midday": 0.8975, "afternoon": 0.8975, "early_evening": 0.855, "evening": 0.79, "night": 0.4}}
