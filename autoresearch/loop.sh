@@ -224,6 +224,33 @@ ${AGENT_RETRY_SLEEP:-1800}s before next iteration"
   # Enforce holdout blindness: agent must never read/copy holdout data or score it.
   # (score.py refuses hamburg without --holdout; loop only passes dev areas.)
 
+  # 2b. Verify a demanded backbone pivot was actually honored in the CODE,
+  # not just claimed in the agent's self-reported arch_json. plateaucheck's
+  # frozen-stage list (folded into $FROZEN_STAGES above) is advisory prompt
+  # text with no code-level enforcement — an agent can technically comply
+  # with "pick something from this list" while leaving the ImageNet-
+  # pretrained MobileNetV3 trunk in model/model.py completely untouched
+  # (exactly what happened in runs/20260722_145547_iter1, 2026-07-22).
+  # If Feature extractor was flagged frozen this round, check the diff
+  # directly instead of trusting the agent's own report: reject and skip
+  # training entirely rather than burn a training run on a design we
+  # already know dodged the directive.
+  if echo "$FROZEN_STAGES" | grep -q "Feature extractor" && \
+     ! git diff --unified=0 -- model/ 2>/dev/null | grep -qE '^-.*mobilenet_v3_small'; then
+    echo "REJECTED: pivot demanded on the frozen feature-extractor backbone (mobilenet_v3_small), but this iteration's diff left model/model.py's backbone untouched — skipping training."
+    echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
+    git checkout -- model/ 2>/dev/null || true
+    $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
+      --experiment-file "$RUN_DIR/experiment.json" \
+      --result "rejected before training: pivot was demanded on the frozen Feature extractor stage (mobilenet_v3_small backbone), but the code diff left it unchanged" \
+      --conclusion "REJECTED — pivot directive on the backbone was not honored; iteration discarded without training" \
+      --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept 0 \
+      --prompt-file "$RUN_DIR/prompt.md" \
+      --agent-model-design "$AGENT_MODEL_DESIGN" --agent-model-impl "$AGENT_MODEL_IMPL" \
+      --duration-s "$(( $(date +%s) - ITER_T0 ))" || true
+    continue
+  fi
+
   # 3. Train one model per development area — IN PARALLEL (areas are fully
   #    independent; per-area out-dirs avoid a write race on train_info.json,
   #    merged below) — then score (§6).
