@@ -218,6 +218,11 @@ for a in sys.argv[2:]:
         merged += json.loads(p.read_text())
 (run / "train_info.json").write_text(json.dumps(merged, indent=2))
 PYMERGE
+    # Per-area training dirs are SCRATCH (agent code may cache gigabytes of
+    # renders there — exp 17 wrote ~5.7 GB/iteration). Models and
+    # train_info are merged out above; everything else must never reach
+    # the record or LFS.
+    for area in $AREAS; do rm -rf "$RUN_DIR/train_$area"; done
   fi
   report_phase score
   T0=$(date +%s)
