@@ -164,14 +164,22 @@ for i in $(seq 1 "$ITERATIONS"); do
 ## PATIENCE SPENT — THIS ITERATION MUST PIVOT
 
 $PLATEAU consecutive experiments have failed to beat the current best.
-Do NOT refine the champion's current mechanism again this round. Step back
-and propose from a design family ABSENT from the last $PLATEAU experiments
-— the spec (§3) explicitly invites, among others: dispatcher + lighting-
-condition-specialist models, learned relighting, a different coordinate
-parameterization, quantization-aware capacity changes, or training-data
-strategy overhauls. Genuine novelty over incremental tuning.
+A pivot means COMPLETELY RETHINKING THE ARCHITECTURE, not touching the one
+stage named below as frozen while carrying the rest of the current design
+over unchanged. Do not refine, extend, or swap one part of the champion's
+mechanism and call it a pivot. Propose a genuinely different overall
+design — the spec (§3) explicitly invites, among others: dispatcher +
+lighting-condition-specialist models, learned relighting, a different
+coordinate parameterization, quantization-aware capacity changes, or
+training-data strategy overhauls — but whichever family you pick, it must
+change how the WHOLE pipeline works end to end, not one isolated stage.
 
 $FROZEN_STAGES
+
+Every non-frozen stage in your architecture.stages list must be marked
+"changed": true this round. If any stage is left exactly as before, this
+iteration will be rejected before training even starts — this is checked
+against your actual code diff, not just your own self-report.
 
 PIVOTNOTE
     mv "$RUN_DIR/prompt.md.tmp" "$RUN_DIR/prompt.md"
@@ -224,31 +232,55 @@ ${AGENT_RETRY_SLEEP:-1800}s before next iteration"
   # Enforce holdout blindness: agent must never read/copy holdout data or score it.
   # (score.py refuses hamburg without --holdout; loop only passes dev areas.)
 
-  # 2b. Verify a demanded backbone pivot was actually honored in the CODE,
-  # not just claimed in the agent's self-reported arch_json. plateaucheck's
-  # frozen-stage list (folded into $FROZEN_STAGES above) is advisory prompt
-  # text with no code-level enforcement — an agent can technically comply
-  # with "pick something from this list" while leaving the ImageNet-
-  # pretrained MobileNetV3 trunk in model/model.py completely untouched
-  # (exactly what happened in runs/20260722_145547_iter1, 2026-07-22).
-  # If Feature extractor was flagged frozen this round, check the diff
-  # directly instead of trusting the agent's own report: reject and skip
-  # training entirely rather than burn a training run on a design we
-  # already know dodged the directive.
-  if echo "$FROZEN_STAGES" | grep -q "Feature extractor" && \
-     ! git diff --unified=0 -- model/ 2>/dev/null | grep -qE '^-.*mobilenet_v3_small'; then
-    echo "REJECTED: pivot demanded on the frozen feature-extractor backbone (mobilenet_v3_small), but this iteration's diff left model/model.py's backbone untouched — skipping training."
-    echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
-    git checkout -- model/ 2>/dev/null || true
-    $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
-      --experiment-file "$RUN_DIR/experiment.json" \
-      --result "rejected before training: pivot was demanded on the frozen Feature extractor stage (mobilenet_v3_small backbone), but the code diff left it unchanged" \
-      --conclusion "REJECTED — pivot directive on the backbone was not honored; iteration discarded without training" \
-      --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept 0 \
-      --prompt-file "$RUN_DIR/prompt.md" \
-      --agent-model-design "$AGENT_MODEL_DESIGN" --agent-model-impl "$AGENT_MODEL_IMPL" \
-      --duration-s "$(( $(date +%s) - ITER_T0 ))" || true
-    continue
+  # 2b. Verify a demanded pivot was actually a COMPLETE architecture
+  # rethink, not the agent self-reporting compliance while carrying most
+  # of the design over unchanged. plateaucheck's frozen-stage list (folded
+  # into $FROZEN_STAGES above) is advisory prompt text with no code-level
+  # enforcement on its own — an agent can technically comply with "pick
+  # something from this list" while leaving most of the pipeline, or even
+  # the ImageNet-pretrained MobileNetV3 trunk specifically, completely
+  # untouched (exactly what happened in runs/20260722_145547_iter1,
+  # 2026-07-22 — "Feature extractor: changed=false" sailed through because
+  # nothing checked the self-report against the real diff). Only fires
+  # when a pivot was actually demanded this round ($FROZEN_STAGES
+  # non-empty) — normal iterations keep making ONE focused change per the
+  # harness's usual rule.
+  if [ -n "$FROZEN_STAGES" ]; then
+    UNCHANGED_STAGES="$($PY - "$RUN_DIR/experiment.json" <<'PYCHECK'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    print("(experiment.json unreadable)")
+    raise SystemExit
+frozen_harness = {"Camera frame", "Output"}
+stages = d.get("architecture", {}).get("stages", [])
+unchanged = [s.get("name") for s in stages
+             if s.get("name") not in frozen_harness and not s.get("changed")]
+print(", ".join(unchanged))
+PYCHECK
+)"
+    REJECT_REASON=""
+    if [ -n "$UNCHANGED_STAGES" ]; then
+      REJECT_REASON="a complete architecture rethink was required, but these stages are still self-reported unchanged: $UNCHANGED_STAGES"
+    elif echo "$FROZEN_STAGES" | grep -q "Feature extractor" && \
+         ! git diff --unified=0 -- model/ 2>/dev/null | grep -qE '^-.*mobilenet_v3_small'; then
+      REJECT_REASON="the agent claimed Feature extractor changed, but the code diff left model/model.py's mobilenet_v3_small backbone untouched (self-report contradicted by the real diff)"
+    fi
+    if [ -n "$REJECT_REASON" ]; then
+      echo "REJECTED: $REJECT_REASON — skipping training."
+      echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
+      git checkout -- model/ 2>/dev/null || true
+      $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
+        --experiment-file "$RUN_DIR/experiment.json" \
+        --result "rejected before training: $REJECT_REASON" \
+        --conclusion "REJECTED — pivot directive was not honored (partial change, not a complete rethink); iteration discarded without training" \
+        --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept 0 \
+        --prompt-file "$RUN_DIR/prompt.md" \
+        --agent-model-design "$AGENT_MODEL_DESIGN" --agent-model-impl "$AGENT_MODEL_IMPL" \
+        --duration-s "$(( $(date +%s) - ITER_T0 ))" || true
+      continue
+    fi
   fi
 
   # 3. Train one model per development area — IN PARALLEL (areas are fully
