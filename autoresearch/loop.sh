@@ -29,17 +29,47 @@ STATE="state"; mkdir -p "$STATE" runs
 
 best_metric() { [ -f "$STATE/best.json" ] && $PY -c "import json;print(json.load(open('$STATE/best.json'))['primary'])" || echo 1e18; }
 
+# Sync health, updated after every push attempt (see step 6) — surfaced via
+# phase.json below so an external health-check can tell the pod is stuck
+# diverged from origin without SSHing in. PUSH_OK=0 / rising PUSH_AHEAD
+# across successive checks means main.sync commits aren't landing (usually
+# a real content conflict with a laptop-side commit — needs a human).
+PUSH_OK=1
+PUSH_AHEAD=0
+
 # Real-time phase reporting for the public LIVE row: a one-file commit
 # force-pushed to refs/heads/status (plumbing objects only — main's history
 # stays untouched). The page fetches it from raw.githubusercontent.
 report_phase() {
-  printf '{"iter":%s,"iterations":%s,"iter_started":%s,"phase":"%s","phase_started":%s,"best":%s}\n' \
+  printf '{"iter":%s,"iterations":%s,"iter_started":%s,"phase":"%s","phase_started":%s,"best":%s,"push_ok":%s,"push_ahead":%s}\n' \
     "${i:-0}" "$ITERATIONS" "${ITER_T0:-$(date +%s)}" "$1" "$(date +%s)" "$(best_metric)" \
+    "$PUSH_OK" "$PUSH_AHEAD" \
     > "$STATE/phase.json" || true
   ( BLOB=$(git hash-object -w "$STATE/phase.json") &&
     TREE=$(printf '100644 blob %s\tphase.json\n' "$BLOB" | git mktree) &&
     COMMIT=$(git commit-tree "$TREE" -m "phase: $1") &&
     git push -qf origin "$COMMIT:refs/heads/status" ) 2>/dev/null || true
+}
+
+# Refuse to let any single oversized file into a commit. Bug history: one
+# iteration once leaked 5.7 GB/iteration of training scratch (fixed
+# separately by purging train_$area dirs below); a different run committed
+# 1.4 GB of uncropped debug renders that sat unnoticed for a day and broke
+# CI disk (2026-07-22). This catches anything of that shape before `git
+# add` ever sees it, instead of relying on a human to notice later.
+MAX_COMMIT_MB="${MAX_COMMIT_MB:-25}"
+quarantine_oversized() {
+  local dir="$1" big
+  [ -d "$dir" ] || return 0
+  big="$(find "$dir" -type f -size "+${MAX_COMMIT_MB}M" 2>/dev/null || true)"
+  [ -z "$big" ] && return 0
+  echo "WARNING: file(s) over ${MAX_COMMIT_MB}MB excluded from the commit (moved to state/quarantine/$RUN_ID, not pushed):"
+  echo "$big"
+  echo "$big" | while IFS= read -r f; do
+    dest="state/quarantine/$RUN_ID/${f#"$dir"/}"
+    mkdir -p "$(dirname "$dest")"
+    mv "$f" "$dest"
+  done
 }
 
 # A dirty tree would blur lineage (a kept commit must contain exactly one
@@ -256,6 +286,7 @@ PYMERGE
   #    record (pre-registered design + measured result + conclusion).
   RESULT="primary worst-case median error = $METRIC m (previous best $BEST m); full per-area/bucket breakdown in metrics.json"
   if [ "$KEEP" = "1" ]; then
+    quarantine_oversized model
     git add -A model/ && git commit -q -m "autoresearch iter $i: $METRIC m (was $BEST)
 
 $(cat "$RUN_DIR/experiment.json")" || true
@@ -320,16 +351,25 @@ PYTIMES
   #    push off-site. A reverted experiment's record lives only here and in
   #    SQLite, so this commit is what makes the full research trail survive
   #    the pod. Push failures are non-fatal: everything is committed locally
-  #    and pushes retry implicitly next iteration.
+  #    and pushes retry implicitly next iteration — but see PUSH_OK/
+  #    PUSH_AHEAD above: a real content conflict with a laptop commit won't
+  #    resolve itself on retry, so it's surfaced via phase.json instead of
+  #    just logged into a terminal nobody's watching.
+  quarantine_oversized "$RUN_DIR"
   git add -A "$RUN_DIR" experiments.sqlite state/ 2>/dev/null || true
   git commit -q -m "iter $i record: $RUN_ID ($METRIC m, kept=$KEEP)" || true
   # Rebase onto origin first: harness/docs commits pushed from the laptop
   # while the loop runs would otherwise permanently diverge us from origin
   # (tree is clean here — everything above is committed).
-  git pull --rebase -q origin main 2>/dev/null || \
-    { git rebase --abort 2>/dev/null || true; }
-  git push -q origin main 2>/dev/null || \
-    echo "WARNING: git push failed (no remote/offline?) — record is committed locally"
+  if git pull --rebase -q origin main 2>/dev/null && git push -q origin main 2>/dev/null; then
+    PUSH_OK=1; PUSH_AHEAD=0
+  else
+    git rebase --abort 2>/dev/null || true
+    PUSH_OK=0
+    PUSH_AHEAD="$(git rev-list --count origin/main..HEAD 2>/dev/null || echo -1)"
+    echo "WARNING: sync with origin/main failed (conflict or offline) — $PUSH_AHEAD commit(s) ahead, record is committed locally only"
+  fi
+  report_phase "synced"
 done
 report_phase idle
 echo "Loop finished. Best: $(best_metric) m — see gallery/index.html"

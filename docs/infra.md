@@ -136,9 +136,38 @@ SQLite stay plain. The pod pushes over a **write-scoped deploy key**
 "lowlight-autoresearch pod"), with a global `insteadOf` rewriting the
 https origin to ssh. `data/` and `gallery/` stay untracked (regenerable).
 
-**LFS quota:** GitHub's free tier is 1 GB LFS storage / 1 GB/mo
-bandwidth. At ~30 MB/iteration a $5/mo 50 GB data pack becomes necessary
-around experiment ~30 — buy it before the loop starts failing pushes.
+**LFS quota:** this account's plan includes 10 GB Git LFS storage / 10 GB
+bandwidth per month (checked 2026-07-22 via Settings → Billing → Git LFS
+Data: 0.3 GB storage, 0 GB bandwidth used — comfortable headroom, no data
+pack needed). Re-check that page if pushes ever start failing with an LFS
+error; don't assume the free tier's 1 GB figure without looking, it's not
+what this account is actually entitled to.
+
+### Health checks (2026-07-22 —)
+
+Two writers commit to `main` all day (the pod's loop + laptop-side harness/
+docs/site work), and a fast, unattended loop can silently leak disk or fall
+behind origin without anyone noticing until something breaks downstream
+(CI disk exhaustion, a stuck sync). Three mechanisms catch this without
+needing to manually ask an agent to check:
+
+- **Commit-size guard** (`loop.sh`'s `quarantine_oversized`): before either
+  commit point (`model/` on keep, the full iteration record every
+  iteration), any file over `MAX_COMMIT_MB` (default 25 MB — heatmaps run
+  ~1-5 MB, samples under 1 MB, onnx models a few MB, so this is generous
+  headroom, not a tight fit) is moved to `state/quarantine/<run_id>/`
+  instead of committed. Caught after the fact twice already: a 5.7 GB/
+  iteration training-scratch leak and a 1.4 GB oversized debug-render dump
+  that sat in the tree undetected for a day.
+- **Sync-health signal** (`PUSH_OK` / `PUSH_AHEAD` in `loop.sh`, published
+  in `phase.json` on the lightweight `refs/heads/status` ref alongside the
+  existing live-row phase data): `push_ok:false` means the loop's
+  `pull --rebase` hit a real conflict with a laptop-side commit and gave
+  up — this needs a human, but now it's visible from `phase.json` alone,
+  no SSH into the pod required.
+- **Hourly scheduled health-check** (cron routine, not tied to any open
+  chat session) — checks `phase.json`'s recency and `push_ok`, the latest
+  `pages` workflow run status, and pings only when something looks wrong.
 
 ### Development workflow — changing code while the pod is "production"
 
