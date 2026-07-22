@@ -74,15 +74,15 @@ CSS = """
 html{background:var(--paper)}
 body{margin:0;background:var(--paper);color:var(--ink);
   font:16px/1.55 var(--serif);font-feature-settings:"onum" 1,"liga" 1;
-  -webkit-font-smoothing:antialiased;overflow-x:auto}
+  -webkit-font-smoothing:antialiased;overflow-x:auto;padding-bottom:40px}
 a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
 a:hover{border-bottom-color:var(--accent)}
 .smcp{font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.05em}
 .num{font-variant-numeric:lining-nums tabular-nums}
 .mono{font-family:var(--mono);font-size:12px}
 
-#gh-ribbon{position:fixed;right:-56px;bottom:36px;z-index:80;
-  transform:rotate(-45deg);background:#111111;color:#fffff8;
+#gh-ribbon{position:fixed;right:-56px;top:36px;z-index:80;
+  transform:rotate(45deg);background:#111111;color:#fffff8;
   font:600 11px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.12em;white-space:nowrap;
   padding:7px 64px;text-decoration:none;border:none;
@@ -117,10 +117,12 @@ h1.home-h1{margin:28px auto 32px}
   0%,100%{box-shadow:inset 0 0 0 1.5px rgba(140,47,31,.3);background:rgba(140,47,31,.03)}
   50%{box-shadow:inset 0 0 0 1.5px rgba(140,47,31,.85);background:rgba(140,47,31,.08)}
 }
-.compute-banner{padding:7px 18px;text-align:center;
+.compute-banner{position:fixed;left:0;right:0;bottom:0;z-index:70;
+  padding:7px 18px;text-align:center;
   font:12.5px var(--serif);color:var(--muted);
-  background:rgba(140,47,31,.045);
-  border-bottom:1px solid rgba(140,47,31,.12)}
+  background:var(--paper);
+  border-top:1px solid rgba(140,47,31,.12);
+  box-shadow:0 -1px 8px rgba(0,0,0,.06)}
 .compute-banner .status-badge{margin-right:10px;vertical-align:baseline}
 .compute-banner a{color:#8c2f1f;text-decoration:none;font-weight:600}
 .compute-banner a:hover{text-decoration:underline}
