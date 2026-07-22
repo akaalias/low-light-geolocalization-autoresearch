@@ -93,9 +93,15 @@ header.page-head .page-sub{font:15.5px/1.6 var(--serif);color:var(--muted);
 .page-head .page-sub a{color:var(--accent)}
 .paths-wrap>.eyebrow{margin:34px 0 0}
 h1.home-h1{margin:28px auto 32px}
-.live-row{background:rgba(140,47,31,.045)}
+.live-row{background:rgba(140,47,31,.045);
+  box-shadow:inset 0 0 0 1.5px var(--accent);
+  animation:live-row-pulse 1.8s ease-in-out infinite}
 .live-row td{color:var(--muted);font-style:italic}
 .live-row .status-badge{font-style:normal}
+@keyframes live-row-pulse{
+  0%,100%{box-shadow:inset 0 0 0 1.5px rgba(140,47,31,.3);background:rgba(140,47,31,.03)}
+  50%{box-shadow:inset 0 0 0 1.5px rgba(140,47,31,.85);background:rgba(140,47,31,.08)}
+}
 .compute-banner{padding:7px 18px;text-align:center;
   font:12.5px var(--serif);color:var(--muted);
   background:rgba(140,47,31,.045);
@@ -2007,14 +2013,15 @@ def render():
         kept_cls = " kept-row" if (e["kept"] and e["kind"] != "holdout_check") else ""
         size = f"{e['model_bytes_max']/1024:,.0f} KB" if e["model_bytes_max"] else "—"
         lat = f"{e['latency_ms_host_proxy']:.1f} ms" if e["latency_ms_host_proxy"] else "—"
+        pivot_tag = (" <span class='pivot-tag' title='Ran after 4+ consecutive "
+                     "misses — the harness required a new design family this "
+                     "round'>pivot</span>" if e.get("is_pivot") else "")
         body.append(f"""<tr class="row-main{kept_cls}" id="r{e['id']}" onclick="toggle({e['id']})">
 <td><span class="caret">▸</span></td>
 <td class="num">{e['id']}</td>
 <td class="title-cell"><b>{esc(e['title'])}</b>
   <span class="mono" style="color:var(--faint)"> {esc(e['git_commit'][:8])}</span></td>
-<td><span class="cat">{esc(e['category'] or '—')}</span>{
-  " <span class='pivot-tag' title=\"Ran after 4+ consecutive misses — the harness required a new design family this round\">pivot</span>"
-  if e.get("is_pivot") else ""}</td>
+<td><span class="cat">{esc(e['category'] or '—')}</span>{pivot_tag}</td>
 <td class="mono">{esc(e['init_strategy'] or '—')}</td>
 <td class="num">{fmt_m(e['primary_metric'])}</td>
 <td class="num">{size}</td><td class="num">{lat}</td>
