@@ -33,6 +33,21 @@ FAIL = 1e9
 PATIENCE = 4  # mirrors loop.sh's PATIENCE default; restated here since the
               # gallery only reads the DB, never the shell env the loop ran with
 
+# Era 2 (docs/infra.md): the whole loop moved onto a rented RunPod 4090 that
+# bills continuously by wall clock regardless of phase (design/train/score),
+# not per-GPU-second of training alone — so an experiment's cost is its full
+# duration_s at the pod's rate. Era 1 (ids 1-10, M1 MacBook Air) had ~$0
+# marginal infra cost but real per-call LLM API billing instead; that's a
+# different cost basis entirely and isn't shown here.
+RUNPOD_USD_PER_HR = 0.69
+POD_ERA_START = "2026-07-21"
+
+
+def cost_str(e):
+    if e["kind"] == "holdout_check" or not e.get("duration_s") or e["ts"] < POD_ERA_START:
+        return "—"
+    return f"${e['duration_s'] / 3600 * RUNPOD_USD_PER_HR:,.2f}"
+
 
 def annotate_pivot(exps):
     """Mark each development experiment with whether the harness had already
@@ -154,6 +169,7 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 
 .contract-fig{max-width:980px;margin:34px auto 4px}
 .contract-fig svg{width:100%;height:auto;display:block}
+.contract-fig.static>svg{cursor:default}
 .contract-cap{max-width:760px;margin:10px auto 0;font-size:13px;
   line-height:1.65;color:var(--muted);text-align:center;font-style:italic}
 .pkey{display:flex;flex-wrap:wrap;gap:8px 26px;justify-content:center;
@@ -682,7 +698,7 @@ def status_badge():
 # and price, so the compute story is auditable.
 def compute_banner():
     state, _ = research_status()
-    pod = ("<a href='https://www.runpod.io'>RunPod</a> Secure Cloud pod "
+    pod = ("<a href='https://www.runpod.io' target='_blank' rel='noopener'>RunPod</a> Secure Cloud pod "
            "— one RTX 4090 (24 GB) at $0.69/hr")
     if state == "finished":
         text = (f"experiments ran around the clock on a {pod}; the research "
@@ -727,7 +743,7 @@ def live_row(next_id):
     built_ms = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     return f"""<tr class="live-row" id="live-row">
 <td></td><td class="num">{next_id}</td>
-<td colspan="7"><span id="live-text">experiment in progress…</span></td>
+<td colspan="8"><span id="live-text">experiment in progress…</span></td>
 <td><span class="status-badge live"><span class="dot"></span>live</span></td></tr>
 <script>(function(){{
   var built={built_ms}, phases={phases_js}, st=null;
@@ -1277,6 +1293,12 @@ preamble into the next design prompt: do not refine the champion's current
 mechanism again — propose from a design family absent from the recent
 history. Marked ones ran under that directive; the streak resets every time
 an experiment is kept.</dd>
+<dt>Cost</dt><dd>Estimated RunPod spend for that one iteration: its measured
+wall time × the pod's <b>$0.69/hr</b> rate. The pod bills continuously by the
+clock, not per phase, so this covers the whole iteration — agent design,
+implementation, training, scoring, publishing — not GPU time alone. Shown
+from experiment 11 on, when the loop moved off a laptop onto the pod;
+earlier runs had no pod cost but real per-call LLM API billing instead.</dd>
 <dt>Category</dt><dd>Which lever the experiment pulls: architecture, loss,
 augmentation, relighting, training procedure, or quantization.</dd>
 <dt>Init</dt><dd>Weight initialization: trained from scratch, or started
@@ -1417,6 +1439,17 @@ never touched by the loop — it exists only as a blind check that the
 method generalizes.</p>
 </div>
 
+<div class="contract-fig static">{contract_svg()}
+<p class="contract-cap">What the loop is actually allowed to search over.
+The gray endpoints are fixed by the harness — one low-light camera crop in,
+one <i>(lat,&nbsp;lon,&nbsp;confidence)</i> answer out — and the dashed box
+is the entire search space: every experiment in the
+<a href="gallery/inference-paths.html">model designs</a> gallery is one way
+of filling it. The ochre lane underneath holds the training-only signals —
+losses, targets, samplers — that shape the weights but are torn down before
+anything flies.</p>
+</div>
+
 <div class="sec-h">Explore</div>
 <div class="explore">
 <a class="card" href="gallery/index.html"><b>The research log</b>
@@ -1472,7 +1505,7 @@ megabytes you own.</p>
 </div>
 
 <p class="psub num" style="margin-top:34px">updated {now} · experiments run around the clock on a
-<a href='https://www.runpod.io'>RunPod</a> Secure Cloud pod — one
+<a href='https://www.runpod.io' target='_blank' rel='noopener'>RunPod</a> Secure Cloud pod — one
 RTX 4090 (24 GB) at $0.69/hr; the loop commits every result to git as
 it goes</p>
 </div>
@@ -1605,16 +1638,18 @@ def render_paths(exps):
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('paths')}
 {compute_banner()}
-{page_header("Model designs", "Before it may train anything, every iteration of the research loop draws the model it proposes to fly — a proper technical figure of the computation one camera frame takes through the deployed network, from pixels to <i>(lat,&nbsp;lon,&nbsp;confidence)</i>. These are those figures — every proposal ever made, reverted branches included.")}
+{page_header("Everything we tried: Experiment model designs", "Every model design the research loop has proposed, one figure per experiment — a proper technical drawing of the computation one camera frame takes through the network, from pixels to <i>(lat,&nbsp;lon,&nbsp;confidence)</i>. Kept and reverted alike, so you can see exactly what each experiment tried and compare designs side by side.")}
 <div class="paths-wrap">
 <div class="pnote">
-<p>These figures exist to keep the loop honest. Every one is drawn and locked
-in <i>before</i> a single epoch of training runs, alongside a falsifiable
-hypothesis and a predicted outcome — so what you're looking at is a genuine
-pre-registration, what the agent believed would work, not a diagram fitted
-after the fact to a result it already knew. One shared visual contract
-across every proposal (tensors drawn as tensors, operations as operations,
-no labeled boxes) is what makes them directly comparable, figure to figure.</p>
+<p>This is where you can actually follow the search: read one figure and you
+understand that experiment's design; read them in order and you watch the
+architecture evolve, one focused change at a time. Every figure is drawn
+and locked in <i>before</i> training runs, alongside a falsifiable
+hypothesis and a predicted outcome — so what you're comparing across
+experiments is the design as proposed, not a diagram redrawn after the fact
+to match a result already known. One shared visual contract across every
+proposal (tensors drawn as tensors, operations as operations, no labeled
+boxes) is what makes them directly comparable, figure to figure.</p>
 <p>Read top to bottom to watch the design evolve: a <b>kept</b> proposal
 (ink rule, left) becomes the trunk the next experiment branches from; a
 <b>discarded</b> one — trained, scored, reverted — stays on the record at
@@ -1700,8 +1735,6 @@ LINEAGE_CSS = """
   display:inline-block;border-radius:9px 9px 0 0}
 .lin-head .legend .lring{width:10px;height:10px;border-radius:50%;
   background:var(--paper);border:1.5px solid #8a6a1e;display:inline-block}
-.lin-head .legend .lringp{width:13px;height:13px;border-radius:50%;
-  background:none;border:1.5px solid #8a6a1e;display:inline-block}
 #diagram{overflow-x:auto;margin-top:14px;padding:24px 28px 16px;
   scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
 #diagram::-webkit-scrollbar{height:6px}
@@ -1786,7 +1819,11 @@ LINEAGE_JS = r"""
               : nd.kind === "holdout" ? "nh" : "ndd";
     const r = nd.kind === "kept" ? 4 : nd.kind === "holdout" ? 4 : 3;
     g += `<circle class="nd ${cls}" data-key="${esc(nd.key)}" cx="${x}" cy="${baseY}" r="${r}"/>`;
-    if (nd.pivot) g += `<circle class="nd np" data-key="${esc(nd.key)}" cx="${x}" cy="${baseY}" r="6.5"/>`;
+    if (nd.pivot) { const R = 6.5, cx = parseFloat(x);
+      g += `<path class="nd np" data-key="${esc(nd.key)}" `
+         + `d="M${cx.toFixed(1)},${(baseY + R).toFixed(1)} `
+         + `L${(cx + R * 0.866).toFixed(1)},${(baseY - R * 0.5).toFixed(1)} `
+         + `L${(cx - R * 0.866).toFixed(1)},${(baseY - R * 0.5).toFixed(1)} Z"/>`; }
     g += `<circle class="hit" data-key="${esc(nd.key)}" cx="${x}" cy="${baseY}" r="9" fill="transparent"/>`;
     g += `<text class="nlab" data-key="${esc(nd.key)}" x="${x}" y="${baseY + 8}" text-anchor="start" `
        + `transform="rotate(90 ${x} ${baseY + 8})">${esc(labelOf(nd))}</text>`;
@@ -1915,14 +1952,14 @@ def render_lineage(exps):
 <style>{CSS}{LINEAGE_CSS}</style></head><body>
 {topnav('lineage')}
 {compute_banner()}
-{page_header("Research experiment lineage", f"{n_dev} experiments, left → right in discovery order; each arc links an experiment to the kept design it built on. <b>Hover</b> to trace its ancestry back to the root; <b>click</b> to open its full record in the <a href='index.html'>research log</a>.")}
+{page_header("How we got here: Research experiment lineage", f"{n_dev} experiments, left → right in discovery order; each arc links an experiment to the kept design it built on. <b>Hover</b> to trace its ancestry back to the root; <b>click</b> to open its full record in the <a href='index.html'>research log</a>.")}
 <div class="lin-head">
 <div class="legend">
   <span class="k"><span class="ldot" style="background:var(--ink)"></span>Kept (new best)</span>
   <span class="k"><span class="ldot" style="background:#9b998c"></span>Worse than best</span>
   <span class="k"><span class="ldot" style="background:var(--accent)"></span>Gated fail</span>
   <span class="k"><span class="lring"></span>Blind holdout check</span>
-  <span class="k"><span class="lringp"></span>Pivot-directed (patience spent — 4+ misses in a row)</span>
+  <span class="k"><span class="tri"></span>Pivot-directed (patience spent — 4+ misses in a row)</span>
   <span class="k"><span class="larc"></span>Derived from its parent</span>
 </div>
 </div>
@@ -1972,7 +2009,7 @@ def render():
 <style>{CSS}</style><script>{JS}</script></head><body>
 {topnav('log')}
 {compute_banner()}
-{page_header("The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a rented RTX 4090 and measured against one frozen ruler: the <b>worst</b> median position error across 6 lighting conditions × 4 test areas, on held-out crops ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
+{page_header("Where we are: The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a rented RTX 4090 and measured against one frozen ruler: the <b>worst</b> median position error across 6 lighting conditions × 4 test areas, on held-out crops ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
 <header class="dash-head">
   <div class="intro">
   <p>{status_line} · {n_dev} experiment{'s' if n_dev != 1 else ''},
@@ -2002,6 +2039,7 @@ def render():
 <th title="Largest per-area exported model. Hard limit: 4 MiB (ESP32-P4 flight computer).">Model</th>
 <th title="Single-frame inference on one CPU thread - a documented proxy for the flight computer, budget 250 ms.">Latency</th>
 <th title="Wall time of the whole iteration: agent design + training all areas + scoring.">Time</th>
+<th title="Estimated RunPod compute cost for this iteration: wall time x the pod's $0.69/hr rate — the pod bills continuously regardless of phase, so this is the whole iteration, not just GPU training time. Era 1 (ids 1-10, a laptop) had no pod cost but real per-call LLM API billing instead, not shown here.">Cost</th>
 <th>Status</th></tr></thead><tbody>"""]
     body.append(live_row((max((e["id"] for e in exps), default=0) or 0) + 1))
 
@@ -2022,6 +2060,7 @@ def render():
 <td class="num">{fmt_m(e['primary_metric'])}</td>
 <td class="num">{size}</td><td class="num">{lat}</td>
 <td class="num">{fmt_dur(e.get('duration_s'))}</td>
+<td class="num">{cost_str(e)}</td>
 <td>{status_of(e)}</td></tr>""")
 
         blocks = []
@@ -2037,7 +2076,7 @@ def render():
                 blocks.append(f"<div class='eb {cls}'><div class='eb-h'>{label}</div>"
                               f"<p>{esc(e[key])}</p></div>")
         metrics = json.loads(e["metrics_json"] or "{}")
-        body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="10">
+        body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="11">
 <div class="detail-inner">
 {arch_block(e, chain_of(e, exps))}
 <div class="detail-grid">
