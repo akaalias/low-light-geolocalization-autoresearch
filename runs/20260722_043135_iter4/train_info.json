@@ -1,0 +1,114 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2649.3,
+    "onnx_bytes": 2840255,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3); neural-map correlation head (map_feat/map_bias/kernel_proj/dark_kernel) from scratch",
+    "map_hw": [
+      213,
+      217
+    ],
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "conf_shift": -0.3814396560192108,
+    "cal_logit_threshold": -1.228637528419495,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.72,
+      "midday": 0.7,
+      "afternoon": 0.705,
+      "early_evening": 0.685,
+      "evening": 0.5625,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "prignitz",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2456.7,
+    "onnx_bytes": 2887815,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3); neural-map correlation head (map_feat/map_bias/kernel_proj/dark_kernel) from scratch",
+    "map_hw": [
+      217,
+      218
+    ],
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "conf_shift": -0.28492212295532227,
+    "cal_logit_threshold": -1.1321199893951417,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.9025,
+      "midday": 0.9275,
+      "afternoon": 0.9275,
+      "early_evening": 0.8975,
+      "evening": 0.775,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "munich",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2790.0,
+    "onnx_bytes": 3077087,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3); neural-map correlation head (map_feat/map_bias/kernel_proj/dark_kernel) from scratch",
+    "map_hw": [
+      216,
+      239
+    ],
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "conf_shift": -0.5450369715690613,
+    "cal_logit_threshold": -1.3922348022460938,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.8475,
+      "midday": 0.82,
+      "afternoon": 0.8875,
+      "early_evening": 0.8425,
+      "evening": 0.7825,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "frankfurt",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2618.4,
+    "onnx_bytes": 2866327,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3); neural-map correlation head (map_feat/map_bias/kernel_proj/dark_kernel) from scratch",
+    "map_hw": [
+      209,
+      224
+    ],
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "conf_shift": -0.6633461117744446,
+    "cal_logit_threshold": -1.510543990135193,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.9325,
+      "midday": 0.93,
+      "afternoon": 0.915,
+      "early_evening": 0.8975,
+      "evening": 0.7975,
+      "night": 0.4
+    }
+  }
+]
