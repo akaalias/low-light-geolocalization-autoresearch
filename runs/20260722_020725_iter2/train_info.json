@@ -1,0 +1,98 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2686.1,
+    "onnx_bytes": 2491070,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "conf_shift": 0.38914260268211365,
+    "cal_logit_threshold": -0.45805525779724154,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.735,
+      "midday": 0.695,
+      "afternoon": 0.71,
+      "early_evening": 0.705,
+      "evening": 0.66,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "prignitz",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2540.0,
+    "onnx_bytes": 2491070,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "conf_shift": 0.47877439856529236,
+    "cal_logit_threshold": -0.3684234559535988,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.845,
+      "midday": 0.8825,
+      "afternoon": 0.9025,
+      "early_evening": 0.8325,
+      "evening": 0.78,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "munich",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2834.8,
+    "onnx_bytes": 2491070,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "conf_shift": 0.4531654715538025,
+    "cal_logit_threshold": -0.3940324008464819,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.8,
+      "midday": 0.74,
+      "afternoon": 0.79,
+      "early_evening": 0.7575,
+      "evening": 0.685,
+      "night": 0.4
+    }
+  },
+  {
+    "area": "frankfurt",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2744.6,
+    "onnx_bytes": 2491070,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "conf_shift": 0.09089718759059906,
+    "cal_logit_threshold": -0.7563006758689885,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.8125,
+      "midday": 0.825,
+      "afternoon": 0.815,
+      "early_evening": 0.76,
+      "evening": 0.7025,
+      "night": 0.4
+    }
+  }
+]

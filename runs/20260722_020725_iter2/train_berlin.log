@@ -1,0 +1,52 @@
+/workspace/low-light-geolocalization-autoresearch/model/model.py:230: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_logits:
+WARNING:root:Please consider to run pre-processing before quantization. Refer to example: https://github.com/microsoft/onnxruntime-inference-examples/blob/main/quantization/image_classification/cpu/ReadMe.md 
+[berlin] epoch 1/24 36000 crops, device=cuda
+[berlin] epoch 1/24 loss=6.2489
+[berlin] epoch 2/24 36000 crops, device=cuda
+[berlin] epoch 2/24 loss=5.8185
+[berlin] epoch 3/24 36000 crops, device=cuda
+[berlin] epoch 3/24 loss=5.6149
+[berlin] epoch 4/24 36000 crops, device=cuda
+[berlin] epoch 4/24 loss=5.4845
+[berlin] epoch 5/24 36000 crops, device=cuda
+[berlin] epoch 5/24 loss=5.3602
+[berlin] epoch 6/24 36000 crops, device=cuda
+[berlin] epoch 6/24 loss=5.2663
+[berlin] epoch 7/24 36000 crops, device=cuda
+[berlin] epoch 7/24 loss=5.1951
+[berlin] epoch 8/24 36000 crops, device=cuda
+[berlin] epoch 8/24 loss=5.1418
+[berlin] epoch 9/24 36000 crops, device=cuda
+[berlin] epoch 9/24 loss=5.0708
+[berlin] epoch 10/24 36000 crops, device=cuda
+[berlin] epoch 10/24 loss=5.0281
+[berlin] epoch 11/24 36000 crops, device=cuda
+[berlin] epoch 11/24 loss=4.9779
+[berlin] epoch 12/24 36000 crops, device=cuda
+[berlin] epoch 12/24 loss=4.9477
+[berlin] epoch 13/24 36000 crops, device=cuda
+[berlin] epoch 13/24 loss=4.9165
+[berlin] epoch 14/24 36000 crops, device=cuda
+[berlin] epoch 14/24 loss=4.8936
+[berlin] epoch 15/24 36000 crops, device=cuda
+[berlin] epoch 15/24 loss=4.8669
+[berlin] epoch 16/24 36000 crops, device=cuda
+[berlin] epoch 16/24 loss=4.8436
+[berlin] epoch 17/24 36000 crops, device=cuda
+[berlin] epoch 17/24 loss=4.8181
+[berlin] epoch 18/24 36000 crops, device=cuda
+[berlin] epoch 18/24 loss=4.8132
+[berlin] epoch 19/24 36000 crops, device=cuda
+[berlin] epoch 19/24 loss=4.8039
+[berlin] epoch 20/24 36000 crops, device=cuda
+[berlin] epoch 20/24 loss=4.8088
+[berlin] epoch 21/24 36000 crops, device=cuda
+[berlin] epoch 21/24 loss=4.7972
+[berlin] epoch 22/24 36000 crops, device=cuda
+[berlin] epoch 22/24 loss=4.7902
+[berlin] epoch 23/24 36000 crops, device=cuda
+[berlin] epoch 23/24 loss=4.7822
+[berlin] epoch 24/24 36000 crops, device=cuda
+[berlin] epoch 24/24 loss=4.7915
+{"area": "berlin", "n_train_crops": 36000, "epochs": 8, "device": "cuda", "train_seconds": 2686.1, "onnx_bytes": 2491070, "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)", "train_realizations": 3, "epoch_location_resampling": true, "total_epochs_run": 24, "epoch_mult": 3, "lr_schedule": "cosine-per-step to 0 over 13512 steps", "conf_shift": 0.38914260268211365, "cal_logit_threshold": -0.45805525779724154, "cal_keep_rate_per_bucket": {"morning": 0.735, "midday": 0.695, "afternoon": 0.71, "early_evening": 0.705, "evening": 0.66, "night": 0.4}}
