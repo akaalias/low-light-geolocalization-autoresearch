@@ -100,7 +100,7 @@ svg text{paint-order:stroke;stroke:var(--paper);stroke-width:2.8px;
 header.page-head{max-width:900px;margin:34px auto 4px;padding:0 16px;
   text-align:center;display:block}
 header.page-head .eyebrow{text-align:center;margin:0}
-header.page-head h1{font:700 34px/1.15 var(--serif);color:var(--ink);
+header.page-head h1{font:400 34px/1.15 var(--serif);color:var(--ink);
   margin:10px 0 14px;letter-spacing:0}
 header.page-head .page-sub{font:15.5px/1.6 var(--serif);color:var(--muted);
   font-style:normal;margin:0 auto;max-width:820px;text-align:center}
@@ -816,7 +816,7 @@ def page_header(title, sub_html):
     markup, same classes, no per-page typography. Do not hand-roll page
     headers; call this."""
     return (f"<header class='page-head'>"
-            f"<div class='eyebrow'>Alexis Rondeau · live research log</div>"
+            f"<div class='eyebrow'>Alexis Rondeau · an autonomous research project</div>"
             f"<h1>{title}</h1>"
             f"<p class='page-sub'>{sub_html}</p></header>")
 
