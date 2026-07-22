@@ -117,12 +117,19 @@ for i in $(seq 1 "$ITERATIONS"); do
   # the guard against refining a dead line forever. The preamble is written
   # into the run's prompt snapshot so the record shows the prompt actually
   # used.
+  LAST_KEPT_ID=$(sqlite3 experiments.sqlite "SELECT COALESCE(MAX(id),0) \
+    FROM experiments WHERE kept=1 AND kind='development';" 2>/dev/null || echo 0)
   PLATEAU=$(sqlite3 experiments.sqlite "SELECT COUNT(*) FROM experiments \
-    WHERE kind='development' AND id > \
-    (SELECT COALESCE(MAX(id),0) FROM experiments \
-     WHERE kept=1 AND kind='development');" 2>/dev/null || echo 0)
+    WHERE kind='development' AND id > $LAST_KEPT_ID;" 2>/dev/null || echo 0)
   if [ "${PLATEAU:-0}" -ge "${PATIENCE:-4}" ]; then
     echo "PIVOT: $PLATEAU consecutive experiments without a new best — pivot directive injected"
+    # Which stages have actually gone unquestioned across the streak (by
+    # arch_json's own changed:true flags), not just which category labels
+    # haven't been tried — see plateaucheck.py's docstring for why the
+    # category-label version of this check let #30-34 all satisfy "pick a
+    # design family from the list" while leaving the trunk/descriptor
+    # untouched every single round.
+    FROZEN_STAGES="$($PY -m autoresearch.plateaucheck "$LAST_KEPT_ID" 2>/dev/null || true)"
     cat - "$RUN_DIR/prompt.md" > "$RUN_DIR/prompt.md.tmp" <<PIVOTNOTE
 ## PATIENCE SPENT — THIS ITERATION MUST PIVOT
 
@@ -133,6 +140,8 @@ and propose from a design family ABSENT from the last $PLATEAU experiments
 condition-specialist models, learned relighting, a different coordinate
 parameterization, quantization-aware capacity changes, or training-data
 strategy overhauls. Genuine novelty over incremental tuning.
+
+$FROZEN_STAGES
 
 PIVOTNOTE
     mv "$RUN_DIR/prompt.md.tmp" "$RUN_DIR/prompt.md"

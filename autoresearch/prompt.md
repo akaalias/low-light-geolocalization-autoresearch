@@ -22,7 +22,19 @@ you only design the experiment and edit the code.
    do not attempt another variation of the last refuted mechanism. Either
    pick a design family absent from the history (dispatcher + lighting
    specialists, pretrained init, learned relighting, training-scale, …) or
-   attack the bottleneck the refuted hypotheses jointly point at.
+   attack the bottleneck the refuted hypotheses jointly point at —
+   **but check which stages that "design family" actually touches before
+   you commit to it.** Query the last several kept experiments'
+   `arch_json` (`SELECT arch_json FROM experiments WHERE kind='development'
+   ORDER BY id DESC LIMIT 10;`) and look at which stage names never carry
+   `"changed": true`. A losing streak is not just "we haven't tried a
+   dispatcher yet" — it is usually "the trunk / descriptor / decode has
+   gone unquestioned for N rounds while satellite modules (gates, heads,
+   auxiliary losses, samplers) keep churning around it." Picking a name
+   off the suggested list while leaving that frozen core untouched is
+   incremental tuning wearing a pivot's clothes, and the harness's own
+   patience check (below, once it fires) will call this out explicitly by
+   naming the frozen stages.
 
 2. **Design ONE focused experiment** — proper experiment design, pre-registered
    before you touch code. Write it to `runs/pending_experiment.json`:
