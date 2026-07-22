@@ -30,6 +30,22 @@ from autoresearch.db import REPO_ROOT, connect
 OUT = REPO_ROOT / "gallery" / "index.html"
 TARGET_M = 20.0
 FAIL = 1e9
+PATIENCE = 4  # mirrors loop.sh's PATIENCE default; restated here since the
+              # gallery only reads the DB, never the shell env the loop ran with
+
+
+def annotate_pivot(exps):
+    """Mark each development experiment with whether the harness had already
+    spent its patience and injected the mandatory "must pivot" directive into
+    its design prompt (loop.sh: a running streak of consecutive non-kept dev
+    experiments since the last kept one; streak >= PATIENCE forces the next
+    design to come from a design family absent from the recent history)."""
+    streak = 0
+    for e in exps:
+        if e["kind"] == "holdout_check":
+            continue
+        e["is_pivot"] = streak >= PATIENCE
+        streak = 0 if e["kept"] else streak + 1
 
 CSS = """
 :root{
@@ -226,6 +242,9 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .bar.dash{border-top-style:dashed;border-top-color:var(--accent)}
 .vrule{width:0;height:12px;border-left:1px dashed var(--faint);display:inline-block}
 .x{color:var(--accent);font-weight:700}
+.tri{width:0;height:0;border-left:4.5px solid transparent;
+  border-right:4.5px solid transparent;border-top:7px solid var(--ochre);
+  display:inline-block}
 #updated{color:var(--faint);font-style:italic;margin-left:auto}
 
 .dash-wrap{max-width:92vw;margin:0 auto;padding:4px 0 64px}
@@ -270,6 +289,9 @@ tr.open .caret{transform:rotate(90deg)}
 .st-hold{color:var(--ochre);font-weight:600}
 .cat{color:var(--muted);font:600 11.5px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.05em}
+.pivot-tag{display:inline-block;font:600 10px var(--serif);letter-spacing:.03em;
+  color:var(--ochre);border:1px solid var(--ochre);border-radius:3px;
+  padding:0 4px;margin-left:6px;vertical-align:1px;cursor:help}
 .delta-up{color:var(--faint);font-size:12px}
 .delta-dn{color:var(--ink);font-size:12px;font-weight:600}
 
@@ -893,6 +915,8 @@ def chart_svg(exps):
         kind = ("holdout check — logged, never drives keep/revert"
                 if e["kind"] == "holdout_check"
                 else "kept" if e["kept"] else "discarded")
+        if e.get("is_pivot"):
+            kind += " · pivot-directed (patience spent)"
         tip = (f"<b>#{e['id']} {esc(e['title'])}</b>"
                f"<span class='t-note'>{fmt_m(v)} · {kind} · click to open</span>")
         tip_attr = esc(tip)
@@ -907,6 +931,10 @@ def chart_svg(exps):
             parts.append(f"<circle {common} cx='{x(i):.1f}' cy='{y(v):.1f}' r='4.5' fill='#111'/>")
         else:
             parts.append(f"<circle {common} cx='{x(i):.1f}' cy='{y(v):.1f}' r='4' fill='#b9b6a6'/>")
+        if e.get("is_pivot"):
+            py = H - 21
+            parts.append(f"<path {common} d='M{x(i)-4.5:.1f},{py-7:.1f} "
+                         f"L{x(i)+4.5:.1f},{py-7:.1f} L{x(i):.1f},{py:.1f} Z' fill='#8a6a1e'/>")
         parts.append(f"<text class='axis-lab' x='{x(i):.1f}' y='{H-12}' text-anchor='middle'>{e['id']}</text>")
     parts.append(f"<text class='axis-lab' x='{ml+iw/2:.0f}' y='{H-1}' text-anchor='middle'>experiment №</text>")
     parts.append("</svg>")
@@ -1237,6 +1265,12 @@ different (port, river, spread-out), never seen by the loop, scored only as
 a periodic read-only check. If its error diverges from the four development
 areas, the pipeline has learned their quirks rather than a general method.
 Its result never influences keep/revert.</dd>
+<dt>Pivot-directed (▽)</dt><dd>After <b>4 consecutive</b> experiments in a
+row fail to beat the running best, the harness injects a mandatory pivot
+preamble into the next design prompt: do not refine the champion's current
+mechanism again — propose from a design family absent from the recent
+history. Marked ones ran under that directive; the streak resets every time
+an experiment is kept.</dd>
 <dt>Category</dt><dd>Which lever the experiment pulls: architecture, loss,
 augmentation, relighting, training procedure, or quantization.</dd>
 <dt>Init</dt><dd>Weight initialization: trained from scratch, or started
@@ -1622,10 +1656,13 @@ updated {now}</p>"""]
                 f"{esc(e['eli5'])}</p>" if e.get("eli5") else "")
         chain = [str(k["id"]) for k in figs
                  if k["kept"] and k["id"] < e["id"]] + [str(e["id"])]
+        pivot_tag = (" <span class='pivot-tag' title=\"Ran after 4+ consecutive "
+                     "misses — the harness required a new design family this "
+                     "round\">pivot</span>" if e.get("is_pivot") else "")
         body.append(f"""<section class="fig-entry{kept_cls}" id="e{e['id']}" data-id="{e['id']}" data-chain="{','.join(chain)}">
 <div class="fig-head">
   <span class="fig-no num">Fig. {e['id']}</span>
-  <span class="fig-title">{esc(e['title'])}</span>
+  <span class="fig-title">{esc(e['title'])}</span>{pivot_tag}
   <span class="fig-status">{paths_status(e, e['id'] == current_id)}</span>
 </div>
 <div class="fig-svg" data-ovfig data-id="{e['id']}" data-chain="{','.join(chain)}" data-no="Fig. {e['id']}" data-title="{esc(e['title'])}">{e['arch_svg']}</div>
@@ -1660,7 +1697,9 @@ LINEAGE_CSS = """
 .lin-head .legend .larc{width:18px;height:9px;border-top:1px solid var(--rule);
   display:inline-block;border-radius:9px 9px 0 0}
 .lin-head .legend .lring{width:10px;height:10px;border-radius:50%;
-  border:1.5px solid #8a6a1e;display:inline-block}
+  background:var(--paper);border:1.5px solid #8a6a1e;display:inline-block}
+.lin-head .legend .lringp{width:13px;height:13px;border-radius:50%;
+  background:none;border:1.5px solid #8a6a1e;display:inline-block}
 #diagram{overflow-x:auto;margin-top:14px;padding:24px 28px 16px;
   scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
 #diagram::-webkit-scrollbar{height:6px}
@@ -1843,7 +1882,6 @@ def render_lineage(exps):
     popovers, click-through to the log."""
     nodes = []
     last_kept = None
-    last_kept_cat = None
     for e in exps:
         gated = (e["primary_metric"] or 0) >= FAIL
         if e["kind"] == "holdout_check":
@@ -1855,8 +1893,7 @@ def render_lineage(exps):
         else:
             kind = "discarded"
         cat = e["category"] or ""
-        pivot = bool(kind != "holdout" and cat and last_kept_cat
-                     and cat != last_kept_cat)
+        pivot = bool(e.get("is_pivot"))
         nodes.append({
             "key": str(e["id"]), "n": str(e["id"]),
             "title": e["title"] or "(untitled)",
@@ -1868,7 +1905,6 @@ def render_lineage(exps):
         })
         if kind == "kept":
             last_kept = e["id"]
-            last_kept_cat = cat or last_kept_cat
     n_dev = sum(1 for nd in nodes if nd["kind"] != "holdout")
     data_json = json.dumps({"nodes": nodes, "target": TARGET_M})
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -1883,7 +1919,8 @@ def render_lineage(exps):
   <span class="k"><span class="ldot" style="background:var(--ink)"></span>Kept (new best)</span>
   <span class="k"><span class="ldot" style="background:#9b998c"></span>Worse than best</span>
   <span class="k"><span class="ldot" style="background:var(--accent)"></span>Gated fail</span>
-  <span class="k"><span class="lring"></span>Blind holdout check / pivot ring</span>
+  <span class="k"><span class="lring"></span>Blind holdout check</span>
+  <span class="k"><span class="lringp"></span>Pivot-directed (patience spent — 4+ misses in a row)</span>
   <span class="k"><span class="larc"></span>Derived from its parent</span>
 </div>
 </div>
@@ -1901,6 +1938,7 @@ def render():
     conn = connect()
     conn.row_factory = lambda cur, row: {d[0]: row[i] for i, d in enumerate(cur.description)}
     exps = conn.execute("SELECT * FROM experiments ORDER BY id ASC").fetchall()
+    annotate_pivot(exps)
     n_dev = sum(1 for e in exps if e["kind"] != "holdout_check")
     n_kept = sum(1 for e in exps if e["kept"] and e["kind"] != "holdout_check")
     best = next((e["primary_metric"] for e in reversed(exps)
@@ -1945,6 +1983,7 @@ def render():
     <span class="k" title="Mission target: worst cell at or below 20 m."><span class="bar dash"></span>Target 20 m</span>
     <span class="k" title="Violated a deployment gate (model size, latency, or abstained too much) — scored as failure regardless of accuracy."><span class="x">×</span>Gated fail</span>
     <span class="k" title="Blind Hamburg check — logged for honesty, never used to decide keep/revert."><span class="ring"></span>Holdout check</span>
+    <span class="k" title="This experiment ran after the design agent had gone 4+ consecutive tries without beating the running best — the harness injects a mandatory 'do not refine the champion again, pick an absent design family' directive into its prompt."><span class="tri"></span>Pivot-directed</span>
     <span class="k" title="The frozen evaluation data itself was revised (bootstrap phase only). Scores before and after are measured on different test sets and cannot be compared; the running-best line restarts."><span class="vrule"></span>Eval-set reset</span>
     <span id="updated">updated {now}</span>
   </div>
@@ -1973,7 +2012,9 @@ def render():
 <td class="num">{e['id']}</td>
 <td class="title-cell"><b>{esc(e['title'])}</b>
   <span class="mono" style="color:var(--faint)"> {esc(e['git_commit'][:8])}</span></td>
-<td><span class="cat">{esc(e['category'] or '—')}</span></td>
+<td><span class="cat">{esc(e['category'] or '—')}</span>{
+  " <span class='pivot-tag' title=\"Ran after 4+ consecutive misses — the harness required a new design family this round\">pivot</span>"
+  if e.get("is_pivot") else ""}</td>
 <td class="mono">{esc(e['init_strategy'] or '—')}</td>
 <td class="num">{fmt_m(e['primary_metric'])}</td>
 <td class="num">{size}</td><td class="num">{lat}</td>
