@@ -68,7 +68,7 @@ import rasterio
 import torch
 from PIL import Image
 
-from model.model import build_model, export_onnx, loss_fn
+from model.model import GRID_K, build_model, export_onnx, loss_fn
 from pipeline.common import DATA_DIR, LIGHTING_BUCKETS, area_dir, load_meta, stable_hash
 from pipeline.dataset import crop_center_norm, extract_crop, list_crops
 from pipeline.relight import relight
@@ -80,6 +80,36 @@ TRAIN_REALIZATIONS = 3        # exp 17: seeded relight re-renders per bucket, in
 EPOCH_MULT = 3                 # exp 25: convergence scaling -- the harness's --epochs is an outer budget fixed
                                 # at bootstrap; the exp-20 fresh-draw sampler needs ~3x the steps to converge
                                 # (loss still falling ~0.065/epoch at the old cutoff)
+CONFUSABILITY_ALPHA = 0.5   # blend weight: 0=pure uniform (today), 1=pure confusability
+NEIGHBOR_EXCLUDE_R = 1      # Chebyshev radius of spatially-adjacent cells to exclude when finding each cell's nearest lookalike, so the weight targets genuine distant confusion, not trivial local blur
+
+
+def compute_cell_weights(area: str, data_dir: Path, meta: dict) -> np.ndarray:
+    """One-time-per-area confusability weight per grid cell (exp 35): a cell
+    whose average color/texture closely matches some DISTANT cell (excluding
+    itself and its 8 spatial neighbors) gets a higher weight, so the sampler
+    can oversample confusable cells relative to distinctive ones. Computed
+    straight from reference.tif -- no per-epoch cost."""
+    k = GRID_K
+    with rasterio.open(area_dir(area, data_dir) / "reference.tif") as src:
+        ref = src.read().transpose(1, 2, 0)  # HxWx3 uint8
+    row_splits = np.array_split(ref, k, axis=0)
+    cells = [np.array_split(r, k, axis=1) for r in row_splits]
+    desc = np.zeros((k, k, 4), dtype=np.float64)
+    for gy in range(k):
+        for gx in range(k):
+            block = cells[gy][gx].reshape(-1, 3).astype(np.float64)
+            lum = block.mean(axis=1)
+            desc[gy, gx] = [block[:, 0].mean(), block[:, 1].mean(), block[:, 2].mean(), lum.std()]
+    flat = desc.reshape(k * k, 4)  # flat index = gy*k + gx, matches model.py's _grid_centers convention
+    d2 = ((flat[:, None, :] - flat[None, :, :]) ** 2).sum(-1)  # [1024,1024]
+    gyy, gxx = np.divmod(np.arange(k * k), k)
+    cheb = np.maximum(np.abs(gxx[:, None] - gxx[None, :]), np.abs(gyy[:, None] - gyy[None, :]))
+    d2 = np.where(cheb <= NEIGHBOR_EXCLUDE_R, np.inf, d2)  # exclude self + 8 neighbors
+    nearest_d = np.sqrt(d2.min(axis=1))
+    w = 1.0 / (nearest_d + 1e-3)
+    del ref
+    return w / w.mean()  # length-1024 array, mean 1.0
 
 
 def prepare_realizations(area: str, data_dir: Path, out_dir: Path) -> Path:
@@ -102,14 +132,15 @@ def prepare_realizations(area: str, data_dir: Path, out_dir: Path) -> Path:
 
 
 def sample_epoch(area: str, meta: dict, crops: list[dict], renders_dir: Path,
-                 data_dir: Path, max_crops_per_bucket: int, rng):
+                 data_dir: Path, max_crops_per_bucket: int, rng, crop_probs):
     """Fresh draw of locations, headings, and realization assignment for one
     epoch (exp 20): only cues that transfer between locations reduce the
-    training loss, since no crop is seen twice identically."""
+    training loss, since no crop is seen twice identically. Exp 35: the draw
+    is confusability-weighted (crop_probs) instead of uniform."""
     xs, ys = [], []
     for bucket in LIGHTING_BUCKETS:
         picks = rng.choice(len(crops), size=min(max_crops_per_bucket, len(crops)),
-                           replace=False)
+                           replace=False, p=crop_probs)
         for r in range(TRAIN_REALIZATIONS):
             part = picks[r::TRAIN_REALIZATIONS]
             if r == 0:
@@ -174,6 +205,16 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
     t0 = time.time()
     meta = load_meta(area, data_dir)
     crops = list_crops(area, meta["width"], meta["height"], "train")
+    cell_w = compute_cell_weights(area, data_dir, meta)
+    crop_cell = np.array([
+        (min(int(meta_v * GRID_K), GRID_K - 1)) * GRID_K + min(int(meta_u * GRID_K), GRID_K - 1)
+        for meta_u, meta_v in (crop_center_norm(meta, c["cx"], c["cy"]) for c in crops)
+    ])
+    raw_w = cell_w[crop_cell]
+    uniform = np.full(len(crops), 1.0 / len(crops))
+    weighted = raw_w / raw_w.sum()
+    crop_probs = CONFUSABILITY_ALPHA * weighted + (1 - CONFUSABILITY_ALPHA) * uniform
+    crop_probs = crop_probs / crop_probs.sum()  # renormalize after the blend
     total_epochs = epochs * EPOCH_MULT
     n_per_epoch = 6 * min(max_crops_per_bucket, len(crops))
     steps_per_epoch = (n_per_epoch + 63) // 64
@@ -192,7 +233,7 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
     for epoch in range(total_epochs):
         epoch_rng = np.random.default_rng([seed, epoch])
         x, y = sample_epoch(area, meta, crops, renders_dir, data_dir,
-                            max_crops_per_bucket, epoch_rng)
+                            max_crops_per_bucket, epoch_rng, crop_probs)
         n = len(x)
         print(f"[{area}] epoch {epoch + 1}/{total_epochs} {n} crops, device={device}")
         perm = torch.randperm(n)
@@ -228,6 +269,8 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         "total_epochs_run": total_epochs,
         "epoch_mult": EPOCH_MULT,
         "lr_schedule": f"cosine-per-step to 0 over {total_steps} steps",
+        "confusability_alpha": CONFUSABILITY_ALPHA,
+        "cell_weight_ratio_p90_p10": float(np.quantile(cell_w, 0.9) / np.quantile(cell_w, 0.1)),
     }
     info.update(cal)
     return info
