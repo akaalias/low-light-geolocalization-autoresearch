@@ -129,7 +129,7 @@ for i in $(seq 1 "$ITERATIONS"); do
     # category-label version of this check let #30-34 all satisfy "pick a
     # design family from the list" while leaving the trunk/descriptor
     # untouched every single round.
-    FROZEN_STAGES="$($PY -m autoresearch.plateaucheck "$LAST_KEPT_ID" 2>/dev/null || true)"
+    FROZEN_STAGES="$($PY -m autoresearch.plateaucheck "$LAST_KEPT_ID" "${PATIENCE:-4}" 2>/dev/null || true)"
     cat - "$RUN_DIR/prompt.md" > "$RUN_DIR/prompt.md.tmp" <<PIVOTNOTE
 ## PATIENCE SPENT — THIS ITERATION MUST PIVOT
 

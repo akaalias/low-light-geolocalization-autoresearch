@@ -740,8 +740,8 @@ def live_row(next_id):
         med = {k: sorted(v)[len(v) // 2] for k, v in acc.items()}
     phases = [
         ("starting up", 90),
-        ("designing the experiment (Fable)", med.get("agent_design_s", 900)),
-        ("implementing the design (Sonnet)", med.get("agent_impl_s", 120)),
+        ("designing the experiment", med.get("agent_design_s", 900)),
+        ("implementing the design", med.get("agent_impl_s", 120)),
         ("training 4 areas in parallel", med.get("train_wall_s", 600)),
         ("scoring against the frozen ruler", med.get("score_s", 240)),
         ("logging + publishing", med.get("samples_s", 60) + med.get("gallery_s", 60)),
@@ -754,8 +754,8 @@ def live_row(next_id):
 <td><span class="status-badge live"><span class="dot"></span>live</span></td></tr>
 <script>(function(){{
   var built={built_ms}, phases={phases_js}, st=null;
-  var NAMES={{design:'designing the experiment (Fable)',
-    implement:'implementing the design (Sonnet)',
+  var NAMES={{design:'designing the experiment',
+    implement:'implementing the design',
     train:'training all 4 areas in parallel',
     score:'scoring against the frozen ruler',
     publish:'logging + publishing the result'}};
@@ -1087,18 +1087,35 @@ def figures(artifacts_dir, metrics):
     return f"<div class='figs'>{''.join(out)}</div>" if out else ""
 
 
-def timings_block(artifacts_dir):
+def short_model(model_id):
+    """'claude-sonnet-5' -> 'Sonnet', etc. — for compact inline labels.
+    Falls back to the raw id (or '') rather than guessing at unknown ones."""
+    if not model_id:
+        return ""
+    for key, label in (("opus", "Opus"), ("sonnet", "Sonnet"),
+                        ("haiku", "Haiku"), ("fable", "Fable")):
+        if key in model_id.lower():
+            return label
+    return model_id
+
+
+def timings_block(e):
     """Where the iteration's wall time went — from the per-run timings.json
-    the loop commits with every record (pod-era runs onward)."""
-    p = REPO_ROOT / (artifacts_dir or "") / "timings.json"
+    the loop commits with every record (pod-era runs onward). Model names
+    come from the row's own agent_model_design/_impl (whichever models
+    actually ran that iteration — this varies over the project's life as
+    the design/impl model assignment has changed), not a hardcoded guess."""
+    p = REPO_ROOT / (e.get("artifacts_dir") or "") / "timings.json"
     if not p.exists():
         return ""
     try:
         t = json.loads(p.read_text())
     except (OSError, json.JSONDecodeError):
         return ""
-    parts = [("design (Fable)", t.get("agent_design_s")),
-             ("implement (Sonnet)", t.get("agent_impl_s")),
+    design_m = short_model(e.get("agent_model_design"))
+    impl_m = short_model(e.get("agent_model_impl"))
+    parts = [(f"design ({design_m})" if design_m else "design", t.get("agent_design_s")),
+             (f"implement ({impl_m})" if impl_m else "implement", t.get("agent_impl_s")),
              ("train 4 areas", t.get("train_wall_s")),
              ("score", t.get("score_s")),
              ("samples", t.get("samples_s")),
@@ -2096,7 +2113,7 @@ red = failed cell, ink = at target</div>
 {cells_table(metrics)}
 {gates_block(e, metrics)}
 {train_block(e['artifacts_dir'])}
-{timings_block(e['artifacts_dir'])}
+{timings_block(e)}
 <div class="provenance">ts {esc(e['ts'][:19])} · commit {esc(e['git_commit'][:12])} ·
 parent {esc((e['parent_commit'] or '')[:12]) or '—'} · artifacts {esc(e['artifacts_dir'] or '—')} ·
 agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duration_s'))}</div>
