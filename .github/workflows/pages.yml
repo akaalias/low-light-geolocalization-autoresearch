@@ -32,6 +32,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # ubuntu-latest ships ~30GB of preinstalled toolchains this job never
+      # touches (dotnet, Android SDK, GHC); the LFS-heavy checkout below
+      # has run the runner out of disk before (run 29933088894), so reclaim
+      # headroom before touching any repo data.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force || true
+          df -h /
       - uses: actions/checkout@v4
       # LFS objects via cache: only each iteration's new ~30 MB is fetched
       # from LFS bandwidth quota; the rest restores from the Actions cache.
