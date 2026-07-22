@@ -1,0 +1,35 @@
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/dist-packages/PIL/ImageFile.py", line 536, in _save
+    fh = fp.fileno()
+         ^^^^^^^^^
+AttributeError: '_idat' object has no attribute 'fileno'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/low-light-geolocalization-autoresearch/model/train.py", line 303, in <module>
+    main()
+  File "/workspace/low-light-geolocalization-autoresearch/model/train.py", line 292, in main
+    info = train_area(args.area, out_dir, data_dir, args.epochs,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/low-light-geolocalization-autoresearch/model/train.py", line 222, in train_area
+    renders_dir = prepare_realizations(area, data_dir, out_dir)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/low-light-geolocalization-autoresearch/model/train.py", line 138, in prepare_realizations
+    Image.fromarray(img).save(renders_dir / f"{bucket}_r{r}.png")
+  File "/usr/local/lib/python3.11/dist-packages/PIL/Image.py", line 2439, in save
+    save_handler(self, fp, filename)
+  File "/usr/local/lib/python3.11/dist-packages/PIL/PngImagePlugin.py", line 1402, in _save
+    ImageFile._save(im, _idat(fp, chunk), [("zip", (0, 0) + im.size, 0, rawmode)])
+  File "/usr/local/lib/python3.11/dist-packages/PIL/ImageFile.py", line 540, in _save
+    _encode_tile(im, fp, tile, bufsize, None, exc)
+  File "/usr/local/lib/python3.11/dist-packages/PIL/ImageFile.py", line 560, in _encode_tile
+    fp.write(data)
+  File "/usr/local/lib/python3.11/dist-packages/PIL/PngImagePlugin.py", line 1077, in write
+    self.chunk(self.fp, b"IDAT", data)
+  File "/usr/local/lib/python3.11/dist-packages/PIL/PngImagePlugin.py", line 1064, in putchunk
+    fp.write(data)
+OSError: [Errno 28] No space left on device
+[frankfurt] crops: 45567 train-split, 39595 fit, 3651 calibration
