@@ -317,6 +317,7 @@ tr.open .caret{transform:rotate(90deg)}
 .st-kept{color:var(--ink);font-weight:600}
 .st-disc{color:var(--faint)}
 .st-fail{color:var(--accent);font-weight:600}
+.st-rej{color:var(--accent);font-weight:600;font-style:italic}
 .st-hold{color:var(--ochre);font-weight:600}
 .cat{color:var(--muted);font:600 11.5px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.05em}
@@ -954,6 +955,7 @@ def chart_svg(exps):
             continue
         kind = ("holdout check — logged, never drives keep/revert"
                 if e["kind"] == "holdout_check"
+                else "rejected — never trained" if is_rejected(e)
                 else "kept" if e["kept"] else "discarded")
         if e.get("is_pivot"):
             kind += " · pivot-directed (patience spent)"
@@ -1277,9 +1279,21 @@ def prompt_block(e):
             "during the bootstrap session</div>")
 
 
+def is_rejected(e):
+    """A design the harness refused to even train — a demanded pivot that
+    didn't hold up (see loop.sh's early- and post-implementation gates,
+    2026-07-22) — distinct from a 'gated fail' that DID train but then hit
+    a deployment constraint (ONNX size, latency). Both carry the same 1e9
+    metric sentinel, so this is detected from the conclusion text loop.sh
+    writes, not the metric."""
+    return (e.get("conclusion") or "").startswith("REJECTED")
+
+
 def status_of(e):
     if e["kind"] == "holdout_check":
         return "<span class='st-hold smcp'>holdout</span>"
+    if is_rejected(e):
+        return "<span class='st-rej smcp'>rejected</span>"
     if e["primary_metric"] is not None and e["primary_metric"] >= FAIL:
         return "<span class='st-fail smcp'>gated fail</span>"
     if e["kept"]:
@@ -1304,6 +1318,12 @@ limits: the exported model must fit the ESP32-P4 flight computer
 and it may not dodge hard cases by refusing to answer (a cell where it
 abstains on &gt; 80% of frames counts as failed). Any violation scores the
 whole experiment as failed regardless of accuracy.</dd>
+<dt>rejected</dt><dd>Never trained at all. After a losing streak, the loop
+demands a genuine pivot — every non-frozen part of the design must change,
+not just the one piece that's gone stalest. If the proposed design doesn't
+clear that bar (checked against the actual code diff, not just what the
+agent claims it changed), it's rejected before spending any GPU time on
+it.</dd>
 <dt>cov (coverage)</dt><dd>Share of test frames the model was confident
 enough to answer at all. Abstaining honestly on bad frames is allowed —
 down to the 20% floor above.</dd>
@@ -1648,6 +1668,8 @@ def contract_svg():
 
 
 def paths_status(e, is_current):
+    if is_rejected(e):
+        return "<span class='fail'>rejected</span> — never trained"
     if e["primary_metric"] is not None and e["primary_metric"] >= FAIL:
         return "<span class='fail'>gated fail</span> — reverted"
     if e["kept"]:
@@ -1850,7 +1872,7 @@ LINEAGE_JS = r"""
   });
   nodes.forEach((nd, i) => {
     const x = xFor(i).toFixed(1);
-    const cls = nd.kind === "failed" ? "nf" : nd.kind === "kept" ? "nk"
+    const cls = nd.kind === "failed" || nd.kind === "rejected" ? "nf" : nd.kind === "kept" ? "nk"
               : nd.kind === "holdout" ? "nh" : "ndd";
     const r = nd.kind === "kept" ? 4 : nd.kind === "holdout" ? 4 : 3;
     g += `<circle class="nd ${cls}" data-key="${esc(nd.key)}" cx="${x}" cy="${baseY}" r="${r}"/>`;
@@ -1921,7 +1943,8 @@ LINEAGE_JS = r"""
     tip.style.left = left + "px"; tip.style.top = top + "px";
   }
   function showPopover(nd){
-    const met = nd.kind === "failed" ? "gated fail"
+    const met = nd.kind === "rejected" ? "rejected — never trained"
+      : nd.kind === "failed" ? "gated fail"
       : (fmtM(nd.metric) || "—") + (nd.kind === "holdout" ? " · blind holdout" : "");
     const parents = (parentsOf[nd.key] || []).map(p =>
       `<span class="pop-parent">↳ #${esc(p)} ${esc((byKey[p] || {}).title || "").slice(0, 48)}</span>`).join("<br>");
@@ -1960,6 +1983,8 @@ def render_lineage(exps):
         gated = (e["primary_metric"] or 0) >= FAIL
         if e["kind"] == "holdout_check":
             kind = "holdout"
+        elif is_rejected(e):
+            kind = "rejected"
         elif gated:
             kind = "failed"
         elif e["kept"]:

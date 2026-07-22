@@ -204,6 +204,46 @@ ${AGENT_RETRY_SLEEP:-1800}s before next iteration"
       echo "design agent produced no runs/pending_experiment.json; skipping iteration"
       continue
     fi
+
+    # Early pivot-completeness check: if a pivot was demanded, verify the
+    # DESIGN's own self-report already shows every non-frozen stage changed
+    # BEFORE ever spending an implementation-agent call on it. Only the
+    # backbone-diff verification (below, post-implementation) genuinely
+    # needs a real code diff to exist — this half of the gate doesn't, so
+    # checking it here saves ~2-3 min plus a whole extra Claude invocation
+    # whenever the design alone already fails to be a complete rethink.
+    AGENT_MODEL_DESIGN="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_design.json" 2>/dev/null || echo "${DESIGN_MODEL:-claude-fable-5}")"
+    if [ -n "$FROZEN_STAGES" ]; then
+      UNCHANGED_STAGES="$($PY - runs/pending_experiment.json <<'PYCHECK'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception:
+    print("(pending_experiment.json unreadable)")
+    raise SystemExit
+frozen_harness = {"Camera frame", "Output"}
+stages = d.get("architecture", {}).get("stages", [])
+unchanged = [s.get("name") for s in stages
+             if s.get("name") not in frozen_harness and not s.get("changed")]
+print(", ".join(unchanged))
+PYCHECK
+)"
+      if [ -n "$UNCHANGED_STAGES" ]; then
+        echo "REJECTED (before implementation): a complete architecture rethink was required, but the design's own self-report leaves these stages unchanged: $UNCHANGED_STAGES — skipping implementation and training."
+        mv runs/pending_experiment.json "$RUN_DIR/experiment.json"
+        echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
+        $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
+          --experiment-file "$RUN_DIR/experiment.json" \
+          --result "rejected before implementation: a complete architecture rethink was required, but these stages were already self-reported unchanged in the design: $UNCHANGED_STAGES" \
+          --conclusion "REJECTED — pivot directive was not honored (partial change, not a complete rethink); iteration discarded before implementation" \
+          --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept 0 \
+          --prompt-file "$RUN_DIR/prompt.md" \
+          --agent-model-design "$AGENT_MODEL_DESIGN" --agent-model-impl "" \
+          --duration-s "$(( $(date +%s) - ITER_T0 ))" || true
+        continue
+      fi
+    fi
+
     report_phase implement
     T0=$(date +%s)
     "$CLAUDE_BIN" -p "$(cat "$RUN_DIR/prompt_impl.md")" \
@@ -214,9 +254,6 @@ ${AGENT_RETRY_SLEEP:-1800}s before next iteration"
       || { echo "impl agent failed; skipping iteration"
            git checkout -- model/ 2>/dev/null || true; continue; }
     T_IMPL=$(( $(date +%s) - T0 ))
-    $PY -m autoresearch.figcheck runs/pending_experiment.json || \
-      echo "WARNING: figure violates the anchor contract (cosmetic — continuing)"
-    AGENT_MODEL_DESIGN="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_design.json" 2>/dev/null || echo "${DESIGN_MODEL:-claude-fable-5}")"
     AGENT_MODEL_IMPL="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_impl.json" 2>/dev/null || echo "${IMPL_MODEL:-claude-sonnet-5}")"
     echo "agents finished (design: $AGENT_MODEL_DESIGN ${T_DESIGN}s, impl: $AGENT_MODEL_IMPL ${T_IMPL}s)"
   fi
@@ -232,55 +269,28 @@ ${AGENT_RETRY_SLEEP:-1800}s before next iteration"
   # Enforce holdout blindness: agent must never read/copy holdout data or score it.
   # (score.py refuses hamburg without --holdout; loop only passes dev areas.)
 
-  # 2b. Verify a demanded pivot was actually a COMPLETE architecture
-  # rethink, not the agent self-reporting compliance while carrying most
-  # of the design over unchanged. plateaucheck's frozen-stage list (folded
-  # into $FROZEN_STAGES above) is advisory prompt text with no code-level
-  # enforcement on its own — an agent can technically comply with "pick
-  # something from this list" while leaving most of the pipeline, or even
-  # the ImageNet-pretrained MobileNetV3 trunk specifically, completely
-  # untouched (exactly what happened in runs/20260722_145547_iter1,
-  # 2026-07-22 — "Feature extractor: changed=false" sailed through because
-  # nothing checked the self-report against the real diff). Only fires
-  # when a pivot was actually demanded this round ($FROZEN_STAGES
-  # non-empty) — normal iterations keep making ONE focused change per the
-  # harness's usual rule.
-  if [ -n "$FROZEN_STAGES" ]; then
-    UNCHANGED_STAGES="$($PY - "$RUN_DIR/experiment.json" <<'PYCHECK'
-import json, sys
-try:
-    d = json.load(open(sys.argv[1]))
-except Exception:
-    print("(experiment.json unreadable)")
-    raise SystemExit
-frozen_harness = {"Camera frame", "Output"}
-stages = d.get("architecture", {}).get("stages", [])
-unchanged = [s.get("name") for s in stages
-             if s.get("name") not in frozen_harness and not s.get("changed")]
-print(", ".join(unchanged))
-PYCHECK
-)"
-    REJECT_REASON=""
-    if [ -n "$UNCHANGED_STAGES" ]; then
-      REJECT_REASON="a complete architecture rethink was required, but these stages are still self-reported unchanged: $UNCHANGED_STAGES"
-    elif echo "$FROZEN_STAGES" | grep -q "Feature extractor" && \
-         ! git diff --unified=0 -- model/ 2>/dev/null | grep -qE '^-.*mobilenet_v3_small'; then
-      REJECT_REASON="the agent claimed Feature extractor changed, but the code diff left model/model.py's mobilenet_v3_small backbone untouched (self-report contradicted by the real diff)"
-    fi
-    if [ -n "$REJECT_REASON" ]; then
-      echo "REJECTED: $REJECT_REASON — skipping training."
-      echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
-      git checkout -- model/ 2>/dev/null || true
-      $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
-        --experiment-file "$RUN_DIR/experiment.json" \
-        --result "rejected before training: $REJECT_REASON" \
-        --conclusion "REJECTED — pivot directive was not honored (partial change, not a complete rethink); iteration discarded without training" \
-        --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept 0 \
-        --prompt-file "$RUN_DIR/prompt.md" \
-        --agent-model-design "$AGENT_MODEL_DESIGN" --agent-model-impl "$AGENT_MODEL_IMPL" \
-        --duration-s "$(( $(date +%s) - ITER_T0 ))" || true
-      continue
-    fi
+  # 2b. Verify a demanded backbone pivot was actually honored in the CODE,
+  # not just claimed in the self-reported arch_json (already checked for
+  # completeness right after design, above — this is the one piece that
+  # genuinely needs a real diff to exist, since implementation just ran).
+  # An agent can claim "Feature extractor: changed=true" without the diff
+  # backing it up (exactly what nearly happened in runs/20260722_145547_iter1,
+  # 2026-07-22 — self-report alone isn't trusted for the backbone).
+  if echo "$FROZEN_STAGES" | grep -q "Feature extractor" && \
+     ! git diff --unified=0 -- model/ 2>/dev/null | grep -qE '^-.*mobilenet_v3_small'; then
+    REJECT_REASON="the agent claimed Feature extractor changed, but the code diff left model/model.py's mobilenet_v3_small backbone untouched (self-report contradicted by the real diff)"
+    echo "REJECTED: $REJECT_REASON — skipping training."
+    echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
+    git checkout -- model/ 2>/dev/null || true
+    $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
+      --experiment-file "$RUN_DIR/experiment.json" \
+      --result "rejected before training: $REJECT_REASON" \
+      --conclusion "REJECTED — pivot directive was not honored (self-report contradicted by the real diff); iteration discarded without training" \
+      --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept 0 \
+      --prompt-file "$RUN_DIR/prompt.md" \
+      --agent-model-design "$AGENT_MODEL_DESIGN" --agent-model-impl "$AGENT_MODEL_IMPL" \
+      --duration-s "$(( $(date +%s) - ITER_T0 ))" || true
+    continue
   fi
 
   # 3. Train one model per development area — IN PARALLEL (areas are fully
