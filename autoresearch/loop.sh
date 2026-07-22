@@ -151,7 +151,9 @@ for i in $(seq 1 "$ITERATIONS"); do
     FROM experiments WHERE kept=1 AND kind='development';" 2>/dev/null || echo 0)
   PLATEAU=$(sqlite3 experiments.sqlite "SELECT COUNT(*) FROM experiments \
     WHERE kind='development' AND id > $LAST_KEPT_ID;" 2>/dev/null || echo 0)
+  PIVOT_DEMANDED=0
   if [ "${PLATEAU:-0}" -ge "${PATIENCE:-4}" ]; then
+    PIVOT_DEMANDED=1
     echo "PIVOT: $PLATEAU consecutive experiments without a new best — pivot directive injected"
     # Which stages have actually gone unquestioned across the streak (by
     # arch_json's own changed:true flags), not just which category labels
@@ -160,6 +162,8 @@ for i in $(seq 1 "$ITERATIONS"); do
     # design family from the list" while leaving the trunk/descriptor
     # untouched every single round.
     FROZEN_STAGES="$($PY -m autoresearch.plateaucheck "$LAST_KEPT_ID" "${PATIENCE:-4}" 2>/dev/null || true)"
+    CHAMPION_BACKBONE="$($PY -m autoresearch.backbonecheck --fingerprint \
+      model/model.py model/train.py 2>/dev/null || echo unknown)"
     cat - "$RUN_DIR/prompt.md" > "$RUN_DIR/prompt.md.tmp" <<PIVOTNOTE
 ## PATIENCE SPENT — THIS ITERATION MUST PIVOT
 
@@ -175,6 +179,21 @@ training-data strategy overhauls — but whichever family you pick, it must
 change how the WHOLE pipeline works end to end, not one isolated stage.
 
 $FROZEN_STAGES
+
+### The champion's backbone is OFF LIMITS this round
+
+The current champion's backbone identity is: $CHAMPION_BACKBONE
+
+Your design MUST NOT use it. Not re-tuned, not truncated at a different
+layer, not wrapped in a dispatcher, not kept as one branch of an ensemble,
+not reloaded from the same weights blob under a new class name. After
+implementation the resulting source is scanned, and if any of those
+identifiers still appear in model/ the iteration is REJECTED before
+training. Rethinking the machinery bolted around an unexamined trunk is
+exactly what the last five demanded pivots did; it is not a pivot.
+
+A from-scratch trunk is an acceptable answer. So is a genuinely different
+pretrained family. Carrying the same trunk across is not.
 
 Every non-frozen stage in your architecture.stages list must be marked
 "changed": true this round. If any stage is left exactly as before, this
@@ -269,16 +288,33 @@ PYCHECK
   # Enforce holdout blindness: agent must never read/copy holdout data or score it.
   # (score.py refuses hamburg without --holdout; loop only passes dev areas.)
 
-  # 2b. Verify a demanded backbone pivot was actually honored in the CODE,
-  # not just claimed in the self-reported arch_json (already checked for
-  # completeness right after design, above — this is the one piece that
-  # genuinely needs a real diff to exist, since implementation just ran).
-  # An agent can claim "Feature extractor: changed=true" without the diff
-  # backing it up (exactly what nearly happened in runs/20260722_145547_iter1,
-  # 2026-07-22 — self-report alone isn't trusted for the backbone).
-  if echo "$FROZEN_STAGES" | grep -q "Feature extractor" && \
-     ! git diff --unified=0 -- model/ 2>/dev/null | grep -qE '^-.*mobilenet_v3_small'; then
-    REJECT_REASON="the agent claimed Feature extractor changed, but the code diff left model/model.py's mobilenet_v3_small backbone untouched (self-report contradicted by the real diff)"
+  # 2b. Verify a demanded pivot actually REPLACED the champion's backbone,
+  # checked against the post-implementation SOURCE — not the diff, and not
+  # the agent's self-report.
+  #
+  # The previous version of this gate asked whether the diff contained a
+  # removed line matching mobilenet_v3_small. It had two independent holes:
+  # it only ran when plateaucheck happened to name the "Feature extractor"
+  # stage (so a short streak, or a renamed stage, skipped it entirely), and
+  # one removed line satisfied it (features[:9] -> features[:10], or a
+  # reworded docstring, deletes a matching line and adds another just like
+  # it). Demanded pivots shipped pretrained:mobilenet_v3_small five times
+  # through #40 because nothing ever inspected the code that resulted.
+  # backbonecheck.py compares champion identifiers against the candidate
+  # source, so re-tuning, truncating, wrapping in a dispatcher, or keeping
+  # the trunk as one ensemble branch all fail the same way.
+  CARRIED_BACKBONE=""
+  if [ "${PIVOT_DEMANDED:-0}" = "1" ]; then
+    git show HEAD:model/model.py > "$RUN_DIR/.champ_model.py" 2>/dev/null || true
+    git show HEAD:model/train.py > "$RUN_DIR/.champ_train.py" 2>/dev/null || true
+    CARRIED_BACKBONE="$($PY -m autoresearch.backbonecheck \
+      --champion "$RUN_DIR/.champ_model.py" "$RUN_DIR/.champ_train.py" \
+      --candidate model/model.py model/train.py 2>/dev/null \
+      | tr "\n" " " | sed "s/ *$//")"
+    rm -f "$RUN_DIR/.champ_model.py" "$RUN_DIR/.champ_train.py"
+  fi
+  if [ -n "$CARRIED_BACKBONE" ]; then
+    REJECT_REASON="a pivot was demanded but the implementation still carries the champion's backbone ($CARRIED_BACKBONE) — checked against the post-implementation source; a pivot must replace the trunk outright, not re-tune, truncate, wrap, or ensemble it"
     echo "REJECTED: $REJECT_REASON — skipping training."
     echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
     git checkout -- model/ 2>/dev/null || true
