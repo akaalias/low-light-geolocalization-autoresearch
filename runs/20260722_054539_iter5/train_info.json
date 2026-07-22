@@ -1,0 +1,1438 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2653.8,
+    "onnx_bytes": 3303402,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "n_train_crops_after_fence": 38827,
+    "n_cal_fenced": 3749,
+    "per_bucket_calibration": {
+      "morning": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 680.7955130447194,
+        "lum_anchor": 0.47759345173835754,
+        "shift": 1.6627922152551387,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 680.7955130447194,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 708.8668822163563,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 714.1141869213161,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 731.2631052677218,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 744.5431577440863,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 731.2631052677218,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 758.7741598532848,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 791.3607392054398,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 791.3607392054398,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "midday": {
+        "q_star": 0.5,
+        "cal_keep_rate": 0.5,
+        "cal_median_kept_m": 889.1127792206102,
+        "lum_anchor": 0.5476382970809937,
+        "shift": 0.13171157231652486,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 970.6092285189375,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 965.6870483119806,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 970.6092285189375,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 896.8817669699561,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 896.8817669699561,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 924.1164440334696,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 889.1127792206102,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 896.8817669699561,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 913.8810947797251,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "afternoon": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 761.4089218970782,
+        "lum_anchor": 0.5114386081695557,
+        "shift": 1.5833434747728086,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 761.4089218970782,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 789.6401995238851,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 775.8372603921067,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 802.1799498231926,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 775.8372603921067,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 766.4189890406828,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 790.2882261884417,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 785.2096731881858,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 790.2882261884417,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "early_evening": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 693.286563142427,
+        "lum_anchor": 0.4033440947532654,
+        "shift": 1.425918739941952,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 693.286563142427,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 722.4797717237798,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 722.4797717237798,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 730.9789409436853,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 771.6785761536303,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 875.1359767245635,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 875.1359767245635,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 916.7397021407883,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 931.5031931812287,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "evening": {
+        "q_star": 0.3,
+        "cal_keep_rate": 0.3,
+        "cal_median_kept_m": 655.8381571755344,
+        "lum_anchor": 0.340274453163147,
+        "shift": 1.0635619594725336,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 677.2929756218425,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 655.8381571755344,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 664.5817326087567,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 693.3309233406484,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 707.0708568312346,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 693.3309233406484,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 709.2154198194421,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 746.4070057917584,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 750.1355263805078,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "night": {
+        "q_star": 0.42,
+        "cal_keep_rate": 0.42,
+        "cal_median_kept_m": 886.9458281134796,
+        "lum_anchor": 0.2612096071243286,
+        "shift": -0.5018143928972506,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 886.9458281134796,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 910.0742855710188,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 914.9560540690127,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 899.3890848296444,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 886.9458281134796,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 895.0816525897486,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 914.9560540690127,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 914.9560540690127,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 922.4149576352081,
+            "keep_rate": 0.58
+          }
+        ]
+      }
+    },
+    "conf_lum_anchors": [
+      0.2612096071243286,
+      0.340274453163147,
+      0.4033440947532654,
+      0.47759345173835754,
+      0.5114386081695557,
+      0.5476382970809937
+    ],
+    "conf_shift": [
+      -0.5018143928972506,
+      1.0635619594725336,
+      1.425918739941952,
+      1.6627922152551387,
+      1.5833434747728086,
+      0.13171157231652486
+    ],
+    "n_cal_crops": 2400
+  },
+  {
+    "area": "prignitz",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2464.2,
+    "onnx_bytes": 3303402,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "n_train_crops_after_fence": 37149,
+    "n_cal_fenced": 5259,
+    "per_bucket_calibration": {
+      "morning": {
+        "q_star": 0.3,
+        "cal_keep_rate": 0.3,
+        "cal_median_kept_m": 446.4557896020282,
+        "lum_anchor": 0.4693331718444824,
+        "shift": 2.620436066296932,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 459.12412658919226,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 446.4557896020282,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 459.12412658919226,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 485.6889470968871,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 544.4791586221331,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 570.2711755869982,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 576.8087417516219,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 584.3966662758885,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 590.6022129974243,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "midday": {
+        "q_star": 0.38,
+        "cal_keep_rate": 0.38,
+        "cal_median_kept_m": 575.1932342043899,
+        "lum_anchor": 0.5362378358840942,
+        "shift": 2.1753245913060875,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 595.2131829339878,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 606.8593728951664,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 606.8593728951664,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 575.1932342043899,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 594.07521105295,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 606.891957812572,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 610.3308833881814,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 640.2218503823017,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 640.0965810310872,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "afternoon": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 501.5623942392275,
+        "lum_anchor": 0.5006663799285889,
+        "shift": 2.871344460156795,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 501.5623942392275,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 561.9650499982154,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 561.9650499982154,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 573.086775088454,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 573.086775088454,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 586.264342232878,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 573.086775088454,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 592.1588828359627,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 620.0791277050212,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "early_evening": {
+        "q_star": 0.34,
+        "cal_keep_rate": 0.34,
+        "cal_median_kept_m": 546.1189029652116,
+        "lum_anchor": 0.387050062417984,
+        "shift": 2.178183604386683,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 546.1189029652116,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 561.7952315662426,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 546.1189029652116,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 561.7952315662426,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 613.4702748230374,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 624.9360749287297,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 636.2329257941728,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 662.5413343933449,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 683.5994404366704,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "evening": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 445.2775211415153,
+        "lum_anchor": 0.33023425936698914,
+        "shift": 2.3800582849057883,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 445.2775211415153,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 466.8013931538647,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 518.6696406403921,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 539.2388459690194,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 549.9231001841363,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 600.6853149750107,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 625.097868270236,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 639.7273326899474,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 651.4186719490933,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "night": {
+        "q_star": 0.3,
+        "cal_keep_rate": 0.3,
+        "cal_median_kept_m": 746.777290411854,
+        "lum_anchor": 0.25449010729789734,
+        "shift": 0.8172903894456599,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 763.582272341147,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 746.777290411854,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 762.5615971992714,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 784.4749978528239,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 818.5367046135468,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 801.1718266215589,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 818.5367046135468,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 818.5367046135468,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 821.479047770236,
+            "keep_rate": 0.58
+          }
+        ]
+      }
+    },
+    "conf_lum_anchors": [
+      0.25449010729789734,
+      0.33023425936698914,
+      0.387050062417984,
+      0.4693331718444824,
+      0.5006663799285889,
+      0.5362378358840942
+    ],
+    "conf_shift": [
+      0.8172903894456599,
+      2.3800582849057883,
+      2.178183604386683,
+      2.620436066296932,
+      2.871344460156795,
+      2.1753245913060875
+    ],
+    "n_cal_crops": 2400
+  },
+  {
+    "area": "munich",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2829.3,
+    "onnx_bytes": 3303402,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "n_train_crops_after_fence": 40197,
+    "n_cal_fenced": 6038,
+    "per_bucket_calibration": {
+      "morning": {
+        "q_star": 0.3,
+        "cal_keep_rate": 0.3,
+        "cal_median_kept_m": 726.690341123405,
+        "lum_anchor": 0.47038766741752625,
+        "shift": 1.7811545967134201,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 793.0906325436124,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 726.690341123405,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 774.3333983919799,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 774.3333983919799,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 793.0906325436124,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 793.0906325436124,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 825.4608647125058,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 878.7290995220152,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 902.7740197939486,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "midday": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 744.9975369192537,
+        "lum_anchor": 0.5485819578170776,
+        "shift": 2.006416944173214,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 744.9975369192537,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 843.1792840985224,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 843.1792840985224,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 847.0798124617356,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 846.8917641229391,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 908.8766377669965,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 937.5260243470794,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 948.8940865470731,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 996.722412709376,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "afternoon": {
+        "q_star": 0.3,
+        "cal_keep_rate": 0.3,
+        "cal_median_kept_m": 620.6550096637426,
+        "lum_anchor": 0.5040974617004395,
+        "shift": 1.6547438918622703,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 646.5303873921893,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 620.6550096637426,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 664.9567806733937,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 664.9567806733937,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 694.2115224194722,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 745.8874105588986,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 771.3747017123088,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 796.4129625462047,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 859.7524008059843,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "early_evening": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 565.8075576594844,
+        "lum_anchor": 0.4028972387313843,
+        "shift": 2.0388105951818196,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 565.8075576594844,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 600.5097847173524,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 687.7527800952623,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 693.1658252758814,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 716.3772646763284,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 697.1491597475597,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 716.3772646763284,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 756.599979775093,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 794.0627110614647,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "evening": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 659.7366550381012,
+        "lum_anchor": 0.3428795337677002,
+        "shift": 1.7681550847562526,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 659.7366550381012,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 737.0666710355924,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 780.8999306082571,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 780.8999306082571,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 852.7828867143916,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 909.5771540169728,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 940.1370150592766,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 982.4174195930207,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 963.5078882103699,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "night": {
+        "q_star": 0.3,
+        "cal_keep_rate": 0.3,
+        "cal_median_kept_m": 929.5612123505249,
+        "lum_anchor": 0.24294421076774597,
+        "shift": 0.25312677016579843,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 929.5612123505249,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 929.5612123505249,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 961.7053288409147,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 982.127048100911,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 1032.6759342967084,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 1083.0563022262386,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 1134.7953963085924,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 1159.9072444720716,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 1189.1828920322032,
+            "keep_rate": 0.58
+          }
+        ]
+      }
+    },
+    "conf_lum_anchors": [
+      0.24294421076774597,
+      0.3428795337677002,
+      0.4028972387313843,
+      0.47038766741752625,
+      0.5040974617004395,
+      0.5485819578170776
+    ],
+    "conf_shift": [
+      0.25312677016579843,
+      1.7681550847562526,
+      2.0388105951818196,
+      1.7811545967134201,
+      1.6547438918622703,
+      2.006416944173214
+    ],
+    "n_cal_crops": 2400
+  },
+  {
+    "area": "frankfurt",
+    "n_train_crops": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2632.6,
+    "onnx_bytes": 3303402,
+    "init": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 24,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 13512 steps",
+    "n_train_crops_after_fence": 38632,
+    "n_cal_fenced": 4091,
+    "per_bucket_calibration": {
+      "morning": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 497.5393544993507,
+        "lum_anchor": 0.5113275051116943,
+        "shift": 2.03923145165765,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 497.5393544993507,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 566.2883811383147,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 658.8213984883016,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 672.4803290771374,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 672.4803290771374,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 686.7732747423387,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 676.4093948804677,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 724.5511516685292,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 737.9323027759301,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "midday": {
+        "q_star": 0.3,
+        "cal_keep_rate": 0.3,
+        "cal_median_kept_m": 590.0727069700404,
+        "lum_anchor": 0.5848574638366699,
+        "shift": 1.5981571613820753,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 590.0727069700404,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 590.0727069700404,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 627.0956060430894,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 628.0986490140942,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 669.4700048918403,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 749.133763402619,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 748.789177481443,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 798.2053511285612,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 798.2053511285612,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "afternoon": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 625.5374445843418,
+        "lum_anchor": 0.5410025119781494,
+        "shift": 1.8516747628720973,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 625.5374445843418,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 653.5468756939308,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 653.5468756939308,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 751.3424722390546,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 725.5129163064355,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 755.4398051026349,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 784.688080913385,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 784.688080913385,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 821.7005882491333,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "early_evening": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 478.18382259368894,
+        "lum_anchor": 0.4256308078765869,
+        "shift": 1.4765746234925958,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 478.18382259368894,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 533.7522181834281,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 626.9150926857075,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 665.4749770865208,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 720.6265199467204,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 720.6265199467204,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 748.4566253423707,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 748.4566253423707,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 774.1757099374377,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "evening": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 884.3201501467595,
+        "lum_anchor": 0.35988155007362366,
+        "shift": 1.4968345557721825,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 884.3201501467595,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 940.2571286597922,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 940.2571286597922,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 972.6687390744116,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 984.071686403827,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 972.6687390744116,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 987.8777816968955,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 964.3297508470965,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 970.8123833750785,
+            "keep_rate": 0.58
+          }
+        ]
+      },
+      "night": {
+        "q_star": 0.26,
+        "cal_keep_rate": 0.26,
+        "cal_median_kept_m": 809.4425573795036,
+        "lum_anchor": 0.239554300904274,
+        "shift": 0.4072578643830987,
+        "grid": [
+          {
+            "q": 0.26,
+            "median_kept_m": 809.4425573795036,
+            "keep_rate": 0.26
+          },
+          {
+            "q": 0.3,
+            "median_kept_m": 873.15682126521,
+            "keep_rate": 0.3
+          },
+          {
+            "q": 0.34,
+            "median_kept_m": 917.0370334001204,
+            "keep_rate": 0.34
+          },
+          {
+            "q": 0.38,
+            "median_kept_m": 947.82602912527,
+            "keep_rate": 0.38
+          },
+          {
+            "q": 0.42,
+            "median_kept_m": 922.973237557652,
+            "keep_rate": 0.42
+          },
+          {
+            "q": 0.46,
+            "median_kept_m": 947.82602912527,
+            "keep_rate": 0.46
+          },
+          {
+            "q": 0.5,
+            "median_kept_m": 929.805306249162,
+            "keep_rate": 0.5
+          },
+          {
+            "q": 0.54,
+            "median_kept_m": 956.0359575704383,
+            "keep_rate": 0.54
+          },
+          {
+            "q": 0.58,
+            "median_kept_m": 954.403438793034,
+            "keep_rate": 0.58
+          }
+        ]
+      }
+    },
+    "conf_lum_anchors": [
+      0.239554300904274,
+      0.35988155007362366,
+      0.4256308078765869,
+      0.5113275051116943,
+      0.5410025119781494,
+      0.5848574638366699
+    ],
+    "conf_shift": [
+      0.4072578643830987,
+      1.4968345557721825,
+      1.4765746234925958,
+      2.03923145165765,
+      1.8516747628720973,
+      1.5981571613820753
+    ],
+    "n_cal_crops": 2400
+  }
+]
