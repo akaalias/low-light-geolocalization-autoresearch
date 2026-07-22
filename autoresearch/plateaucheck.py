@@ -22,8 +22,13 @@ names that are the genuinely frozen harness contract (Camera frame,
 Output) since those are outside the search space by design, not evidence
 of an unexamined assumption.
 
-Usage: python -m autoresearch.plateaucheck <last_kept_id>
-Prints nothing if no stage has been frozen for >= PATIENCE rounds;
+Usage: python -m autoresearch.plateaucheck <last_kept_id> [patience]
+`patience` should be the SAME threshold loop.sh used to decide a pivot was
+due (its PATIENCE env var, default 4) — passed explicitly rather than
+hardcoded here, so a deliberately-lowered PATIENCE (e.g. forcing one pivot
+on demand) still gets a populated frozen-stage list instead of silently
+requiring 4 rounds regardless of what the caller actually configured.
+Prints nothing if no stage has been frozen for >= patience rounds;
 otherwise prints a directive block for loop.sh to inject into the pivot
 preamble. Exit code is always 0 (advisory, never blocks the loop).
 """
@@ -32,8 +37,6 @@ import sys
 
 from autoresearch.db import connect
 
-PATIENCE = 4  # mirrors loop.sh's PATIENCE default; restated here since this
-              # runs as its own process, not sourced by the shell script
 HARNESS_CONTRACT_STAGES = {"Camera frame", "Output"}
 
 
@@ -63,13 +66,14 @@ def frozen_streaks(conn, since_kept_id: int) -> dict[str, int]:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("usage: plateaucheck.py <last_kept_id>", file=sys.stderr)
+    if len(sys.argv) not in (2, 3):
+        print("usage: plateaucheck.py <last_kept_id> [patience]", file=sys.stderr)
         return 0
     since_kept_id = int(sys.argv[1])
+    patience = int(sys.argv[2]) if len(sys.argv) == 3 else 4
     conn = connect()
     streak = frozen_streaks(conn, since_kept_id)
-    frozen = sorted(((n, c) for n, c in streak.items() if c >= PATIENCE),
+    frozen = sorted(((n, c) for n, c in streak.items() if c >= patience),
                      key=lambda x: -x[1])
     if not frozen:
         return 0
