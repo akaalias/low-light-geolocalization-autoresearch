@@ -159,6 +159,13 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .sec-h{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
   text-align:center;margin:44px 0 10px}
+.status-callout{max-width:780px;margin:22px auto 0;padding:16px 22px 14px;
+  border:1px solid var(--rule);border-left:3px solid var(--accent);
+  border-radius:0 2px 2px 0;background:#fbf8ea}
+.status-callout-h{font:600 11px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:0 0 7px}
+.status-callout p{margin:0;font-size:15.5px;line-height:1.65;color:#33312b}
+.status-callout .status-meta{margin-top:7px;font-size:12.5px;color:var(--muted)}
 .explore{max-width:780px;margin:0 auto}
 .explore a.card{display:block;border:1px solid var(--rule);border-radius:2px;
   padding:14px 18px;margin:0 0 12px;color:inherit}
@@ -2010,11 +2017,12 @@ def render():
 {topnav('log')}
 {compute_banner()}
 {page_header("Where we are: The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a rented RTX 4090 and measured against one frozen ruler: the <b>worst</b> median position error across 6 lighting conditions × 4 test areas, on held-out crops ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
+<div class="status-callout">
+  <div class="status-callout-h">Where we are right now</div>
+  <p>{status_line}</p>
+  <p class="status-meta">{n_dev} experiment{'s' if n_dev != 1 else ''}, {n_kept} kept.</p>
+</div>
 <header class="dash-head">
-  <div class="intro">
-  <p>{status_line} · {n_dev} experiment{'s' if n_dev != 1 else ''},
-  {n_kept} kept.</p>
-  </div>
   <div class="dash-meta">
     <span class="k" title="This change improved the worst-case error and was committed."><span class="dot kept"></span>Kept improvement</span>
     <span class="k" title="No improvement — the code change was reverted; only the record remains."><span class="dot disc"></span>Discarded</span>
