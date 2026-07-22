@@ -33,6 +33,7 @@ Usage:
 
 Exit code is always 0; loop.sh decides what to do with the output.
 """
+import ast
 import re
 import sys
 from pathlib import Path
@@ -56,9 +57,12 @@ BACKBONE_RE = re.compile(
     r")\b"
 )
 # A checked-in weights blob is part of the backbone's identity too: reusing
-# model/pretrained/mnv3s_features8.pt is reusing the backbone whatever the
-# surrounding code is called.
-WEIGHTS_RE = re.compile(r"pretrained/([\w.\-]+\.(?:pt|pth|bin|safetensors))\b")
+# mnv3s_features8.pt is reusing the backbone whatever the surrounding code is
+# called. Matched as a bare filename, NOT as "pretrained/<file>" -- model.py
+# builds the path by joining components (Path(...) / "pretrained" /
+# "mnv3s_features8.pt"), so a prefix-anchored pattern missed the real load and
+# matched only the prose mention in the module docstring. Exactly backwards.
+WEIGHTS_RE = re.compile(r"\b([\w.\-]+\.(?:pt|pth|bin|safetensors))\b")
 
 
 def _read(paths: list[str]) -> str:
@@ -73,15 +77,41 @@ def _read(paths: list[str]) -> str:
     return "\n".join(out)
 
 
+def _strip_docstrings(src: str) -> str:
+    """Blank out module/class/function docstrings, leaving line numbers intact."""
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return src  # mid-edit or non-Python: fall back to the raw text
+    lines = src.splitlines()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.FunctionDef,
+                                 ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        if not node.body or ast.get_docstring(node, clean=False) is None:
+            continue
+        first = node.body[0]
+        for i in range(first.lineno - 1, min(first.end_lineno, len(lines))):
+            lines[i] = ""
+    return "\n".join(lines)
+
+
 def identifiers(src: str) -> set[str]:
     """Backbone identifiers present in `src`.
 
-    Line comments are stripped: a backbone named only in a trailing comment
-    is history, not code that runs. Docstrings are deliberately NOT stripped
-    -- an identifier left in prose still counts, which can only ever make the
-    check stricter, never let a real reuse through.
+    Comments AND docstrings are stripped, so only code counts. This is not a
+    softening: a name in prose cannot load a tensor. It is required for the
+    check to mean anything here, because model/model.py's module docstring is
+    a running history log of past experiments -- it still narrates "Exp 11:
+    ... weights load strict from model/pretrained/mnv3s_features8.pt" long
+    after that code would be gone. Counting prose rejected experiment #41,
+    whose design ("domain-native contrastive pretraining replaces the ImageNet
+    trunk", init from-scratch) had already removed every line of mobilenet
+    code, purely because it kept the header history an agent has no reason to
+    delete.
     """
-    code = re.sub(r"#[^\n]*", "", src)
+    code = _strip_docstrings(src)
+    code = re.sub(r"#[^\n]*", "", code)
     return set(BACKBONE_RE.findall(code)) | set(WEIGHTS_RE.findall(code))
 
 
