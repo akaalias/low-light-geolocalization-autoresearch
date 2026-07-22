@@ -1608,27 +1608,23 @@ def render_paths(exps):
 {page_header("Model designs", "Before it may train anything, every iteration of the research loop draws the model it proposes to fly — a proper technical figure of the computation one camera frame takes through the deployed network, from pixels to <i>(lat,&nbsp;lon,&nbsp;confidence)</i>. These are those figures — every proposal ever made, reverted branches included.")}
 <div class="paths-wrap">
 <div class="pnote">
-<p>Each figure is drawn by the experimenting agent itself, under one shared
-visual contract — tensors drawn as tensors (an image is pixels, a feature map
-is a slab, a vector is a bar of ticks), operations as operations, no labeled
-boxes — so independent proposals read like figures from a single paper. The
-two endpoints are gray because they are the <b>frozen contract</b>: the
-camera crop coming in and the coordinate going out are fixed by the harness,
-outside the search space. Everything in ink between them is that
-experiment's design; red is reserved for the one thing the experiment
-changed; ochre exists only during training and never flies.</p>
-<p>Read top to bottom and you watch the design evolve: a <b>kept</b>
-proposal (ink rule on the left) becomes the trunk the next experiment
-branches from; a <b>discarded</b> one was trained, scored, and reverted —
-drawn to the same standard, because the dead branches are part of the record
-too. Each caption is the experiment's own pre-registered plain-words
-explanation; the full record (hypothesis, method, scoreboard) is one click
-away in the <a href="index.html">research log</a>. (One honesty note:
-figures 1–6 predate the loop — those experiments were designed
-interactively during the bootstrap phase and pre-registered their designs
-as text; their figures were drawn to this standard after the fact. From
-experiment 7 on, every figure is the headless agent's own, drawn before
-training ran.)</p>
+<p>These figures exist to keep the loop honest. Every one is drawn and locked
+in <i>before</i> a single epoch of training runs, alongside a falsifiable
+hypothesis and a predicted outcome — so what you're looking at is a genuine
+pre-registration, what the agent believed would work, not a diagram fitted
+after the fact to a result it already knew. One shared visual contract
+across every proposal (tensors drawn as tensors, operations as operations,
+no labeled boxes) is what makes them directly comparable, figure to figure.</p>
+<p>Read top to bottom to watch the design evolve: a <b>kept</b> proposal
+(ink rule, left) becomes the trunk the next experiment branches from; a
+<b>discarded</b> one — trained, scored, reverted — stays on the record at
+the same standard, dead branches included. Each caption is the experiment's
+own pre-registered plain-words explanation; click through for the full
+hypothesis, method, and scoreboard in the
+<a href="index.html">research log</a>. (Figures 1–6 predate the loop —
+bootstrap-era designs pre-registered as text, drawn to this standard after
+the fact; from experiment 7 on, every figure is the headless agent's own,
+drawn before training ran.)</p>
 </div>
 <div class="contract-fig" data-ovfig data-title="The frozen contract — where the experiments happen">{contract_svg()}
 <p class="contract-cap">The shape every figure on this page shares. The gray
