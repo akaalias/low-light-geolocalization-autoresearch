@@ -463,6 +463,33 @@ details.trywrap[open]>summary::before{content:"\\25be  "}
 .help-grid dt{font-weight:700;color:var(--ink);white-space:nowrap}
 .help-grid dd{margin:0}
 .help .foot{margin-top:10px;color:var(--muted);font-style:italic}
+
+.nb-wrap{max-width:980px;margin:0 auto;padding:16px 28px 110px}
+.nb-day{padding:38px 0 6px;border-top:1px solid var(--rule)}
+.nb-day:first-child{border-top:none;padding-top:14px}
+.nb-day h2{font:400 24px var(--serif);color:var(--ink);margin:0 0 2px}
+.nb-day .daysub{font:italic 14.5px var(--serif);color:var(--muted);margin:0 0 26px}
+.nb-row{display:grid;grid-template-columns:150px 1fr;column-gap:26px;
+  margin:0 0 24px;align-items:baseline}
+.nb-row .nb-time{min-width:0;font:600 11.5px var(--mono);color:var(--faint);
+  letter-spacing:.02em;text-align:right;white-space:normal}
+.nb-row .nb-text{min-width:0;font-size:16px;line-height:1.7;color:var(--ink)}
+.nb-row .nb-text code{font:12.5px var(--mono);background:var(--rule-soft);
+  padding:1px 4px;border-radius:2px}
+.nb-pull{display:grid;grid-template-columns:150px 1fr;column-gap:26px;
+  margin:8px 0 30px}
+.nb-pull .nb-time{min-width:0;font:600 11px var(--mono);color:var(--ink);
+  text-align:right;padding-top:3px}
+.nb-pull .nb-quote{min-width:0;border-left:2px solid var(--ink);padding-left:22px}
+.nb-pull .nb-quote p{font:italic 20px/1.5 var(--serif);color:var(--ink);margin:0}
+.nb-text b,.nb-quote b{font-weight:600}
+.nb-inline-spark{display:inline-block;vertical-align:-3px;margin:0 2px 0 6px}
+.nb-source{font:13px var(--serif);color:var(--faint);font-style:italic;
+  text-align:center;margin:40px 28px 0;padding-top:18px;border-top:1px solid var(--rule)}
+@media (max-width:640px){
+  .nb-row,.nb-pull{grid-template-columns:1fr}
+  .nb-row .nb-time,.nb-pull .nb-time{text-align:left;padding-top:0}
+}
 """
 
 JS = """
@@ -690,7 +717,8 @@ def esc(s):
 NAV_PAGES = (("overview", "overview"),
              ("log", "research log"),
              ("paths", "model designs"),
-             ("lineage", "research lineage"))
+             ("lineage", "research lineage"),
+             ("notebook", "lab notebook"))
 
 
 def research_status():
@@ -853,7 +881,9 @@ def topnav(active, root=False):
              "paths": ("gallery/inference-paths.html" if root
                        else "inference-paths.html"),
              "lineage": ("gallery/research-lineage.html" if root
-                         else "research-lineage.html")}
+                         else "research-lineage.html"),
+             "notebook": ("gallery/lab-notebook.html" if root
+                          else "lab-notebook.html")}
     links = []
     for key, label in NAV_PAGES:
         cls = " class='on'" if key == active else ""
@@ -1549,6 +1579,227 @@ target="_blank" rel="noopener">view on GitHub</a>"""
 
 PATHS_OUT = REPO_ROOT / "gallery" / "inference-paths.html"
 OVERVIEW_OUT = REPO_ROOT / "index.html"
+NOTEBOOK_OUT = REPO_ROOT / "gallery" / "lab-notebook.html"
+
+# Hand-authored, not DB-derived: a condensed, dated narrative of what
+# happened and why, compiled once from git history + Claude Code session
+# transcripts (20-23 July 2026). Static content, not regenerated from
+# experiments.sqlite — append future days by hand as the project continues.
+NOTEBOOK_HTML = """
+<section class="nb-day">
+<h2>20 July 2026</h2>
+<p class="daysub">Bootstrap &mdash; the pipeline, the harness, and the first real experiments</p>
+
+<div class="nb-row"><span class="nb-time">19:05&ndash;19:23</span>
+<p class="nb-text"><b>The repo is bootstrapped end-to-end in one
+session.</b> Against the project spec, the frozen bbox-generic data
+pipeline, a naive baseline model, SQLite lineage, an HTML gallery, and
+<code>loop.sh</code> are scaffolded in one pass and proven with a real
+train&rarr;score&rarr;log run, including confirming the Hamburg holdout
+stays untouched.</p></div>
+
+<div class="nb-row"><span class="nb-time">19:26&ndash;20:02</span>
+<p class="nb-text"><b>Two open questions get resolved before more code is
+written.</b> The deployment hardware: an ESP32-P4-Function-EV-Board paired
+with the SmartSens SC2336 sensor turns out to be Espressif&rsquo;s own
+documented reference pairing. The reference imagery: 10&nbsp;m/px
+Sentinel-2 is swapped for 1&nbsp;m/px open state orthophotos, matching a
+real ~100&nbsp;m-altitude camera footprint, and the relighting pipeline is
+rebuilt for the larger rasters. A v2 baseline scores 2765.67&nbsp;m.</p></div>
+
+<div class="nb-row"><span class="nb-time">20:06&ndash;21:26</span>
+<p class="nb-text"><b>The dashboard is rebuilt in the project&rsquo;s house
+style.</b> It&rsquo;s restyled to the same Tufte research-log language used
+across earlier projects, then pushed through three more rounds of feedback
+toward plain-language framing and precise miss-distance wording.
+<code>loop.sh</code> is hardened for safe interruption &mdash; a clean stop
+on Ctrl-C or a typed <code>exit</code> &mdash; and the train/eval split is
+rebalanced to 360&nbsp;m blocks after the original 144&nbsp;m blocks were
+starving some areas of eval crops.</p></div>
+
+<div class="nb-pull"><span class="nb-time">21:51&ndash;22:41</span>
+<div class="nb-quote"><p><b>A clean-slate reset breaks the project&rsquo;s
+first real plateau.</b> The lineage resets to a clean baseline, and the
+first post-reset experiment breaks the ~3.2&nbsp;km &ldquo;predicts the map
+center&rdquo; floor that nine prior designs had all converged on &mdash; a
+soft-argmax probability field, kept at 2489&nbsp;m. A concrete plateau rule
+follows: after three consecutive reverts, a design must leave the refuted
+mechanism family entirely.</p></div></div>
+
+<div class="nb-row"><span class="nb-time">22:43&ndash;23:26</span>
+<p class="nb-text"><b>Every experiment now gets its own hand-drawn
+architecture diagram.</b> The design agent begins drawing one per
+experiment, under a visual contract distinguishing frozen, current, and
+just-changed stages. Experiment&nbsp;8 pivots to a residual encoder and is
+kept at 2326.54&nbsp;m, closing out the day.</p></div>
+</section>
+
+<section class="nb-day">
+<h2>21 July 2026</h2>
+<p class="daysub">Infrastructure moves to a rented GPU; the public site takes shape</p>
+
+<div class="nb-row"><span class="nb-time">22:15&ndash;07:56</span>
+<p class="nb-text"><b>An overnight diagnosis finds a real blind spot in the
+model&rsquo;s field head.</b> It has only ever seen a spatially-averaged
+descriptor with no positional information, and the loop tests a
+layout-aware fix; a pretrained MobileNetV3-Small backbone is explored in
+parallel, resolving the from-scratch-vs-pretrained question directly.
+Progress is slow &mdash; the loop repeatedly hits a connection error and
+restarts the same iteration from scratch several times before anything
+lands.</p></div>
+
+<div class="nb-pull"><span class="nb-time">11:27&ndash;11:38</span>
+<div class="nb-quote"><p><b>The pod&rsquo;s database becomes the one
+production record.</b> Now that compute costs money on a rented RunPod
+RTX&nbsp;4090, the policy is set explicitly: the laptop only ever pulls
+from it. The rule is encoded in the sync scripts themselves, not left as
+convention.</p></div></div>
+
+<div class="nb-row"><span class="nb-time">08:32&ndash;09:02</span>
+<p class="nb-text"><b>A new gallery page ships for every proposed
+architecture.</b> &ldquo;Inference Paths&rdquo; is matched to the
+typography of the researcher&rsquo;s existing personal site, along with a
+frozen-contract figure showing the fixed camera-frame input and output
+every design shares, its coordinates anchored so every architecture
+diagram scroll-compares cleanly against it.</p></div>
+
+<div class="nb-row"><span class="nb-time">11:32&ndash;14:50</span>
+<p class="nb-text"><b>Four experiments land in a row, each a real
+improvement.</b> 1856&nbsp;m &rarr; 1638&nbsp;m &rarr; 1369&nbsp;m &rarr;
+1095&nbsp;m &rarr; 1055&nbsp;m.<svg class="nb-inline-spark" width="64" height="15" viewBox="0 0 64 15"><polyline points="2.0,13.0 17.5,10.2 33.0,7.3 48.5,4.5 62.0,2.0" fill="none" stroke="var(--ink)" stroke-width="1.1"/><circle cx="2.0" cy="13.0" r="1.6" fill="var(--ink)"/><circle cx="17.5" cy="10.2" r="1.6" fill="var(--ink)"/><circle cx="33.0" cy="7.3" r="1.6" fill="var(--ink)"/><circle cx="48.5" cy="4.5" r="1.6" fill="var(--ink)"/><circle cx="62.0" cy="2.0" r="1.6" fill="var(--ink)"/></svg> The loop is also restructured around two agent roles &mdash; one
+designs an experiment, a second implements it &mdash; with per-phase timing
+logged for each.</p></div>
+
+<div class="nb-row"><span class="nb-time">11:51&ndash;12:15</span>
+<p class="nb-text"><b>The project goes public.</b> The site and a matching
+entry on the researcher&rsquo;s personal homepage ship together, with a
+tagline chosen after two rounds of brainstorming, and an airloom-style
+&ldquo;view on GitHub&rdquo; ribbon added to every page.</p></div>
+</section>
+
+<section class="nb-day">
+<h2>22 July 2026</h2>
+<p class="daysub">A plateau-enforcement mechanism that took two real fixes to actually hold</p>
+
+<div class="nb-row"><span class="nb-time">00:51&ndash;01:14</span>
+<p class="nb-text"><b>An overnight disk leak crashes the loop.</b> A
+training run has been silently caching several gigabytes of rendered
+images per experiment into a directory the loop was committing, filling
+the pod&rsquo;s disk. Fixed by excluding scratch renders from persistence,
+and the loop is relaunched.</p></div>
+
+<div class="nb-row"><span class="nb-time">02:07&ndash;12:15</span>
+<p class="nb-text"><b>The pivot check itself turns out to be broken.</b> The
+loop runs through the night with no net progress, and by midday the pivot
+check turns out to be testing the wrong signal entirely &mdash; a
+declared-category heuristic rather than whether the frozen architecture
+actually changed &mdash; so seven consecutive &ldquo;pivot&rdquo;
+experiments have in fact left the same pretrained backbone untouched.</p></div>
+
+<div class="nb-pull"><span class="nb-time">16:26&ndash;20:19</span>
+<div class="nb-quote"><p><b>Two real bugs, not the prompt wording, were
+blocking every pivot.</b> A first fix &mdash; a diagnostic naming which
+stages hadn&rsquo;t changed &mdash; proves insufficient: its patience
+threshold turns out to be hardcoded inside the checker script, ignoring the
+loop&rsquo;s actual setting, so the intended stricter check silently
+doesn&rsquo;t apply at the moment it&rsquo;s needed. A second, code-level
+gate replaces it, checking the real backbone-construction diff before
+training runs at all. Both root causes are found and fixed together; this
+is the version that holds.</p></div></div>
+
+<div class="nb-row"><span class="nb-time">14:59&ndash;15:54</span>
+<p class="nb-text"><b>Monitoring and budget expectations get set
+explicitly.</b> An hourly automated health check posts to a GitHub issue
+only when something is actually broken. Budget context is set: roughly 100
+experiments is the real ceiling, and the loop should not self-stop at the
+target metric &mdash; only when budget runs out or the work is stopped by
+hand.</p></div>
+
+<div class="nb-row"><span class="nb-time">15:11&ndash;19:11</span>
+<p class="nb-text"><b>Two infrastructure incidents get resolved in one
+day.</b> A disk-exhaustion failure in the build pipeline, and a
+git-history divergence between the pod and GitHub after both independently
+applied the same fix. Policy tightens: every repository change now happens
+on the pod exclusively; the laptop becomes read-only.</p></div>
+</section>
+
+<section class="nb-day">
+<h2>23 July 2026</h2>
+<p class="daysub">Nineteen reverted pivots, a forced redirect, and compute moves off the rented pod</p>
+
+<div class="nb-row"><span class="nb-time">08:06&ndash;13:24</span>
+<p class="nb-text"><b>A ten-hour GitHub outage gets root-caused and
+fixed.</b> An oversized quarantine folder of rejected renders had been
+accidentally committed; excluding the path structurally fixes it for good.
+Loop vocabulary is also overhauled &mdash; &ldquo;iteration&rdquo; becomes
+&ldquo;experiment&rdquo; throughout &mdash; and every experiment row gains
+a deterministic, plain-language reason for its outcome.</p></div>
+
+<div class="nb-row"><span class="nb-time">16:45&ndash;17:22</span>
+<p class="nb-text"><b>The comparison baseline resets to a faster, fairer
+standard.</b> The champion architecture, retrained on Berlin alone at a
+fast budget, scores 1176.5&nbsp;m, retiring the older, heavier four-area
+743&nbsp;m champion as historical so quick local experiments are judged
+fairly. RunPod branding is dropped from the site as compute moves back to
+local hardware.</p></div>
+
+<div class="nb-pull"><span class="nb-time">18:21&ndash;19:04</span>
+<div class="nb-quote"><p><b>Four forced pivots in a row all fail the same
+way.</b> Each is required to avoid the champion&rsquo;s banned backbone
+entirely &mdash; a residual VQ location codebook, a Gaussian-mixture
+regression, a pretrained ShuffleNetV2 trunk, a memory-safe
+learned-relighting redesign &mdash; all reverted. Across nineteen straight
+reverted pivots, one pattern holds: decode-mechanism rewrites keep losing,
+while the one round that changed the trunk came closest. The encoder, not
+the decode head, is the real bottleneck.</p></div></div>
+
+<div class="nb-row"><span class="nb-time">18:36&ndash;19:29</span>
+<p class="nb-text"><b>A human-forced redirect finally lands a genuinely new
+architecture.</b> A from-scratch dense scene-coordinate regression design
+is forced directly into the next experiment, and a one-shot
+forced-direction mechanism is added to the loop so a specific redirect can
+be handed to a single run without further intervention. It scores
+2360&nbsp;m &mdash; architecturally novel, still reverted.</p></div>
+
+<div class="nb-row"><span class="nb-time">19:16&ndash;20:30</span>
+<p class="nb-text"><b>Compute strategy pivots twice in one evening.</b> Off
+the rented GPU pod back to local hardware, then toward a scale-to-zero
+serverless GPU provider alongside a self-hosted always-on worker option
+&mdash; removing the recurring overhead of a persistent rented pod.</p></div>
+</section>
+"""
+
+
+def render_notebook():
+    """gallery/lab-notebook.html — a dated narrative of what happened and
+    why, compiled once from git history + session transcripts. Content is
+    static (NOTEBOOK_HTML above); the page shell reuses the same shared
+    topnav/page_header/CREDITS as every other page."""
+    html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=1100">
+<title>Lab notebook &mdash; Low-Light Geolocalization</title>
+<style>{CSS}</style></head><body>
+{topnav('notebook')}
+{compute_banner()}
+<header class='page-head'>
+<div class='eyebrow'>Alexis Rondeau &middot; an autonomous research project</div>
+<h1>Lab notebook</h1>
+<p class='page-sub'>What we actually did, day by day &mdash; compiled from
+the project&rsquo;s session history and commit log, not just the
+experiment record. The <a href="index.html">research log</a> and <a
+href="inference-paths.html">model designs</a> pages show what the loop
+tried; this page is the surrounding story.</p></header>
+<div class="nb-wrap">
+{NOTEBOOK_HTML}
+<p class="nb-source">Compiled from git history and Claude Code session
+transcripts, 20&ndash;23 July 2026 &mdash; condensed for readability; see
+the <a href="index.html">research log</a> for the complete,
+machine-generated experiment record.</p>
+</div>
+{CREDITS}</body></html>"""
+    NOTEBOOK_OUT.parent.mkdir(exist_ok=True)
+    NOTEBOOK_OUT.write_text(html_page)
+    print(f"wrote {NOTEBOOK_OUT}")
 
 
 def render_overview(exps):
@@ -2319,6 +2570,7 @@ agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duratio
     render_paths(exps)
     render_lineage(exps)
     render_overview(exps)
+    render_notebook()
 
 
 if __name__ == "__main__":
