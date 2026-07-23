@@ -242,7 +242,7 @@ while :; do
 
   # 1. Two-stage agent (models chosen per task — design is the creative/
   #    strategic work, implementation is focused code editing):
-  #      stage 1 DESIGN_MODEL (default Fable): pre-registers the experiment +
+  #      stage 1 DESIGN_MODEL (default Sonnet): pre-registers the experiment +
   #        an implementation_brief in runs/pending_experiment.json; no code edits.
   #      stage 2 IMPL_MODEL (default Sonnet): applies the brief to model/.
   # Snapshot the exact prompts handed to the agents — part of the experiment
@@ -327,7 +327,7 @@ PIVOTNOTE
     rm -f runs/pending_experiment.json
     T0=$(date +%s)
     "$CLAUDE_BIN" -p "$(cat "$RUN_DIR/prompt.md")" \
-      --model "${DESIGN_MODEL:-claude-fable-5}" \
+      --model "${DESIGN_MODEL:-claude-sonnet-5}" \
       --permission-mode acceptEdits \
       --allowedTools "Read,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
       --output-format json </dev/null >"$RUN_DIR/agent_design.json" \
@@ -355,7 +355,7 @@ ${AGENT_RETRY_SLEEP:-1800}s before next experiment"
     # needs a real code diff to exist — this half of the gate doesn't, so
     # checking it here saves ~2-3 min plus a whole extra Claude invocation
     # whenever the design alone already fails to be a complete rethink.
-    AGENT_MODEL_DESIGN="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_design.json" 2>/dev/null || echo "${DESIGN_MODEL:-claude-fable-5}")"
+    AGENT_MODEL_DESIGN="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_design.json" 2>/dev/null || echo "${DESIGN_MODEL:-claude-sonnet-5}")"
     if [ -n "$FROZEN_STAGES" ]; then
       UNCHANGED_STAGES="$($PY - runs/pending_experiment.json <<'PYCHECK'
 import json, sys
