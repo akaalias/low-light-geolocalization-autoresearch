@@ -1,6 +1,10 @@
 # Runtime dependencies for the frozen pipeline + autoresearch loop.
 # Local dev used torch 2.13 on MPS; any recent torch with CUDA works on a pod.
+# torchvision supplies the mobilenet_v3_small backbone model/model.py imports;
+# it came free from the pod's base image but must be installed explicitly for
+# a local venv (pick the build matching your torch).
 torch>=2.4
+torchvision>=0.19
 numpy
 onnx
 onnxruntime
