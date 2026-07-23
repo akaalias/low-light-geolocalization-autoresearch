@@ -22,6 +22,7 @@ import datetime
 import html
 import json
 import math
+import re
 from pathlib import Path
 
 from autoresearch import workedexample
@@ -344,6 +345,19 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 .eb-res{border-left-color:var(--ink)} .eb-res .eb-h{color:var(--ink)}
 .eb-con{border-left-color:var(--accent)} .eb-con .eb-h{color:var(--accent)}
 .eb-eli{border-left-color:var(--ink);background:#fbf8ea}
+/* "Why this status" — the headline plain-language reason, colour-keyed to
+   the status chip (see status_reason()). Sits first in the detail column. */
+.eb-why{border-left-width:3px}
+.why-kept{border-left-color:var(--ink)} .why-kept .eb-h{color:var(--ink)}
+.why-rej{border-left-color:var(--accent);background:#fdf6f4} .why-rej .eb-h{color:var(--accent)}
+.why-fail{border-left-color:var(--accent);background:#fdf6f4} .why-fail .eb-h{color:var(--accent)}
+.why-disc{border-left-color:var(--muted)} .why-disc .eb-h{color:var(--muted)}
+.why-hold{border-left-color:var(--ochre);background:#fbf7ec} .why-hold .eb-h{color:var(--ochre)}
+/* One-line reason under each log-row title, always visible (airloom-style). */
+.row-why{font-size:11.5px;line-height:1.35;color:var(--faint);font-style:italic;margin-top:2px}
+.row-why.why-rej,.row-why.why-fail{color:var(--accent);font-style:normal}
+.row-why.why-kept{color:var(--muted);font-style:normal}
+.row-why.why-hold{color:var(--ochre)}
 .eb-eli p{font-size:14.5px}
 
 .arch{margin:0 0 20px}
@@ -1301,6 +1315,135 @@ def status_of(e):
     return "<span class='st-disc smcp'>discarded</span>"
 
 
+def _nums_from_conclusion(concl):
+    """(metric, best_before) as strings, parsed from the harness-written
+    conclusion, or (None, None). KEPT reads 'improved (BEST -> METRIC m)';
+    REVERTED reads 'did not improve (METRIC m vs best BEST m)'."""
+    concl = concl or ""
+    m = re.search(r"improved \(([\d.eE+]+) -> ([\d.eE+]+)", concl)
+    if m:
+        return m.group(2), m.group(1)
+    m = re.search(r"did not improve \(([\d.eE+]+) m vs best ([\d.eE+]+) m", concl)
+    if m:
+        return m.group(1), m.group(2)
+    return None, None
+
+
+def _m_str(s):
+    try:
+        return fmt_m(float(s))
+    except (TypeError, ValueError):
+        return "—"
+
+
+def _fail_detail(e):
+    """Pin down WHY a 1e9 (worst-possible) experiment failed, from its
+    metrics: a training/scoring crash (no per-area results at all) vs a
+    real deployment-gate violation (trained, but over the ESP32-P4's size
+    or latency budget — score.py's exact strings) vs the coverage floor
+    (abstained on too many frames in some cell). Returns (short, long)."""
+    try:
+        metrics = json.loads(e.get("metrics_json") or "{}")
+    except (ValueError, TypeError):
+        metrics = {}
+    areas = metrics.get("areas") or []
+    if not areas:
+        return ("training or scoring crashed — no result",
+                "This design never produced a score at all: training or scoring failed outright "
+                "(usually a bug in the proposed model or training code, or a model that couldn't be "
+                "exported and scored). With no numbers to judge it on, it counts as a failure and "
+                "was rolled back.")
+    gate_fails = [a.get("gates", {}).get("failed") for a in areas
+                  if a.get("gates", {}).get("failed")]
+    if gate_fails:
+        long_map = {"model too large": "the exported model is too big for the ESP32-P4's memory (>4 MiB)",
+                    "missing model": "no usable model file was produced to load",
+                    "latency over proxy budget": "a single inference is slower than the flight-time budget (>250 ms proxy)"}
+        short_map = {"model too large": "too big for the ESP32-P4",
+                     "missing model": "no model produced",
+                     "latency over proxy budget": "too slow for the latency budget"}
+        longs = "; ".join(dict.fromkeys(long_map.get(f, f) for f in gate_fails))
+        shorts = "; ".join(dict.fromkeys(short_map.get(f, f) for f in gate_fails))
+        return (f"over deployment budget: {shorts}",
+                f"The model trained and scored, but it broke a hard aircraft limit: {longs}. A model "
+                "that can't physically run on the drone is failed regardless of how accurate it is, so "
+                "it was rolled back.")
+    return ("abstained on too many frames in a cell",
+            "The model trained, but in at least one area × lighting combination it refused to answer on "
+            "more than the allowed share of frames — and a model isn't allowed to pass by abstaining its "
+            "way out of the hard cases. That cell is scored as a failure, which fails the whole "
+            "experiment, so it was rolled back.")
+
+
+def status_reason(e):
+    """Plain-language ELI5 of WHY this experiment ended in its status —
+    derived entirely from the harness-written conclusion / result / metrics
+    (no LLM, no hand-authoring). Returns (kind, short, long): a status kind
+    for colour, a terse phrase for the log row, and a paragraph for the
+    detail view. The 'juicy' statuses (rejected / gated fail / discarded)
+    get the fuller explanation; kept/holdout are brief by nature."""
+    concl = e.get("conclusion") or ""
+    result = e.get("result") or ""
+    metric = e.get("primary_metric")
+
+    if e["kind"] == "holdout_check":
+        return ("hold", "blind Hamburg generalisation check",
+                "Not a competing design — this is the periodic blind holdout. The current "
+                "champion's training recipe is run on Hamburg, a city the loop never tunes "
+                f"against, purely to check the method still generalises. It scored {fmt_m(metric)}; "
+                "the number is logged for monitoring only and never affects which experiments "
+                "are kept or reverted.")
+
+    if is_rejected(e):
+        if "REJECTED IN ERROR" in concl or "harness bug" in result.lower():
+            return ("rej", "rejected by a harness bug — since fixed",
+                    "Thrown out by a bug in the pivot-checker, not on its merits: it did propose "
+                    "the required from-scratch rethink, but a gate misread the file header and "
+                    "rejected it anyway. The bug was fixed afterwards. This run was never trained "
+                    "or scored, so it counts as still-open rather than a real failure.")
+        if "before implementation" in concl or "complete rethink" in concl:
+            m = re.search(r"unchanged in the design:\s*(.+?)\s*$", result)
+            tail = f" (untouched: {m.group(1).strip()})" if m else ""
+            return ("rej", "pivot not honored — stages left unchanged",
+                    "After a losing streak the loop demanded a *complete* architecture rethink — "
+                    "every moving part of the design had to change. This proposal left parts of the "
+                    f"champion untouched{tail}, so it was rejected before spending any GPU time. A "
+                    "partial tweak doesn't count as a pivot.")
+        m = re.search(r"champion's backbone \(([^)]+)\)", result) \
+            or re.search(r"champion's backbone \(([^)]+)\)", concl)
+        tail = f" ({m.group(1)})" if m else ""
+        return ("rej", "pivot not honored — kept champion backbone",
+                "The loop demanded a full pivot away from the champion's backbone, but the code that "
+                f"got built still used it{tail}. The checker reads the actual source, not the agent's "
+                "claim, so it was rejected before any training — re-tuning, truncating, or wrapping the "
+                "same trunk doesn't count as a pivot.")
+
+    if metric is not None and metric >= FAIL:
+        short, long = _fail_detail(e)
+        return ("fail", short, long)
+
+    metric_s, best_s = _nums_from_conclusion(concl)
+    if e["kept"]:
+        got = _m_str(metric_s) if metric_s else fmt_m(metric)
+        extra = ""
+        if metric_s and best_s:
+            try:
+                impr = (float(best_s) - float(metric_s)) / float(best_s) * 100
+                if impr > 0:
+                    extra = f" — a {impr:.0f}% improvement"
+            except (ValueError, ZeroDivisionError):
+                pass
+        return ("kept", f"new best: {_m_str(best_s)} → {got}",
+                f"The best design so far. It cut the worst-case error from {_m_str(best_s)} to {got}"
+                f"{extra}, beating the previous champion — so its code was committed as the new best, "
+                "and later experiments branch from here.")
+
+    return ("disc", f"worse than champion: {fmt_m(metric)} vs {_m_str(best_s)}",
+            f"The change trained and scored cleanly, but at {fmt_m(metric)} it didn't beat the champion's "
+            f"{_m_str(best_s)}, so the loop discarded it and kept the previous best. A normal negative "
+            "result — most experiments land here, and each still narrows down what doesn't work.")
+
+
 HELP = f"""
 <details class="help"><summary>What do the columns and marks mean?</summary>
 <dl class="help-grid">
@@ -2111,11 +2254,13 @@ def render():
         pivot_tag = (" <span class='pivot-tag' title='Ran after 4+ consecutive "
                      "misses — the harness required a new design family this "
                      "round'>pivot</span>" if e.get("is_pivot") else "")
+        sr_kind, sr_short, sr_long = status_reason(e)
         body.append(f"""<tr class="row-main{kept_cls}" id="r{e['id']}" onclick="toggle({e['id']})">
 <td><span class="caret">▸</span></td>
 <td class="num">{e['id']}</td>
 <td class="title-cell"><b>{esc(e['title'])}</b>
-  <span class="mono" style="color:var(--faint)"> {esc(e['git_commit'][:8])}</span></td>
+  <span class="mono" style="color:var(--faint)"> {esc(e['git_commit'][:8])}</span>
+  <div class="row-why why-{sr_kind}">{esc(sr_short)}</div></td>
 <td><span class="cat">{esc(e['category'] or '—')}</span>{pivot_tag}</td>
 <td class="mono">{esc(e['init_strategy'] or '—')}</td>
 <td class="num">{fmt_m(e['primary_metric'])}</td>
@@ -2125,6 +2270,11 @@ def render():
 <td>{status_of(e)}</td></tr>""")
 
         blocks = []
+        _why_head = {"kept": "Why it's the new best", "rej": "Why it was rejected",
+                     "fail": "Why it failed the gate", "disc": "Why it was discarded",
+                     "hold": "What this holdout check is"}.get(sr_kind, "Why this status")
+        blocks.append(f"<div class='eb eb-why why-{sr_kind}'><div class='eb-h'>{_why_head}</div>"
+                      f"<p>{esc(sr_long)}</p></div>")
         if e.get("eli5"):
             blocks.append(f"<div class='eb eb-eli'><div class='eb-h'>In plain "
                           f"words</div><p>{esc(e['eli5'])}</p></div>")
