@@ -463,10 +463,18 @@ PYCHECK
     # thread pool sized to ALL host cores, so 4 concurrent trainings spawn
     # ~4x96 threads on a small cgroup quota and thrash (observed: GPU 10%,
     # 45+ min wall). TRAIN_THREADS overrides the default cap.
-    OMP_NUM_THREADS="${TRAIN_THREADS:-8}" MKL_NUM_THREADS="${TRAIN_THREADS:-8}" \
-    $PY -m model.train --area "$area" --out-dir "$RUN_DIR/train_$area" \
-      --epochs "$EPOCHS" --max-crops-per-bucket "$TRAIN_CROPS" \
-      >"$RUN_DIR/train_$area.log" 2>&1 &
+    if [ "${REMOTE_TRAIN:-0}" = "1" ]; then
+      # Train on the remote RunPod GPU worker (stateless — no git on it, so the
+      # laptop stays the sole writer). Returns the SAME out-dir structure
+      # (models/*.onnx + train_info.json) the merge/score steps below expect.
+      infra/remote_train.sh "$area" "$RUN_DIR/train_$area" "$EPOCHS" "$TRAIN_CROPS" \
+        >"$RUN_DIR/train_$area.log" 2>&1 &
+    else
+      OMP_NUM_THREADS="${TRAIN_THREADS:-8}" MKL_NUM_THREADS="${TRAIN_THREADS:-8}" \
+      $PY -m model.train --area "$area" --out-dir "$RUN_DIR/train_$area" \
+        --epochs "$EPOCHS" --max-crops-per-bucket "$TRAIN_CROPS" \
+        >"$RUN_DIR/train_$area.log" 2>&1 &
+    fi
     PIDS="$PIDS $!"
   done
   for pid in $PIDS; do wait "$pid" || FAILED=1; done

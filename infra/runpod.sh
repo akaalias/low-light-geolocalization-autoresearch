@@ -115,6 +115,10 @@ ssh)
   read -r IP PORT < <(endpoint)
   exec ssh -i "$SSH_KEY" -p "$PORT" "root@$IP"
   ;;
+_endpoint)
+  # echo "IP PORT" of the pod's ssh endpoint (used by infra/remote_train.sh)
+  endpoint
+  ;;
 sync-up)
   read -r IP PORT < <(endpoint)
   # Guard: sync-up mirrors local state INCLUDING .git refs onto the pod. If
