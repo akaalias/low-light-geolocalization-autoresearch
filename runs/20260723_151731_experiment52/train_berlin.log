@@ -1,0 +1,21 @@
+/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/model/model.py:216: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_logits:
+[berlin] epoch 1/9 9000 crops, device=mps
+[berlin] epoch 1/9 loss=0.1972
+[berlin] epoch 2/9 9000 crops, device=mps
+[berlin] epoch 2/9 loss=-0.1109
+[berlin] epoch 3/9 9000 crops, device=mps
+[berlin] epoch 3/9 loss=-0.2340
+[berlin] epoch 4/9 9000 crops, device=mps
+[berlin] epoch 4/9 loss=-0.3238
+[berlin] epoch 5/9 9000 crops, device=mps
+[berlin] epoch 5/9 loss=-0.3916
+[berlin] epoch 6/9 9000 crops, device=mps
+[berlin] epoch 6/9 loss=-0.5022
+[berlin] epoch 7/9 9000 crops, device=mps
+[berlin] epoch 7/9 loss=-0.5619
+[berlin] epoch 8/9 9000 crops, device=mps
+[berlin] epoch 8/9 loss=-0.6142
+[berlin] epoch 9/9 9000 crops, device=mps
+[berlin] epoch 9/9 loss=-0.5899
+{"area": "berlin", "n_train_crops": 9000, "epochs": 3, "device": "mps", "train_seconds": 451.7, "onnx_bytes": 841272, "init": "from-scratch", "mixture_components_per_view": 6, "mixture_components_pooled": 24, "train_realizations": 3, "epoch_location_resampling": true, "total_epochs_run": 9, "epoch_mult": 3, "lr_schedule": "cosine-per-step to 0 over 1269 steps", "confusability_alpha": 0.5, "cell_weight_ratio_p90_p10": 3.848881463505105, "conf_shift": -2.457365036010742, "cal_logit_threshold": -3.30456280708313, "cal_keep_rate_per_bucket": {"morning": 0.525, "midday": 0.4, "afternoon": 0.44, "early_evening": 0.455, "evening": 0.435, "night": 0.53}}

@@ -1,0 +1,30 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 9000,
+    "epochs": 3,
+    "device": "mps",
+    "train_seconds": 451.7,
+    "onnx_bytes": 841272,
+    "init": "from-scratch",
+    "mixture_components_per_view": 6,
+    "mixture_components_pooled": 24,
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 9,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 1269 steps",
+    "confusability_alpha": 0.5,
+    "cell_weight_ratio_p90_p10": 3.848881463505105,
+    "conf_shift": -2.457365036010742,
+    "cal_logit_threshold": -3.30456280708313,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.525,
+      "midday": 0.4,
+      "afternoon": 0.44,
+      "early_evening": 0.455,
+      "evening": 0.435,
+      "night": 0.53
+    }
+  }
+]
