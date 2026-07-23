@@ -60,6 +60,7 @@ Usage: python -m model.train --area berlin --out-dir runs/<id> [--epochs 2]
 
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 
@@ -113,20 +114,36 @@ def compute_cell_weights(area: str, data_dir: Path, meta: dict) -> np.ndarray:
 
 
 def prepare_realizations(area: str, data_dir: Path, out_dir: Path) -> Path:
-    """One-time render of each bucket's extra relight realizations (exp 17's
-    seeded scheme) to <out_dir>/renders/, so per-epoch sampling only needs to
-    load cached PNGs instead of re-running the relight sim every epoch."""
-    renders_dir = Path(out_dir) / "renders"
+    """Render each bucket's extra relight realizations (exp 17's seeded scheme)
+    so per-epoch sampling only loads PNGs instead of re-running the relight sim.
+
+    These renders are a DETERMINISTIC function of the frozen reference imagery,
+    the frozen relight sim, and a stable per-(area, bucket, realization) seed —
+    byte-identical every run. So they are cached PER AREA under RENDER_CACHE
+    (default <repo>/render_cache/<area>/) and reused across experiments, instead
+    of re-rendered into the per-run scratch that the loop purges (~1.5 GB and
+    minutes of CPU per area, previously paid every experiment). Only missing
+    realizations are rendered, so a warm cache skips the relight sim entirely.
+    Writes are atomic (temp + rename) so an interrupted render can't leave a
+    truncated PNG that later looks cached. Clear render_cache/ if the relight
+    pipeline or the imagery ever changes."""
+    cache_root = Path(os.environ.get("RENDER_CACHE", "render_cache"))
+    renders_dir = cache_root / area
     renders_dir.mkdir(parents=True, exist_ok=True)
+    todo = [(b, r) for b in LIGHTING_BUCKETS for r in range(1, TRAIN_REALIZATIONS)
+            if not (renders_dir / f"{b}_r{r}.png").exists()]
+    if not todo:
+        return renders_dir  # warm cache — no relight sim needed
     meta = load_meta(area, data_dir)
     with rasterio.open(area_dir(area, data_dir) / "reference.tif") as src:
         ref = src.read().transpose(1, 2, 0)  # HxWx3 uint8
-    for bucket in LIGHTING_BUCKETS:
-        for r in range(1, TRAIN_REALIZATIONS):
-            img = relight(ref, LIGHTING_BUCKETS[bucket], meta["gsd_m"],
-                         stable_hash(f"{area}:{bucket}:trainreal:{r}"))
-            Image.fromarray(img).save(renders_dir / f"{bucket}_r{r}.png")
-            del img
+    for bucket, r in todo:
+        img = relight(ref, LIGHTING_BUCKETS[bucket], meta["gsd_m"],
+                     stable_hash(f"{area}:{bucket}:trainreal:{r}"))
+        tmp = renders_dir / f".{bucket}_r{r}.png.tmp"
+        Image.fromarray(img).save(tmp, format="PNG")  # ext is .tmp, so be explicit
+        tmp.rename(renders_dir / f"{bucket}_r{r}.png")
+        del img
     del ref
     return renders_dir
 
