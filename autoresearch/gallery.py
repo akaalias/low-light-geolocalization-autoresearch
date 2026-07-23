@@ -34,20 +34,23 @@ FAIL = 1e9
 PATIENCE = 4  # mirrors loop.sh's PATIENCE default; restated here since the
               # gallery only reads the DB, never the shell env the loop ran with
 
-# Era 2 (docs/infra.md): the whole loop moved onto a rented RunPod 4090 that
-# bills continuously by wall clock regardless of phase (design/train/score),
-# not per-GPU-second of training alone — so an experiment's cost is its full
-# duration_s at the pod's rate. Era 1 (ids 1-10, M1 MacBook Air) had ~$0
-# marginal infra cost but real per-call LLM API billing instead; that's a
-# different cost basis entirely and isn't shown here.
-RUNPOD_USD_PER_HR = 0.69
+# The middle era of the project ran on a rented cloud GPU billed by wall
+# clock regardless of phase (design/train/score), not per-GPU-second of
+# training alone — so a pod-era experiment's compute cost is its full
+# duration_s at the hourly rate. The bootstrap era (ids 1-10) and the later
+# local era (2026-07-23 on) have ~$0 marginal compute cost instead, so only
+# the pod window carries a Cost figure.
+POD_USD_PER_HR = 0.69
 POD_ERA_START = "2026-07-21"
+POD_ERA_END = "2026-07-23T12:00:00"   # loop moved back to a local machine
 
 
 def cost_str(e):
-    if e["kind"] == "holdout_check" or not e.get("duration_s") or e["ts"] < POD_ERA_START:
+    ts = e["ts"]
+    if (e["kind"] == "holdout_check" or not e.get("duration_s")
+            or ts < POD_ERA_START or ts >= POD_ERA_END):
         return "—"
-    return f"${e['duration_s'] / 3600 * RUNPOD_USD_PER_HR:,.2f}"
+    return f"${e['duration_s'] / 3600 * POD_USD_PER_HR:,.2f}"
 
 
 def annotate_pivot(exps):
@@ -718,19 +721,16 @@ def status_badge():
 
 
 # Compute credit banner — full-width strip under the topnav on every page,
-# carrying the LIVE/FINISHED badge. Concrete on purpose: pod class, GPU,
-# and price, so the compute story is auditable.
+# carrying the LIVE/FINISHED badge.
 def compute_banner():
     state, _ = research_status()
-    pod = ("<a href='https://www.runpod.io' target='_blank' rel='noopener'>RunPod</a> Secure Cloud pod "
-           "— one RTX 4090 (24 GB) at $0.69/hr")
+    where = "a single local machine"
     if state == "finished":
-        text = (f"experiments ran around the clock on a {pod}; the research "
-                "is concluded and the record below is complete")
+        text = (f"experiments ran on {where}; the research is concluded and "
+                "the record below is complete")
     else:
-        text = (f"experiments are running around the clock on a {pod} — "
-                "every result lands on this page automatically as the loop "
-                "commits it")
+        text = (f"experiments are running on {where} — every result lands on "
+                "this page automatically as the loop commits it")
     return f"<div class='compute-banner'>{status_badge()}{text}</div>"
 
 
@@ -1491,12 +1491,12 @@ preamble into the next design prompt: do not refine the champion's current
 mechanism again — propose from a design family absent from the recent
 history. Marked ones ran under that directive; the streak resets every time
 an experiment is kept.</dd>
-<dt>Cost</dt><dd>Estimated RunPod spend for that one experiment: its measured
-wall time × the pod's <b>$0.69/hr</b> rate. The pod bills continuously by the
-clock, not per phase, so this covers the whole experiment — agent design,
-implementation, training, scoring, publishing — not GPU time alone. Shown
-from experiment 11 on, when the loop moved off a laptop onto the pod;
-earlier runs had no pod cost but real per-call LLM API billing instead.</dd>
+<dt>Cost</dt><dd>Estimated cloud-GPU spend for that one experiment: its
+measured wall time × a <b>$0.69/hr</b> rate, billed continuously by the clock
+(not per phase), so it covers the whole experiment — design, implementation,
+training, scoring, publishing — not GPU time alone. Shown only for the middle,
+rented-GPU window; the bootstrap and later local eras run at ~$0 marginal
+compute and show —.</dd>
 <dt>Category</dt><dd>Which lever the experiment pulls: architecture, loss,
 augmentation, relighting, training procedure, or quantization.</dd>
 <dt>Init</dt><dd>Weight initialization: trained from scratch, or started
@@ -1702,10 +1702,8 @@ to call, no cloud to depend on. The map is yours, and it lives in a few
 megabytes you own.</p>
 </div>
 
-<p class="psub num" style="margin-top:34px">updated {now} · experiments run around the clock on a
-<a href='https://www.runpod.io' target='_blank' rel='noopener'>RunPod</a> Secure Cloud pod — one
-RTX 4090 (24 GB) at $0.69/hr; the loop commits every result to git as
-it goes</p>
+<p class="psub num" style="margin-top:34px">updated {now} · experiments run on a single local
+machine; the loop commits every result to git as it goes</p>
 </div>
 {CREDITS}</body></html>"""
     OVERVIEW_OUT.write_text(html_page)
@@ -2212,7 +2210,7 @@ def render():
 <style>{CSS}</style><script>{JS}</script></head><body>
 {topnav('log')}
 {compute_banner()}
-{page_header("Where we are: The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a rented RTX 4090 and measured against one frozen ruler: the <b>worst</b> median position error across 6 lighting conditions × 4 test areas, on held-out crops ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
+{page_header("Where we are: The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a single GPU and measured against one frozen ruler: the <b>worst</b> median position error across 6 lighting conditions × 4 test areas, on held-out crops ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
 <div class="status-callout">
   <div class="status-callout-h">Where we are right now</div>
   <p>{status_line}</p>
@@ -2243,7 +2241,7 @@ def render():
 <th title="Largest per-area exported model. Hard limit: 4 MiB (ESP32-P4 flight computer).">Model</th>
 <th title="Single-frame inference on one CPU thread - a documented proxy for the flight computer, budget 250 ms.">Latency</th>
 <th title="Wall time of the whole experiment: agent design + training all areas + scoring.">Time</th>
-<th title="Estimated RunPod compute cost for this experiment: wall time x the pod's $0.69/hr rate — the pod bills continuously regardless of phase, so this is the whole experiment, not just GPU training time. Era 1 (ids 1-10, a laptop) had no pod cost but real per-call LLM API billing instead, not shown here.">Cost</th>
+<th title="Estimated cloud-GPU compute cost for this experiment: wall time x a $0.69/hr rate, billed continuously regardless of phase, so it is the whole experiment, not just GPU training time. Shown only for the rented-GPU window; the bootstrap and local eras run at ~$0 marginal compute and show a dash.">Cost</th>
 <th>Status</th></tr></thead><tbody>"""]
     body.append(live_row((max((e["id"] for e in exps), default=0) or 0) + 1))
 
