@@ -1,0 +1,35 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 9000,
+    "epochs": 3,
+    "device": "mps",
+    "train_seconds": 510.7,
+    "onnx_bytes": 2796540,
+    "init": "pretrained:shufflenet_v2_x0_5 IMAGENET1K_V1 conv1+maxpool+stage2+stage3 (torchvision, BSD-3)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 9,
+    "epoch_mult": 3,
+    "lr_schedule": "linear-warmup(500)+cosine to 0 over 1269 steps",
+    "confusability_alpha": 0.5,
+    "cell_weight_ratio_p90_p10_by_bucket": {
+      "morning": 3.960582210111074,
+      "midday": 3.8845480858614705,
+      "afternoon": 3.7816451090254706,
+      "early_evening": 3.789613370015571,
+      "evening": 3.693033659999239,
+      "night": 3.8412457209422666
+    },
+    "conf_shift": 0.2893318235874176,
+    "cal_logit_threshold": -0.5578660368919373,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.66,
+      "midday": 0.635,
+      "afternoon": 0.645,
+      "early_evening": 0.6525,
+      "evening": 0.5025,
+      "night": 0.41
+    }
+  }
+]

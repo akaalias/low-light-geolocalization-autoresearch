@@ -1,0 +1,21 @@
+/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/model/model.py:220: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_logits:
+[berlin] epoch 1/9 9000 crops, device=mps
+[berlin] epoch 1/9 loss=7.4186
+[berlin] epoch 2/9 9000 crops, device=mps
+[berlin] epoch 2/9 loss=7.2833
+[berlin] epoch 3/9 9000 crops, device=mps
+[berlin] epoch 3/9 loss=7.1335
+[berlin] epoch 4/9 9000 crops, device=mps
+[berlin] epoch 4/9 loss=6.9542
+[berlin] epoch 5/9 9000 crops, device=mps
+[berlin] epoch 5/9 loss=6.7997
+[berlin] epoch 6/9 9000 crops, device=mps
+[berlin] epoch 6/9 loss=6.6821
+[berlin] epoch 7/9 9000 crops, device=mps
+[berlin] epoch 7/9 loss=6.5884
+[berlin] epoch 8/9 9000 crops, device=mps
+[berlin] epoch 8/9 loss=6.5405
+[berlin] epoch 9/9 9000 crops, device=mps
+[berlin] epoch 9/9 loss=6.5397
+{"area": "berlin", "n_train_crops": 9000, "epochs": 3, "device": "mps", "train_seconds": 510.7, "onnx_bytes": 2796540, "init": "pretrained:shufflenet_v2_x0_5 IMAGENET1K_V1 conv1+maxpool+stage2+stage3 (torchvision, BSD-3)", "train_realizations": 3, "epoch_location_resampling": true, "total_epochs_run": 9, "epoch_mult": 3, "lr_schedule": "linear-warmup(500)+cosine to 0 over 1269 steps", "confusability_alpha": 0.5, "cell_weight_ratio_p90_p10_by_bucket": {"morning": 3.960582210111074, "midday": 3.8845480858614705, "afternoon": 3.7816451090254706, "early_evening": 3.789613370015571, "evening": 3.693033659999239, "night": 3.8412457209422666}, "conf_shift": 0.2893318235874176, "cal_logit_threshold": -0.5578660368919373, "cal_keep_rate_per_bucket": {"morning": 0.66, "midday": 0.635, "afternoon": 0.645, "early_evening": 0.6525, "evening": 0.5025, "night": 0.41}}
