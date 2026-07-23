@@ -736,7 +736,7 @@ def compute_banner():
 
 def live_row(next_id):
     """Pulsing in-progress row atop the research-log table. The page is
-    rebuilt at each iteration's end — i.e. moments before the NEXT
+    rebuilt at each experiment's end — i.e. moments before the NEXT
     experiment starts — so 'elapsed since build' ≈ elapsed of the run in
     flight, and the current phase is estimated from the median phase
     durations of recent runs (runs/*/timings.json). Client JS ticks the
@@ -782,13 +782,13 @@ def live_row(next_id):
     return s<60? s+' s' : Math.floor(s/60)+' m '+('0'+s%60).slice(-2)+' s';}}
   // Live phase truth: the loop force-pushes state/phase.json to the repo's
   // 'status' branch at every phase transition; raw.githubusercontent serves
-  // it with CORS. Elapsed counts from the iteration's true start.
+  // it with CORS. Elapsed counts from the experiment's true start.
   var RAW='https://raw.githubusercontent.com/akaalias/low-light-geolocalization-autoresearch/status/phase.json';
   function freshen(j){{
     // GitHub Pages pins Cache-Control to 10 min and headers are not
     // configurable — but the CDN caches per-URL, so redirecting to a
-    // ?v=<iteration> URL it has never seen always fetches the fresh build.
-    // Trigger whenever the running iteration began after this page was
+    // ?v=<experiment> URL it has never seen always fetches the fresh build.
+    // Trigger whenever the running experiment began after this page was
     // built (i.e. a newer build exists), on first load or mid-session.
     var v=String(j.iter_started);
     var cur=new URLSearchParams(location.search).get('v');
@@ -806,7 +806,7 @@ def live_row(next_id):
   refresh(); setInterval(refresh, 30000);
   // Backgrounded tabs get setInterval throttled by the browser (often to
   // minutes, not 30s) — so a tab left open in the background can sit on a
-  // stale st.iter_started from an iteration that already finished, then
+  // stale st.iter_started from an experiment that already finished, then
   // jump to the real value once it catches up. Force a fetch the instant
   // the tab becomes visible again instead of waiting for the throttled
   // interval, so returning to the tab never shows stale-then-jumping time.
@@ -1127,10 +1127,10 @@ def short_model(model_id):
 
 
 def timings_block(e):
-    """Where the iteration's wall time went — from the per-run timings.json
+    """Where the experiment's wall time went — from the per-run timings.json
     the loop commits with every record (pod-era runs onward). Model names
     come from the row's own agent_model_design/_impl (whichever models
-    actually ran that iteration — this varies over the project's life as
+    actually ran that experiment — this varies over the project's life as
     the design/impl model assignment has changed), not a hardcoded guess."""
     p = REPO_ROOT / (e.get("artifacts_dir") or "") / "timings.json"
     if not p.exists():
@@ -1153,10 +1153,10 @@ def timings_block(e):
     if not segs:
         return ""
     total = t.get("total_s")
-    tail = (f" · whole iteration <b class='num'>{fmt_dur(total)}</b>"
+    tail = (f" · whole experiment <b class='num'>{fmt_dur(total)}</b>"
             if total else "")
     return ("<div class='score-sub' style='margin-top:10px'>"
-            "<b>Where this iteration's time went:</b> "
+            "<b>Where this experiment's time went:</b> "
             + " · ".join(segs) + tail + "</div>")
 
 
@@ -1491,9 +1491,9 @@ preamble into the next design prompt: do not refine the champion's current
 mechanism again — propose from a design family absent from the recent
 history. Marked ones ran under that directive; the streak resets every time
 an experiment is kept.</dd>
-<dt>Cost</dt><dd>Estimated RunPod spend for that one iteration: its measured
+<dt>Cost</dt><dd>Estimated RunPod spend for that one experiment: its measured
 wall time × the pod's <b>$0.69/hr</b> rate. The pod bills continuously by the
-clock, not per phase, so this covers the whole iteration — agent design,
+clock, not per phase, so this covers the whole experiment — agent design,
 implementation, training, scoring, publishing — not GPU time alone. Shown
 from experiment 11 on, when the loop moved off a laptop onto the pod;
 earlier runs had no pod cost but real per-call LLM API billing instead.</dd>
@@ -1625,7 +1625,7 @@ That sensor choice is the premise of the whole project: at high gain it
 keeps daylight-like scene structure deep into the night — trading it for
 noise and washed-out color, which is exactly what the night renders below
 show — so a single compact model can localize from morning to midnight.</p>
-<p>The research loop is Karpathy-style autoresearch: each iteration, a
+<p>The research loop is Karpathy-style autoresearch: each experiment, a
 headless coding agent reads the full experiment history, pre-registers ONE
 focused change — hypothesis, method, expected outcome, and a hand-drawn
 architecture figure — then the harness trains and scores it against a
@@ -2242,8 +2242,8 @@ def render():
 <th title="Worst median position error across 6 lighting conditions x 4 areas, on held-out crops. The one number the loop optimizes. Target: at or below 20 m.">Worst-case error</th>
 <th title="Largest per-area exported model. Hard limit: 4 MiB (ESP32-P4 flight computer).">Model</th>
 <th title="Single-frame inference on one CPU thread - a documented proxy for the flight computer, budget 250 ms.">Latency</th>
-<th title="Wall time of the whole iteration: agent design + training all areas + scoring.">Time</th>
-<th title="Estimated RunPod compute cost for this iteration: wall time x the pod's $0.69/hr rate — the pod bills continuously regardless of phase, so this is the whole iteration, not just GPU training time. Era 1 (ids 1-10, a laptop) had no pod cost but real per-call LLM API billing instead, not shown here.">Cost</th>
+<th title="Wall time of the whole experiment: agent design + training all areas + scoring.">Time</th>
+<th title="Estimated RunPod compute cost for this experiment: wall time x the pod's $0.69/hr rate — the pod bills continuously regardless of phase, so this is the whole experiment, not just GPU training time. Era 1 (ids 1-10, a laptop) had no pod cost but real per-call LLM API billing instead, not shown here.">Cost</th>
 <th>Status</th></tr></thead><tbody>"""]
     body.append(live_row((max((e["id"] for e in exps), default=0) or 0) + 1))
 

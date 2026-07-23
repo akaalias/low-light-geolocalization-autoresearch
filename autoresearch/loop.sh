@@ -8,7 +8,12 @@
 # improvements, run the read-only Hamburg holdout check (§5) — logged, never
 # fed back into keep/revert.
 #
-# Usage:   ./autoresearch/loop.sh [iterations]
+# Usage:   ./autoresearch/loop.sh [target-experiment-count]
+#          The argument is a TARGET, not a count of runs: the loop keeps
+#          designing/training/scoring experiments until the database holds
+#          that many development experiments, then stops. So on a database
+#          that already has 48 experiments, `loop.sh 100` runs 52 more;
+#          `loop.sh 100` again later runs nothing. Default target: 100.
 # Env:     AREAS          (default "berlin prignitz munich frankfurt")
 #          PATIENCE       (default 4: consecutive non-kept experiments before
 #                          the design prompt demands a pivot)
@@ -19,7 +24,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-ITERATIONS="${1:-10}"
+TARGET="${1:-100}"
 AREAS="${AREAS:-berlin prignitz munich frankfurt}"
 EPOCHS="${EPOCHS:-8}"
 HOLDOUT_EVERY="${HOLDOUT_EVERY:-5}"
@@ -28,6 +33,12 @@ PY=".venv/bin/python"
 STATE="state"; mkdir -p "$STATE" runs
 
 best_metric() { [ -f "$STATE/best.json" ] && $PY -c "import json;print(json.load(open('$STATE/best.json'))['primary'])" || echo 1e18; }
+
+# How many development experiments the database already holds — the quantity
+# the TARGET is measured against (holdout checks are diagnostics, not
+# experiments, so they don't count). This is what makes `loop.sh N` mean
+# "reach N experiments" rather than "run N more times".
+dev_experiment_count() { sqlite3 experiments.sqlite "SELECT COUNT(*) FROM experiments WHERE kind='development';" 2>/dev/null || echo 0; }
 
 # Sync health, updated after every push attempt (see step 6) — surfaced via
 # phase.json below so an external health-check can tell the pod is stuck
@@ -41,8 +52,12 @@ PUSH_AHEAD=0
 # force-pushed to refs/heads/status (plumbing objects only — main's history
 # stays untouched). The page fetches it from raw.githubusercontent.
 report_phase() {
+  # phase.json key names are kept ("iter"/"iterations"/"iter_started") for
+  # backward compatibility with the live page and the external health-check
+  # that already read them; the values now carry the experiment number, the
+  # target, and the experiment's start time.
   printf '{"iter":%s,"iterations":%s,"iter_started":%s,"phase":"%s","phase_started":%s,"best":%s,"push_ok":%s,"push_ahead":%s}\n' \
-    "${i:-0}" "$ITERATIONS" "${ITER_T0:-$(date +%s)}" "$1" "$(date +%s)" "$(best_metric)" \
+    "${N:-0}" "$TARGET" "${EXPERIMENT_T0:-$(date +%s)}" "$1" "$(date +%s)" "$(best_metric)" \
     "$PUSH_OK" "$PUSH_AHEAD" \
     > "$STATE/phase.json" || true
   ( BLOB=$(git hash-object -w "$STATE/phase.json") &&
@@ -52,7 +67,7 @@ report_phase() {
 }
 
 # Refuse to let any single oversized file into a commit. Bug history: one
-# iteration once leaked 5.7 GB/iteration of training scratch (fixed
+# experiment once leaked 5.7 GB/experiment of training scratch (fixed
 # separately by purging train_$area dirs below); a different run committed
 # 1.4 GB of uncropped debug renders that sat unnoticed for a day and broke
 # CI disk (2026-07-22). This catches anything of that shape before `git
@@ -72,10 +87,76 @@ quarantine_oversized() {
   done
 }
 
+# Draw THIS experiment's architecture figure — the agent-drawn, figcheck-
+# validated SVG in the same visual language as every prior figure (see
+# autoresearch/prompt_figure.md and archive/arch_svg_reference.py). Runs for
+# EVERY experiment regardless of the eventual keep/revert/reject outcome:
+# the figure is record-keeping, not the metric, so it must not depend on
+# whether the design survives the gates or improves the score. Reads the
+# design from runs/pending_experiment.json and merges the resulting
+# architecture_svg back into it, so the field rides along with the record
+# through whichever exit path the experiment takes (the DB writer at each
+# gate reads architecture_svg from the same file). Non-fatal by design: a
+# failed or invalid draw just leaves that record without a figure rather
+# than aborting the experiment.
+FIGURE_MODEL="${FIGURE_MODEL:-${IMPL_MODEL:-claude-sonnet-5}}"
+draw_figure() {
+  local rundir="$1"
+  local design="runs/pending_experiment.json"
+  [ "${SKIP_AGENT:-0}" = "1" ] && return 0
+  # Figures are token-expensive (the agent iterates against figcheck's
+  # geometry — minutes and a real slice of subscription usage each). On by
+  # default so every experiment is illustrated; set DRAW_FIGURES=0 at launch
+  # to skip them entirely and conserve usage.
+  [ "${DRAW_FIGURES:-1}" = "1" ] || return 0
+  [ -f "$design" ] || return 0
+  # Only draw when the design actually carries an architecture to illustrate.
+  $PY -c "import json,sys; d=json.load(open('$design')); \
+    sys.exit(0 if d.get('architecture',{}).get('stages') else 1)" 2>/dev/null || return 0
+  report_phase figure
+  local prompt="$rundir/prompt_figure.md" out="$rundir/figure.json"
+  rm -f "$out"
+  cat autoresearch/prompt_figure.md > "$prompt"
+  { echo
+    echo "## Paths for this run (resolve the placeholders referenced above)"
+    echo "- Read the experiment record from: \`$design\`"
+    echo "- Write ONLY this output file: \`$out\` — a single JSON object of the"
+    echo "  form {\"architecture_svg\": \"<svg …>\"} and nothing else."
+  } >> "$prompt"
+  # --max-turns bounds cost: the agent stops the moment figcheck passes, so a
+  # cap only bites when a layout won't converge — better a capped, slightly
+  # imperfect figure than an open-ended grind (an uncapped run once churned
+  # 8+ min on one figure). Merge whatever valid SVG it wrote even on a
+  # non-zero exit, rather than discarding finished work.
+  "$CLAUDE_BIN" -p "$(cat "$prompt")" \
+    --model "$FIGURE_MODEL" \
+    --permission-mode acceptEdits \
+    --max-turns "${FIGURE_MAX_TURNS:-45}" \
+    --allowedTools "Read,Write,Grep,Glob,Bash(.venv/bin/python:*)" \
+    --output-format json </dev/null >"$rundir/agent_figure.json" \
+    || echo "figure agent exited non-zero (turn limit?) — using whatever figure it wrote"
+  # Merge the agent's architecture_svg into the design record (loop.sh does
+  # the merge; the agent only ever writes its own output file, never the
+  # record). Skips silently if no valid <svg> was produced.
+  $PY - "$design" "$out" <<'PYFIG' || echo "figure merge skipped (no valid svg produced)"
+import json, sys
+design_path, fig_path = sys.argv[1], sys.argv[2]
+fig = json.load(open(fig_path))
+svg = (fig.get("architecture_svg") or "").strip()
+if not svg.startswith("<svg"):
+    raise SystemExit(1)
+d = json.load(open(design_path))
+d["architecture_svg"] = svg
+json.dump(d, open(design_path, "w"), indent=2)
+PYFIG
+  $PY -m autoresearch.figcheck "$out" \
+    || echo "WARNING: figure violates the anchor contract (cosmetic — kept anyway)"
+}
+
 # A dirty tree would blur lineage (a kept commit must contain exactly one
 # experiment's change) — but the loop itself leaves state/ modified, so
 # instead of aborting, checkpoint pending TRACKED changes into their own
-# commit and start every iteration from a clean, attributable tree.
+# commit and start every experiment from a clean, attributable tree.
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "Working tree dirty — committing pending changes as a pre-loop checkpoint."
   git add -u
@@ -83,14 +164,14 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
     echo "FATAL: checkpoint commit failed; commit or stash manually." >&2; exit 1; }
 fi
 
-# Graceful exit: Ctrl-C / SIGTERM discards only the in-flight iteration.
+# Graceful exit: Ctrl-C / SIGTERM discards only the in-flight experiment.
 # Everything durable is already on disk — kept improvements are committed,
-# finished iterations are in experiments.sqlite, best is in state/best.json —
+# finished experiments are in experiments.sqlite, best is in state/best.json —
 # so a restart simply continues from the current best.
 cleanup_interrupt() {
   echo ""
-  echo "Interrupted — discarding the in-flight iteration (all completed"
-  echo "iterations are already committed/logged). Safe to restart with:"
+  echo "Interrupted — discarding the in-flight experiment (all completed"
+  echo "experiments are already committed/logged). Safe to restart with:"
   echo "  ./autoresearch/loop.sh"
   git checkout -- model/ 2>/dev/null || true
   rm -f runs/pending_experiment.json
@@ -99,7 +180,7 @@ cleanup_interrupt() {
 trap cleanup_interrupt INT TERM
 
 # Graceful stop request: type "exit" (or quit/stop) + Enter while the loop is
-# running to finish the CURRENT iteration completely (train, score, log,
+# running to finish the CURRENT experiment completely (train, score, log,
 # keep/revert) and then stop. Also triggered by: touch state/stop
 # (useful from another terminal or when running under nohup).
 STOP_FLAG="$STATE/stop"
@@ -110,28 +191,48 @@ if [ -t 0 ]; then
       case "$line" in
         exit|quit|stop|q)
           touch "$STOP_FLAG"
-          echo ">>> stop requested — will exit gracefully after the current iteration" ;;
+          echo ">>> stop requested — will exit gracefully after the current experiment" ;;
       esac
     done ) &
   WATCHER_PID=$!
-  echo "Type 'exit' + Enter to stop gracefully after the current iteration"
-  echo "(Ctrl-C aborts the in-flight iteration immediately)."
+  echo "Type 'exit' + Enter to stop gracefully after the current experiment"
+  echo "(Ctrl-C aborts the in-flight experiment immediately)."
 fi
 cleanup_watcher() { [ -n "$WATCHER_PID" ] && kill "$WATCHER_PID" 2>/dev/null || true; }
 trap cleanup_watcher EXIT
 
-for i in $(seq 1 "$ITERATIONS"); do
+# Run experiments until the database holds TARGET of them (see Usage). The
+# ATTEMPTS cap is a safety net only: an experiment that fails before it logs a
+# row (agent never produced a design, agent call errored) doesn't advance the
+# count, so without a cap a persistent failure would spin forever.
+ATTEMPTS=0
+MAX_ATTEMPTS=$(( TARGET * 3 + 30 ))
+while :; do
   if [ -f "$STOP_FLAG" ]; then
     rm -f "$STOP_FLAG"
-    echo "Graceful stop: $((i-1))/$ITERATIONS iterations completed and logged."
+    echo "Graceful stop requested — $(dev_experiment_count)/$TARGET experiments recorded so far."
     break
   fi
-  RUN_ID="$(date -u +%Y%m%d_%H%M%S)_iter$i"
+  DONE="$(dev_experiment_count)"
+  if [ "$DONE" -ge "$TARGET" ]; then
+    echo "Target reached: $DONE/$TARGET experiments recorded — nothing more to run."
+    break
+  fi
+  ATTEMPTS=$(( ATTEMPTS + 1 ))
+  if [ "$ATTEMPTS" -gt "$MAX_ATTEMPTS" ]; then
+    echo "Safety stop: $ATTEMPTS attempts but only $DONE/$TARGET experiments recorded — experiments are failing to complete; investigate before continuing."
+    break
+  fi
+  # This experiment's number IS the database id it will be assigned, so the
+  # commit message, run directory, and gallery entry all name the same
+  # "Experiment N".
+  N="$(sqlite3 experiments.sqlite "SELECT COALESCE(MAX(id),0)+1 FROM experiments;" 2>/dev/null || echo 1)"
+  RUN_ID="$(date -u +%Y%m%d_%H%M%S)_experiment$N"
   RUN_DIR="runs/$RUN_ID"
   mkdir -p "$RUN_DIR"
   PARENT_COMMIT="$(git rev-parse HEAD)"
-  ITER_T0="$(date +%s)"
-  echo "=== iteration $i/$ITERATIONS  run=$RUN_ID  parent=$PARENT_COMMIT ==="
+  EXPERIMENT_T0="$(date +%s)"
+  echo "=== Experiment $N ($DONE/$TARGET recorded)  run=$RUN_ID  parent=$PARENT_COMMIT ==="
 
   # 1. Two-stage agent (models chosen per task — design is the creative/
   #    strategic work, implementation is focused code editing):
@@ -188,7 +289,7 @@ Your design MUST NOT use it. Not re-tuned, not truncated at a different
 layer, not wrapped in a dispatcher, not kept as one branch of an ensemble,
 not reloaded from the same weights blob under a new class name. After
 implementation the resulting source is scanned, and if any of those
-identifiers still appear in model/ the iteration is REJECTED before
+identifiers still appear in model/ the experiment is REJECTED before
 training. Rethinking the machinery bolted around an unexamined trunk is
 exactly what the last five demanded pivots did; it is not a pivot.
 
@@ -197,7 +298,7 @@ pretrained family. Carrying the same trunk across is not.
 
 Every non-frozen stage in your architecture.stages list must be marked
 "changed": true this round. If any stage is left exactly as before, this
-iteration will be rejected before training even starts — this is checked
+experiment will be rejected before training even starts — this is checked
 against your actual code diff, not just your own self-report.
 
 PIVOTNOTE
@@ -215,14 +316,21 @@ PIVOTNOTE
       --allowedTools "Read,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
       --output-format json </dev/null >"$RUN_DIR/agent_design.json" \
       || { echo "design agent failed (rate limit/usage cap?) — sleeping \
-${AGENT_RETRY_SLEEP:-1800}s before next iteration"
+${AGENT_RETRY_SLEEP:-1800}s before next experiment"
            report_phase waiting
            sleep "${AGENT_RETRY_SLEEP:-1800}"; continue; }
     T_DESIGN=$(( $(date +%s) - T0 ))
     if [ ! -f runs/pending_experiment.json ]; then
-      echo "design agent produced no runs/pending_experiment.json; skipping iteration"
+      echo "design agent produced no runs/pending_experiment.json; skipping experiment"
       continue
     fi
+
+    # Draw the architecture figure now, from the design alone — BEFORE any
+    # gate below can reject the experiment — so every experiment ends up with
+    # one regardless of outcome (kept, reverted, or rejected pre-training).
+    # The SVG is merged into runs/pending_experiment.json and rides along to
+    # whichever exit path this experiment takes.
+    draw_figure "$RUN_DIR"
 
     # Early pivot-completeness check: if a pivot was demanded, verify the
     # DESIGN's own self-report already shows every non-frozen stage changed
@@ -254,11 +362,11 @@ PYCHECK
         $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
           --experiment-file "$RUN_DIR/experiment.json" \
           --result "rejected before implementation: a complete architecture rethink was required, but these stages were already self-reported unchanged in the design: $UNCHANGED_STAGES" \
-          --conclusion "REJECTED — pivot directive was not honored (partial change, not a complete rethink); iteration discarded before implementation" \
+          --conclusion "REJECTED — pivot directive was not honored (partial change, not a complete rethink); experiment discarded before implementation" \
           --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept 0 \
           --prompt-file "$RUN_DIR/prompt.md" \
           --agent-model-design "$AGENT_MODEL_DESIGN" --agent-model-impl "" \
-          --duration-s "$(( $(date +%s) - ITER_T0 ))" || true
+          --duration-s "$(( $(date +%s) - EXPERIMENT_T0 ))" || true
         continue
       fi
     fi
@@ -270,7 +378,7 @@ PYCHECK
       --permission-mode acceptEdits \
       --allowedTools "Read,Edit,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
       --output-format json </dev/null >"$RUN_DIR/agent_impl.json" \
-      || { echo "impl agent failed; skipping iteration"
+      || { echo "impl agent failed; skipping experiment"
            git checkout -- model/ 2>/dev/null || true; continue; }
     T_IMPL=$(( $(date +%s) - T0 ))
     AGENT_MODEL_IMPL="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_impl.json" 2>/dev/null || echo "${IMPL_MODEL:-claude-sonnet-5}")"
@@ -321,11 +429,11 @@ PYCHECK
     $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
       --experiment-file "$RUN_DIR/experiment.json" \
       --result "rejected before training: $REJECT_REASON" \
-      --conclusion "REJECTED — pivot directive was not honored (self-report contradicted by the real diff); iteration discarded without training" \
+      --conclusion "REJECTED — pivot directive was not honored (self-report contradicted by the real diff); experiment discarded without training" \
       --parent-commit "$PARENT_COMMIT" --artifacts-dir "$RUN_DIR" --kept 0 \
       --prompt-file "$RUN_DIR/prompt.md" \
       --agent-model-design "$AGENT_MODEL_DESIGN" --agent-model-impl "$AGENT_MODEL_IMPL" \
-      --duration-s "$(( $(date +%s) - ITER_T0 ))" || true
+      --duration-s "$(( $(date +%s) - EXPERIMENT_T0 ))" || true
     continue
   fi
 
@@ -363,7 +471,7 @@ for a in sys.argv[2:]:
 (run / "train_info.json").write_text(json.dumps(merged, indent=2))
 PYMERGE
     # Per-area training dirs are SCRATCH (agent code may cache gigabytes of
-    # renders there — exp 17 wrote ~5.7 GB/iteration). Models and
+    # renders there — exp 17 wrote ~5.7 GB/experiment). Models and
     # train_info are merged out above; everything else must never reach
     # the record or LFS.
     for area in $AREAS; do rm -rf "$RUN_DIR/train_$area"; done
@@ -392,7 +500,7 @@ PYMERGE
   RESULT="primary worst-case median error = $METRIC m (previous best $BEST m); full per-area/bucket breakdown in metrics.json"
   if [ "$KEEP" = "1" ]; then
     quarantine_oversized model
-    git add -A model/ && git commit -q -m "autoresearch iter $i: $METRIC m (was $BEST)
+    git add -A model/ && git commit -q -m "Experiment $N: $METRIC m (previous best $BEST m)
 
 $(cat "$RUN_DIR/experiment.json")" || true
     echo "{\"primary\": $METRIC, \"run\": \"$RUN_ID\", \"commit\": \"$(git rev-parse HEAD)\"}" > "$STATE/best.json"
@@ -404,7 +512,7 @@ $(cat "$RUN_DIR/experiment.json")" || true
     CONCLUSION="REVERTED — metric did not improve ($METRIC m vs best $BEST m); change discarded"
     echo "REVERTED: $METRIC m (best remains $BEST)"
   fi
-  DURATION_S=$(( $(date +%s) - ITER_T0 ))
+  DURATION_S=$(( $(date +%s) - EXPERIMENT_T0 ))
   $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
     --experiment-file "$RUN_DIR/experiment.json" \
     --result "$RESULT" --conclusion "$CONCLUSION" \
@@ -439,7 +547,7 @@ $(cat "$RUN_DIR/experiment.json")" || true
   T_GALLERY=$(( $(date +%s) - T0 ))
 
   # Per-phase timing breakdown — committed with the record so the gallery's
-  # experiment-detail view can render where the iteration's time went.
+  # experiment-detail view can render where the experiment's time went.
   $PY - <<PYTIMES || true
 import json
 json.dump({
@@ -447,22 +555,22 @@ json.dump({
     "train_wall_s": $T_TRAIN, "score_s": $T_SCORE,
     "samples_s": $T_SAMPLES, "holdout_s": $T_HOLDOUT,
     "gallery_s": $T_GALLERY,
-    "total_s": $(( $(date +%s) - ITER_T0 )),
+    "total_s": $(( $(date +%s) - EXPERIMENT_T0 )),
 }, open("$RUN_DIR/timings.json", "w"), indent=2)
 PYTIMES
 
-  # 6. Persist the complete iteration record — artifacts (incl. any holdout
+  # 6. Persist the complete experiment record — artifacts (incl. any holdout
   #    check), lineage DB, state — for kept AND reverted experiments, and
   #    push off-site. A reverted experiment's record lives only here and in
   #    SQLite, so this commit is what makes the full research trail survive
   #    the pod. Push failures are non-fatal: everything is committed locally
-  #    and pushes retry implicitly next iteration — but see PUSH_OK/
+  #    and pushes retry implicitly next experiment — but see PUSH_OK/
   #    PUSH_AHEAD above: a real content conflict with a laptop commit won't
   #    resolve itself on retry, so it's surfaced via phase.json instead of
   #    just logged into a terminal nobody's watching.
   quarantine_oversized "$RUN_DIR"
   git add -A "$RUN_DIR" experiments.sqlite state/ 2>/dev/null || true
-  git commit -q -m "iter $i record: $RUN_ID ($METRIC m, kept=$KEEP)" || true
+  git commit -q -m "Experiment $N record: $RUN_ID ($METRIC m, kept=$KEEP)" || true
   # Rebase onto origin first: harness/docs commits pushed from the laptop
   # while the loop runs would otherwise permanently diverge us from origin
   # (tree is clean here — everything above is committed).

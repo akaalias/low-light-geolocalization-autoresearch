@@ -1,6 +1,6 @@
-# Autoresearch iteration — one focused experiment
+# Autoresearch experiment — the design stage
 
-You are one iteration of an autonomous research loop for UAV low-light
+You are one experiment of an autonomous research loop for UAV low-light
 geolocalization. Read `CLAUDE.md` (§1, §3, §6 especially) for full context.
 The harness (loop.sh) will train, score, log, and keep/revert AFTER you exit —
 you only design the experiment and edit the code.
@@ -101,7 +101,7 @@ you only design the experiment and edit the code.
   implementation stage does) and files listed in `/FROZEN` are off-limits;
   the harness hard-reverts any change to them.
 - NEVER touch, read, or evaluate the `hamburg` holdout area (§5).
-- ONE focused change per iteration — if you can't describe it in one sentence,
+- ONE focused change per experiment — if you can't describe it in one sentence,
   it's too big. Prefer architectural/procedural novelty over hyperparameter
   nudges (§3): changing a learning rate is a weak experiment; changing the
   coordinate parameterization, loss family, relighting-for-training, or model
