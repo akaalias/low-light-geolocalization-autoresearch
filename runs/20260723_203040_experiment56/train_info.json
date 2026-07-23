@@ -1,0 +1,238 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 72000,
+    "n_train_crops_day": 18000,
+    "n_train_crops_night": 18000,
+    "n_train_crops_gate": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2413.3,
+    "onnx_bytes": 2595885,
+    "init": "from-scratch (two independent specialist trunks + trunk-free dispatcher gate)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "day_buckets": [
+      "morning",
+      "midday",
+      "afternoon"
+    ],
+    "night_buckets": [
+      "early_evening",
+      "evening",
+      "night"
+    ],
+    "specialist_total_epochs_run": 24,
+    "gate_total_epochs_run": 2,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0, independently per phase",
+    "confusability_alpha": 0.5,
+    "cell_weight_ratio_p90_p10": 5.013796448450156,
+    "grid_k": 16,
+    "day_calibration": {
+      "conf_shift": -0.3498213589191437,
+      "cal_logit_threshold": -1.1970192193984985,
+      "cal_keep_rate_per_bucket": {
+        "morning": 0.475,
+        "midday": 0.4,
+        "afternoon": 0.43
+      }
+    },
+    "night_calibration": {
+      "conf_shift": -1.1680539846420288,
+      "cal_logit_threshold": -2.015251874923706,
+      "cal_keep_rate_per_bucket": {
+        "early_evening": 0.615,
+        "evening": 0.6375,
+        "night": 0.4
+      }
+    },
+    "conf_shift": -0.44864073395729065,
+    "cal_logit_threshold": -1.2958385944366455,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.44,
+      "midday": 0.665,
+      "afternoon": 0.4,
+      "early_evening": 0.8475,
+      "evening": 0.915,
+      "night": 0.8825
+    }
+  },
+  {
+    "area": "prignitz",
+    "n_train_crops": 72000,
+    "n_train_crops_day": 18000,
+    "n_train_crops_night": 18000,
+    "n_train_crops_gate": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 1719.9,
+    "onnx_bytes": 2595885,
+    "init": "from-scratch (two independent specialist trunks + trunk-free dispatcher gate)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "day_buckets": [
+      "morning",
+      "midday",
+      "afternoon"
+    ],
+    "night_buckets": [
+      "early_evening",
+      "evening",
+      "night"
+    ],
+    "specialist_total_epochs_run": 24,
+    "gate_total_epochs_run": 2,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0, independently per phase",
+    "confusability_alpha": 0.5,
+    "cell_weight_ratio_p90_p10": 3.3439834059414,
+    "grid_k": 16,
+    "day_calibration": {
+      "conf_shift": 0.5604718327522278,
+      "cal_logit_threshold": -0.2867260277271271,
+      "cal_keep_rate_per_bucket": {
+        "morning": 0.4,
+        "midday": 0.44,
+        "afternoon": 0.42
+      }
+    },
+    "night_calibration": {
+      "conf_shift": -0.4873211681842804,
+      "cal_logit_threshold": -1.3345190286636353,
+      "cal_keep_rate_per_bucket": {
+        "early_evening": 0.665,
+        "evening": 0.6525,
+        "night": 0.4
+      }
+    },
+    "conf_shift": -0.2885109484195709,
+    "cal_logit_threshold": -1.1357088088989258,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.495,
+      "midday": 0.575,
+      "afternoon": 0.455,
+      "early_evening": 0.4,
+      "evening": 0.4925,
+      "night": 0.7
+    }
+  },
+  {
+    "area": "munich",
+    "n_train_crops": 72000,
+    "n_train_crops_day": 18000,
+    "n_train_crops_night": 18000,
+    "n_train_crops_gate": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2893.7,
+    "onnx_bytes": 2595885,
+    "init": "from-scratch (two independent specialist trunks + trunk-free dispatcher gate)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "day_buckets": [
+      "morning",
+      "midday",
+      "afternoon"
+    ],
+    "night_buckets": [
+      "early_evening",
+      "evening",
+      "night"
+    ],
+    "specialist_total_epochs_run": 24,
+    "gate_total_epochs_run": 2,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0, independently per phase",
+    "confusability_alpha": 0.5,
+    "cell_weight_ratio_p90_p10": 3.741114580065705,
+    "grid_k": 16,
+    "day_calibration": {
+      "conf_shift": 0.3413149416446686,
+      "cal_logit_threshold": -0.5058829188346863,
+      "cal_keep_rate_per_bucket": {
+        "morning": 0.4,
+        "midday": 0.405,
+        "afternoon": 0.47
+      }
+    },
+    "night_calibration": {
+      "conf_shift": -1.1610416173934937,
+      "cal_logit_threshold": -2.008239507675171,
+      "cal_keep_rate_per_bucket": {
+        "early_evening": 0.8575,
+        "evening": 0.7475,
+        "night": 0.4
+      }
+    },
+    "conf_shift": -0.5030564665794373,
+    "cal_logit_threshold": -1.3502542972564697,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.4,
+      "midday": 0.4575,
+      "afternoon": 0.475,
+      "early_evening": 0.8175,
+      "evening": 0.8675,
+      "night": 0.9075
+    }
+  },
+  {
+    "area": "frankfurt",
+    "n_train_crops": 72000,
+    "n_train_crops_day": 18000,
+    "n_train_crops_night": 18000,
+    "n_train_crops_gate": 36000,
+    "epochs": 8,
+    "device": "cuda",
+    "train_seconds": 2605.1,
+    "onnx_bytes": 2595885,
+    "init": "from-scratch (two independent specialist trunks + trunk-free dispatcher gate)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "day_buckets": [
+      "morning",
+      "midday",
+      "afternoon"
+    ],
+    "night_buckets": [
+      "early_evening",
+      "evening",
+      "night"
+    ],
+    "specialist_total_epochs_run": 24,
+    "gate_total_epochs_run": 2,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0, independently per phase",
+    "confusability_alpha": 0.5,
+    "cell_weight_ratio_p90_p10": 4.059908202466206,
+    "grid_k": 16,
+    "day_calibration": {
+      "conf_shift": 0.09422257542610168,
+      "cal_logit_threshold": -0.7529752850532532,
+      "cal_keep_rate_per_bucket": {
+        "morning": 0.45,
+        "midday": 0.4,
+        "afternoon": 0.4
+      }
+    },
+    "night_calibration": {
+      "conf_shift": -1.2006326913833618,
+      "cal_logit_threshold": -2.047830581665039,
+      "cal_keep_rate_per_bucket": {
+        "early_evening": 0.7775,
+        "evening": 0.7075,
+        "night": 0.4
+      }
+    },
+    "conf_shift": -0.3270083963871002,
+    "cal_logit_threshold": -1.174206256866455,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.4,
+      "midday": 0.6425,
+      "afternoon": 0.625,
+      "early_evening": 0.485,
+      "evening": 0.765,
+      "night": 0.98
+    }
+  }
+]
