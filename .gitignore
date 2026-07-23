@@ -9,3 +9,8 @@ __pycache__/
 _site/
 /index.html
 runs/*/train_*/
+# Oversized files pulled out of a commit by loop.sh's quarantine_oversized
+# live here and must NEVER be committed — they are deliberately excluded
+# scratch (100-144 MB training renders once slipped in via `git add -A
+# state/` and broke every push for ~10 h, 2026-07-23). Keep them untracked.
+state/quarantine/
