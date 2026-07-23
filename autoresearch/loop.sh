@@ -27,6 +27,12 @@ cd "$(dirname "$0")/.."
 TARGET="${1:-100}"
 AREAS="${AREAS:-berlin prignitz munich frankfurt}"
 EPOCHS="${EPOCHS:-8}"
+# Training budget knobs (env-overridable, champion code untouched). Crops per
+# lighting bucket × 6 buckets = crops/epoch; total epochs = EPOCHS × EPOCH_MULT
+# (3, in train.py). Defaults reproduce the heavy recipe (6000 → 36k crops,
+# 8 → 24 epochs). Lower both for fast local exploration, e.g.
+# TRAIN_CROPS=1500 EPOCHS=3.
+TRAIN_CROPS="${TRAIN_CROPS:-6000}"
 HOLDOUT_EVERY="${HOLDOUT_EVERY:-5}"
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 PY=".venv/bin/python"
@@ -449,7 +455,8 @@ PYCHECK
     # 45+ min wall). TRAIN_THREADS overrides the default cap.
     OMP_NUM_THREADS="${TRAIN_THREADS:-8}" MKL_NUM_THREADS="${TRAIN_THREADS:-8}" \
     $PY -m model.train --area "$area" --out-dir "$RUN_DIR/train_$area" \
-      --epochs "$EPOCHS" >"$RUN_DIR/train_$area.log" 2>&1 &
+      --epochs "$EPOCHS" --max-crops-per-bucket "$TRAIN_CROPS" \
+      >"$RUN_DIR/train_$area.log" 2>&1 &
     PIDS="$PIDS $!"
   done
   for pid in $PIDS; do wait "$pid" || FAILED=1; done
@@ -528,7 +535,7 @@ $(cat "$RUN_DIR/experiment.json")" || true
   if [ "$KEEP" = "1" ] && [ $(( KEPT_COUNT % HOLDOUT_EVERY )) -eq 0 ]; then
     echo "--- holdout check (hamburg) ---"
     HODIR="$RUN_DIR/holdout"
-    $PY -m model.train --area hamburg --out-dir "$HODIR" --epochs "$EPOCHS" && \
+    $PY -m model.train --area hamburg --out-dir "$HODIR" --epochs "$EPOCHS" --max-crops-per-bucket "$TRAIN_CROPS" && \
     $PY -m pipeline.score --areas hamburg --holdout \
       --model-dir "$HODIR/models" --out "$HODIR/holdout.json" \
       --heatmap-dir "$HODIR/heatmaps" && \
