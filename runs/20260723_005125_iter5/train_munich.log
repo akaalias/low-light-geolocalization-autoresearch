@@ -1,0 +1,53 @@
+/workspace/low-light-geolocalization-autoresearch/model/model.py:249: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  margin = top2[:, 0:1] - (top2[:, 1:2] if top2.shape[1] > 1 else torch.zeros_like(top2[:, 0:1]))
+/workspace/low-light-geolocalization-autoresearch/model/model.py:255: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_aux:
+[munich] epoch 1/24 36000 crops, device=cuda
+[munich] epoch 1/24 loss=8.4285
+[munich] epoch 2/24 36000 crops, device=cuda
+[munich] epoch 2/24 loss=7.7881
+[munich] epoch 3/24 36000 crops, device=cuda
+[munich] epoch 3/24 loss=7.4797
+[munich] epoch 4/24 36000 crops, device=cuda
+[munich] epoch 4/24 loss=7.2896
+[munich] epoch 5/24 36000 crops, device=cuda
+[munich] epoch 5/24 loss=7.1396
+[munich] epoch 6/24 36000 crops, device=cuda
+[munich] epoch 6/24 loss=7.0101
+[munich] epoch 7/24 36000 crops, device=cuda
+[munich] epoch 7/24 loss=6.9080
+[munich] epoch 8/24 36000 crops, device=cuda
+[munich] epoch 8/24 loss=6.8026
+[munich] epoch 9/24 36000 crops, device=cuda
+[munich] epoch 9/24 loss=6.7085
+[munich] epoch 10/24 36000 crops, device=cuda
+[munich] epoch 10/24 loss=6.6473
+[munich] epoch 11/24 36000 crops, device=cuda
+[munich] epoch 11/24 loss=6.5622
+[munich] epoch 12/24 36000 crops, device=cuda
+[munich] epoch 12/24 loss=6.5018
+[munich] epoch 13/24 36000 crops, device=cuda
+[munich] epoch 13/24 loss=6.4462
+[munich] epoch 14/24 36000 crops, device=cuda
+[munich] epoch 14/24 loss=6.3873
+[munich] epoch 15/24 36000 crops, device=cuda
+[munich] epoch 15/24 loss=6.3341
+[munich] epoch 16/24 36000 crops, device=cuda
+[munich] epoch 16/24 loss=6.2955
+[munich] epoch 17/24 36000 crops, device=cuda
+[munich] epoch 17/24 loss=6.2481
+[munich] epoch 18/24 36000 crops, device=cuda
+[munich] epoch 18/24 loss=6.2230
+[munich] epoch 19/24 36000 crops, device=cuda
+[munich] epoch 19/24 loss=6.1858
+[munich] epoch 20/24 36000 crops, device=cuda
+[munich] epoch 20/24 loss=6.1641
+[munich] epoch 21/24 36000 crops, device=cuda
+[munich] epoch 21/24 loss=6.1544
+[munich] epoch 22/24 36000 crops, device=cuda
+[munich] epoch 22/24 loss=6.1447
+[munich] epoch 23/24 36000 crops, device=cuda
+[munich] epoch 23/24 loss=6.1307
+[munich] epoch 24/24 36000 crops, device=cuda
+[munich] epoch 24/24 loss=6.1382
+{"area": "munich", "n_train_crops": 36000, "epochs": 8, "device": "cuda", "train_seconds": 2751.7, "onnx_bytes": 3172600, "init": "from-scratch: 4-block conv trunk + coarse-field proposer + pairwise rerank comparator (exp 45)", "train_realizations": 3, "epoch_location_resampling": true, "total_epochs_run": 24, "epoch_mult": 3, "lr_schedule": "cosine-per-step to 0 over 13512 steps", "confusability_alpha": 0.5, "cell_weight_ratio_p90_p10": 3.622722257614272, "conf_shift": 2.13801908493042, "cal_logit_threshold": 1.2908212900161742, "cal_keep_rate_per_bucket": {"morning": 0.65, "midday": 0.595, "afternoon": 0.6075, "early_evening": 0.61, "evening": 0.57, "night": 0.4}}
