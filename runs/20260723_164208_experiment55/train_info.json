@@ -1,0 +1,28 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 9000,
+    "epochs": 3,
+    "device": "mps",
+    "train_seconds": 426.7,
+    "onnx_bytes": 391704,
+    "init": "from-scratch (no pretrained trunk)",
+    "train_realizations": 3,
+    "epoch_location_resampling": true,
+    "total_epochs_run": 9,
+    "epoch_mult": 3,
+    "lr_schedule": "cosine-per-step to 0 over 1269 steps",
+    "confusability_alpha": 0.5,
+    "location_weight_ratio_p90_p10": 4.540657043457031,
+    "conf_shift": -3.1132326126098633,
+    "cal_logit_threshold": -3.960430383682251,
+    "cal_keep_rate_per_bucket": {
+      "morning": 0.7825,
+      "midday": 0.76,
+      "afternoon": 0.8225,
+      "early_evening": 0.6575,
+      "evening": 0.5075,
+      "night": 0.4025
+    }
+  }
+]
