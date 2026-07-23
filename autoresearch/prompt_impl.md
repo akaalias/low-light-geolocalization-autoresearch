@@ -29,3 +29,11 @@ keep/revert after you exit. Your only job is a faithful implementation.
 - Do not run training yourself; the harness does that.
 - Python on this host is 3.11 — no 3.12-only syntax (e.g. nested
   same-quote f-strings).
+- If the design's `init_strategy` is `pretrained:<name>`, load the weights
+  from a permissively-licensed source at TRAIN time — e.g. a torchvision
+  `weights=` backbone (BSD). The GPU trainer has network, so the download
+  happens once during training and the weights get baked into the exported
+  ONNX; do NOT rely on a local weight file under `model/pretrained/` (the
+  remote trainer receives only `model.py` + `train.py`, not vendored
+  binaries), and do NOT add any network fetch to the inference/export path —
+  on-device inference must stay fully offline (§2).
