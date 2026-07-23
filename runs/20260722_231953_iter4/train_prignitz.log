@@ -1,0 +1,53 @@
+/workspace/low-light-geolocalization-autoresearch/model/model.py:229: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_logits:
+/workspace/low-light-geolocalization-autoresearch/model/model.py:231: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_translated:
+[prignitz] epoch 1/24 36000 crops, device=cuda
+[prignitz] epoch 1/24 loss=6.4542 translate_loss=0.0828
+[prignitz] epoch 2/24 36000 crops, device=cuda
+[prignitz] epoch 2/24 loss=6.0131 translate_loss=0.0741
+[prignitz] epoch 3/24 36000 crops, device=cuda
+[prignitz] epoch 3/24 loss=5.7782 translate_loss=0.0735
+[prignitz] epoch 4/24 36000 crops, device=cuda
+[prignitz] epoch 4/24 loss=5.6205 translate_loss=0.0730
+[prignitz] epoch 5/24 36000 crops, device=cuda
+[prignitz] epoch 5/24 loss=5.4867 translate_loss=0.0721
+[prignitz] epoch 6/24 36000 crops, device=cuda
+[prignitz] epoch 6/24 loss=5.3787 translate_loss=0.0713
+[prignitz] epoch 7/24 36000 crops, device=cuda
+[prignitz] epoch 7/24 loss=5.3013 translate_loss=0.0705
+[prignitz] epoch 8/24 36000 crops, device=cuda
+[prignitz] epoch 8/24 loss=5.2266 translate_loss=0.0705
+[prignitz] epoch 9/24 36000 crops, device=cuda
+[prignitz] epoch 9/24 loss=5.1563 translate_loss=0.0695
+[prignitz] epoch 10/24 36000 crops, device=cuda
+[prignitz] epoch 10/24 loss=5.0930 translate_loss=0.0684
+[prignitz] epoch 11/24 36000 crops, device=cuda
+[prignitz] epoch 11/24 loss=5.0425 translate_loss=0.0670
+[prignitz] epoch 12/24 36000 crops, device=cuda
+[prignitz] epoch 12/24 loss=4.9831 translate_loss=0.0667
+[prignitz] epoch 13/24 36000 crops, device=cuda
+[prignitz] epoch 13/24 loss=4.9379 translate_loss=0.0654
+[prignitz] epoch 14/24 36000 crops, device=cuda
+[prignitz] epoch 14/24 loss=4.8966 translate_loss=0.0649
+[prignitz] epoch 15/24 36000 crops, device=cuda
+[prignitz] epoch 15/24 loss=4.8558 translate_loss=0.0640
+[prignitz] epoch 16/24 36000 crops, device=cuda
+[prignitz] epoch 16/24 loss=4.8107 translate_loss=0.0634
+[prignitz] epoch 17/24 36000 crops, device=cuda
+[prignitz] epoch 17/24 loss=4.7836 translate_loss=0.0627
+[prignitz] epoch 18/24 36000 crops, device=cuda
+[prignitz] epoch 18/24 loss=4.7460 translate_loss=0.0622
+[prignitz] epoch 19/24 36000 crops, device=cuda
+[prignitz] epoch 19/24 loss=4.7148 translate_loss=0.0617
+[prignitz] epoch 20/24 36000 crops, device=cuda
+[prignitz] epoch 20/24 loss=4.7020 translate_loss=0.0615
+[prignitz] epoch 21/24 36000 crops, device=cuda
+[prignitz] epoch 21/24 loss=4.6875 translate_loss=0.0611
+[prignitz] epoch 22/24 36000 crops, device=cuda
+[prignitz] epoch 22/24 loss=4.6697 translate_loss=0.0609
+[prignitz] epoch 23/24 36000 crops, device=cuda
+[prignitz] epoch 23/24 loss=4.6637 translate_loss=0.0607
+[prignitz] epoch 24/24 36000 crops, device=cuda
+[prignitz] epoch 24/24 loss=4.6692 translate_loss=0.0608
+{"area": "prignitz", "n_train_crops": 36000, "epochs": 8, "device": "cuda", "train_seconds": 3716.7, "onnx_bytes": 3120221, "init": "from-scratch: DelightTranslator (residual delight filter) + plain 4-stage conv trunk (3->32->64->96->64), no pretrained weights", "train_realizations": 3, "epoch_location_resampling": true, "total_epochs_run": 24, "epoch_mult": 3, "lr_schedule": "cosine-per-step to 0 over 13512 steps", "confusability_alpha": 0.5, "cell_weight_ratio_p90_p10": 3.028598520134326, "final_epoch_translate_loss": 0.0608394672535029, "conf_shift": 0.9259745478630066, "cal_logit_threshold": 0.07877666354179368, "cal_keep_rate_per_bucket": {"morning": 0.6925, "midday": 0.7525, "afternoon": 0.755, "early_evening": 0.76, "evening": 0.76, "night": 0.4}}

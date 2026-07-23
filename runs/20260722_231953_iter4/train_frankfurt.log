@@ -1,0 +1,53 @@
+/workspace/low-light-geolocalization-autoresearch/model/model.py:229: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_logits:
+/workspace/low-light-geolocalization-autoresearch/model/model.py:231: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_translated:
+[frankfurt] epoch 1/24 36000 crops, device=cuda
+[frankfurt] epoch 1/24 loss=6.4011 translate_loss=0.0753
+[frankfurt] epoch 2/24 36000 crops, device=cuda
+[frankfurt] epoch 2/24 loss=5.8980 translate_loss=0.0622
+[frankfurt] epoch 3/24 36000 crops, device=cuda
+[frankfurt] epoch 3/24 loss=5.6909 translate_loss=0.0598
+[frankfurt] epoch 4/24 36000 crops, device=cuda
+[frankfurt] epoch 4/24 loss=5.5667 translate_loss=0.0584
+[frankfurt] epoch 5/24 36000 crops, device=cuda
+[frankfurt] epoch 5/24 loss=5.4781 translate_loss=0.0577
+[frankfurt] epoch 6/24 36000 crops, device=cuda
+[frankfurt] epoch 6/24 loss=5.3722 translate_loss=0.0564
+[frankfurt] epoch 7/24 36000 crops, device=cuda
+[frankfurt] epoch 7/24 loss=5.3109 translate_loss=0.0560
+[frankfurt] epoch 8/24 36000 crops, device=cuda
+[frankfurt] epoch 8/24 loss=5.2420 translate_loss=0.0555
+[frankfurt] epoch 9/24 36000 crops, device=cuda
+[frankfurt] epoch 9/24 loss=5.1949 translate_loss=0.0547
+[frankfurt] epoch 10/24 36000 crops, device=cuda
+[frankfurt] epoch 10/24 loss=5.1391 translate_loss=0.0543
+[frankfurt] epoch 11/24 36000 crops, device=cuda
+[frankfurt] epoch 11/24 loss=5.0814 translate_loss=0.0536
+[frankfurt] epoch 12/24 36000 crops, device=cuda
+[frankfurt] epoch 12/24 loss=5.0440 translate_loss=0.0535
+[frankfurt] epoch 13/24 36000 crops, device=cuda
+[frankfurt] epoch 13/24 loss=4.9971 translate_loss=0.0526
+[frankfurt] epoch 14/24 36000 crops, device=cuda
+[frankfurt] epoch 14/24 loss=4.9676 translate_loss=0.0526
+[frankfurt] epoch 15/24 36000 crops, device=cuda
+[frankfurt] epoch 15/24 loss=4.9266 translate_loss=0.0523
+[frankfurt] epoch 16/24 36000 crops, device=cuda
+[frankfurt] epoch 16/24 loss=4.8842 translate_loss=0.0520
+[frankfurt] epoch 17/24 36000 crops, device=cuda
+[frankfurt] epoch 17/24 loss=4.8692 translate_loss=0.0519
+[frankfurt] epoch 18/24 36000 crops, device=cuda
+[frankfurt] epoch 18/24 loss=4.8433 translate_loss=0.0515
+[frankfurt] epoch 19/24 36000 crops, device=cuda
+[frankfurt] epoch 19/24 loss=4.8145 translate_loss=0.0513
+[frankfurt] epoch 20/24 36000 crops, device=cuda
+[frankfurt] epoch 20/24 loss=4.7884 translate_loss=0.0512
+[frankfurt] epoch 21/24 36000 crops, device=cuda
+[frankfurt] epoch 21/24 loss=4.7767 translate_loss=0.0511
+[frankfurt] epoch 22/24 36000 crops, device=cuda
+[frankfurt] epoch 22/24 loss=4.7625 translate_loss=0.0509
+[frankfurt] epoch 23/24 36000 crops, device=cuda
+[frankfurt] epoch 23/24 loss=4.7727 translate_loss=0.0509
+[frankfurt] epoch 24/24 36000 crops, device=cuda
+[frankfurt] epoch 24/24 loss=4.7664 translate_loss=0.0510
+{"area": "frankfurt", "n_train_crops": 36000, "epochs": 8, "device": "cuda", "train_seconds": 3892.3, "onnx_bytes": 3120221, "init": "from-scratch: DelightTranslator (residual delight filter) + plain 4-stage conv trunk (3->32->64->96->64), no pretrained weights", "train_realizations": 3, "epoch_location_resampling": true, "total_epochs_run": 24, "epoch_mult": 3, "lr_schedule": "cosine-per-step to 0 over 13512 steps", "confusability_alpha": 0.5, "cell_weight_ratio_p90_p10": 4.081286289058193, "final_epoch_translate_loss": 0.0509932324965195, "conf_shift": 0.07275260239839554, "cal_logit_threshold": -0.7744452595710755, "cal_keep_rate_per_bucket": {"morning": 0.8375, "midday": 0.8475, "afternoon": 0.815, "early_evening": 0.7725, "evening": 0.69, "night": 0.4}}
