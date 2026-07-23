@@ -464,11 +464,17 @@ PYCHECK
     # ~4x96 threads on a small cgroup quota and thrash (observed: GPU 10%,
     # 45+ min wall). TRAIN_THREADS overrides the default cap.
     if [ "${REMOTE_TRAIN:-0}" = "1" ]; then
-      # Train on the remote RunPod GPU worker (stateless — no git on it, so the
-      # laptop stays the sole writer). Returns the SAME out-dir structure
-      # (models/*.onnx + train_info.json) the merge/score steps below expect.
-      infra/remote_train.sh "$area" "$RUN_DIR/train_$area" "$EPOCHS" "$TRAIN_CROPS" \
-        >"$RUN_DIR/train_$area.log" 2>&1 &
+      # Train on a remote GPU worker (stateless — no git on it, so the laptop
+      # stays the sole writer). Same out-dir structure (models/*.onnx +
+      # train_info.json) as local training, so the merge/score steps below are
+      # unchanged. REMOTE_BACKEND: modal (serverless, default) | runpod (pod).
+      if [ "${REMOTE_BACKEND:-modal}" = "runpod" ]; then
+        infra/remote_train.sh "$area" "$RUN_DIR/train_$area" "$EPOCHS" "$TRAIN_CROPS" \
+          >"$RUN_DIR/train_$area.log" 2>&1 &
+      else
+        $PY infra/modal_client.py "$area" "$RUN_DIR/train_$area" "$EPOCHS" "$TRAIN_CROPS" \
+          >"$RUN_DIR/train_$area.log" 2>&1 &
+      fi
     else
       OMP_NUM_THREADS="${TRAIN_THREADS:-8}" MKL_NUM_THREADS="${TRAIN_THREADS:-8}" \
       $PY -m model.train --area "$area" --out-dir "$RUN_DIR/train_$area" \
