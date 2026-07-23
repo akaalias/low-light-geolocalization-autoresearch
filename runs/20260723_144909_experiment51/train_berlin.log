@@ -1,0 +1,21 @@
+/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/model/model.py:229: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  if return_aux:
+[berlin] epoch 1/9 9000 crops, device=mps
+[berlin] epoch 1/9 loss=0.2496
+[berlin] epoch 2/9 9000 crops, device=mps
+[berlin] epoch 2/9 loss=0.1520
+[berlin] epoch 3/9 9000 crops, device=mps
+[berlin] epoch 3/9 loss=0.1201
+[berlin] epoch 4/9 9000 crops, device=mps
+[berlin] epoch 4/9 loss=0.0989
+[berlin] epoch 5/9 9000 crops, device=mps
+[berlin] epoch 5/9 loss=0.0922
+[berlin] epoch 6/9 9000 crops, device=mps
+[berlin] epoch 6/9 loss=0.0898
+[berlin] epoch 7/9 9000 crops, device=mps
+[berlin] epoch 7/9 loss=0.0890
+[berlin] epoch 8/9 9000 crops, device=mps
+[berlin] epoch 8/9 loss=0.0859
+[berlin] epoch 9/9 9000 crops, device=mps
+[berlin] epoch 9/9 loss=0.0871
+{"area": "berlin", "n_train_crops": 9000, "epochs": 3, "device": "mps", "train_seconds": 456.7, "onnx_bytes": 978395, "init": "from-scratch", "train_realizations": 3, "epoch_location_resampling": true, "total_epochs_run": 9, "epoch_mult": 3, "lr_schedule": "cosine-per-step to 0 over 1269 steps", "error_sampler_alpha": 0.5, "error_ema_decay": 0.9, "codebook1_utilization": 0.020833333333333332, "codebook2_utilization": 0.020833333333333332, "conf_shift": -3.7188127040863037, "cal_logit_threshold": -4.566010475158691, "cal_keep_rate_per_bucket": {"morning": 0.55, "midday": 0.84, "afternoon": 0.765, "early_evening": 0.5975, "evening": 0.5425, "night": 0.4025}}
