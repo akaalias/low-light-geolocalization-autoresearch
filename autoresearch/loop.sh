@@ -249,6 +249,16 @@ while :; do
   # record (§7 lineage) even when SKIP_AGENT skips the calls.
   cp autoresearch/prompt.md "$RUN_DIR/prompt.md"
   cp autoresearch/prompt_impl.md "$RUN_DIR/prompt_impl.md"
+  # One-shot forced research direction: if state/directive.md exists, prepend it
+  # to THIS experiment's design prompt (most prominent position), then consume it
+  # so it steers exactly the next experiment and nothing after. Lets a human aim
+  # the loop at a specific idea without editing the frozen prompt.
+  if [ -f state/directive.md ]; then
+    cat state/directive.md "$RUN_DIR/prompt.md" > "$RUN_DIR/.prompt_dir" \
+      && mv "$RUN_DIR/.prompt_dir" "$RUN_DIR/prompt.md"
+    mv state/directive.md "$RUN_DIR/directive_used.md"
+    echo "FORCED DIRECTIVE injected into this experiment's design prompt (one-shot, consumed)."
+  fi
   # Patience / auto-pivot (workshop pattern): after PATIENCE consecutive
   # non-kept experiments, the design prompt gets a mandatory-pivot preamble —
   # the guard against refining a dead line forever. The preamble is written
