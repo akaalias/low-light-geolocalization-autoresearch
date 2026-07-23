@@ -36,24 +36,6 @@ you only design the experiment and edit the code.
    patience check (below, once it fires) will call this out explicitly by
    naming the frozen stages.
 
-   **Method fidelity — don't strip a borrowed method to a from-scratch stub.**
-   When you adopt a named method (SCR/ACE/DSAC, a known backbone or loss),
-   include the ingredients its published results actually depend on. A naive
-   from-scratch reimplementation that omits the load-bearing part is a
-   weaker, *different* thing, and "the method doesn't work here" concluded
-   from it is a false negative that wastes a round. Concretely, and already
-   paid for in the history: ACE/DSAC scene-coordinate regression gets its
-   accuracy from a **pretrained feature encoder plus a real geometric solve**
-   — a from-scratch SCR trunk tends to collapse toward plain pose-regression,
-   and that exact from-scratch version has already been tried and lost
-   (check the DB). A permissively-licensed (MIT/BSD/Apache) pretrained
-   backbone is explicitly allowed (§3, §9): prefer
-   `init_strategy: pretrained:<name>` — e.g. a torchvision BSD backbone whose
-   weights download once at train time and get baked into the exported ONNX,
-   so on-device inference stays offline (§2) — over defaulting to
-   from-scratch. If you deliberately choose from-scratch, state in the
-   hypothesis why the method still holds without its usual init.
-
 2. **Design ONE focused experiment** — proper experiment design, pre-registered
    before you touch code. Write it to `runs/pending_experiment.json`:
    ```json
