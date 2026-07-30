@@ -1,0 +1,35 @@
+Working tree dirty — committing pending changes as a pre-loop checkpoint.
+=== Experiment 60 (54/60 recorded)  run=20260730_164238_experiment60  parent=8b505984a778b07c128aef38cdcffa95023a7ebe ===
+PIVOT: 21 consecutive experiments without a new best — pivot directive injected
+design agent failed (rate limit/usage cap?) — sleeping 1800s before next experiment
+=== Experiment 60 (54/60 recorded)  run=20260730_171527_experiment60  parent=8b505984a778b07c128aef38cdcffa95023a7ebe ===
+PIVOT: 21 consecutive experiments without a new best — pivot directive injected
+figure agent exited non-zero (turn limit?) — using whatever figure it wrote
+figcheck FAIL: text overlap: 'illumination-invariant channel' vs '0°/90°/180°/270°, shared weights'
+figcheck FAIL: text overlap: '0°/90°/180°/270°, shared weights' vs '128²×4'
+figcheck FAIL: text overlap: 'lighting-partner crop' vs 'f partner'
+figcheck FAIL: text overlap: 'same spot & heading, other bucket' vs '2nd forward pass'
+figcheck FAIL: line crosses label 'log-luminance − own Gaussian blur (f' (seg 59,90→49,154)
+figcheck FAIL: line crosses label 'illumination-invariant channel' (seg 136,58→136,110)
+figcheck FAIL: line crosses label '×4 crop rotations (C4)' (seg 136,58→136,110)
+WARNING: figure violates the anchor contract (cosmetic — kept anyway)
+agents finished (design: claude-haiku-4-5-20251001, claude-sonnet-5 499s, impl: claude-haiku-4-5-20251001, claude-sonnet-5 234s)
+WARNING: agent touched frozen files, reverting:
+autoresearch/figcheck.py
+--- train berlin:
+modal train OK: berlin
+--- train prignitz:
+modal train OK: prignitz
+--- train munich:
+modal train OK: munich
+--- train frankfurt:
+modal train OK: frankfurt
+PRIMARY worst-case median error: 963.42 m (target <= 20 m)
+samples -> runs/20260730_171527_experiment60/samples
+REVERTED: 963.42 m (best remains 743.07)
+60
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/index.html (57 experiments)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/inference-paths.html (43 figures)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (57 nodes)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
