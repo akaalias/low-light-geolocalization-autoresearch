@@ -25,6 +25,7 @@ shape represents, not just its geometry) and overall visual richness/craft
 (a holistic aesthetic judgment, not a geometric one).
 """
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -75,44 +76,107 @@ def _text_boxes(svg: str):
     return boxes
 
 
-def _segments(svg: str):
-    """Straight segments from <line> and absolute M/L/H/V path commands."""
-    segs = []
+def _arc_points(x1, y1, rx, ry, rot_deg, large_arc, sweep, x2, y2, n=12):
+    """Flatten an absolute SVG elliptical-arc command into n+1 points via
+    the standard endpoint-to-center parametrization (SVG spec F.6.5), so
+    curved elements (the confidence-gauge dial glyph, etc.) can be checked
+    for crossing a label the same way straight segments already are."""
+    if rx == 0 or ry == 0 or (x1 == x2 and y1 == y2):
+        return [(x1, y1), (x2, y2)]
+    phi = math.radians(rot_deg)
+    cphi, sphi = math.cos(phi), math.sin(phi)
+    dx, dy = (x1 - x2) / 2.0, (y1 - y2) / 2.0
+    x1p = cphi * dx + sphi * dy
+    y1p = -sphi * dx + cphi * dy
+    rx, ry = abs(rx), abs(ry)
+    lam = x1p ** 2 / rx ** 2 + y1p ** 2 / ry ** 2
+    if lam > 1:
+        s = math.sqrt(lam)
+        rx, ry = rx * s, ry * s
+    num = rx ** 2 * ry ** 2 - rx ** 2 * y1p ** 2 - ry ** 2 * x1p ** 2
+    den = rx ** 2 * y1p ** 2 + ry ** 2 * x1p ** 2
+    co = math.sqrt(max(0.0, num / den)) if den else 0.0
+    if large_arc == sweep:
+        co = -co
+    cxp, cyp = co * rx * y1p / ry, co * -ry * x1p / rx
+    cx = cphi * cxp - sphi * cyp + (x1 + x2) / 2.0
+    cy = sphi * cxp + cphi * cyp + (y1 + y2) / 2.0
+
+    def _ang(ux, uy, vx, vy):
+        d = math.sqrt((ux ** 2 + uy ** 2) * (vx ** 2 + vy ** 2))
+        a = math.acos(max(-1.0, min(1.0, (ux * vx + uy * vy) / d))) if d else 0.0
+        return -a if ux * vy - uy * vx < 0 else a
+
+    theta1 = _ang(1, 0, (x1p - cxp) / rx, (y1p - cyp) / ry)
+    dtheta = _ang((x1p - cxp) / rx, (y1p - cyp) / ry,
+                  (-x1p - cxp) / rx, (-y1p - cyp) / ry)
+    if not sweep and dtheta > 0:
+        dtheta -= 2 * math.pi
+    if sweep and dtheta < 0:
+        dtheta += 2 * math.pi
+    pts = []
+    for i in range(n + 1):
+        t = theta1 + dtheta * i / n
+        pts.append((cx + rx * math.cos(t) * cphi - ry * math.sin(t) * sphi,
+                    cy + rx * math.cos(t) * sphi + ry * math.sin(t) * cphi))
+    return pts
+
+
+def _polylines(svg: str):
+    """Point-chains from <line> and absolute M/L/H/V/A path commands, each
+    chain kept in drawing order (not flattened into loose segments) so a
+    caller can tell a chain's true start/end from points merely sampled
+    along the way — e.g. from arc flattening — which matters for "a line
+    may end at a label, never cross it": that exemption must apply only to
+    the chain's real endpoints, not to every synthetic arc sample point,
+    or a curve that fully crosses a label (entering and exiting near its
+    middle) would be wrongly waved through as if it were just landing."""
+    chains = []
     for m in re.finditer(r"<line([^>]*?)/?>", svg):
         a = m.group(1)
         p = (_num(a, "x1"), _num(a, "y1"), _num(a, "x2"), _num(a, "y2"))
         if None not in p:
-            segs.append(p)
+            chains.append([(p[0], p[1]), (p[2], p[3])])
     for m in re.finditer(r"\bd=['\"]([^'\"]+)", svg):
         toks = re.findall(r"([MLHVmlhvZzACSQTacsqt])|(-?\d+\.?\d*)", m.group(1))
-        cur = None
         cmd = None
         nums = []
+        chain = []
         for c, n in toks:
             if c:
                 cmd, nums = c, []
-                if c in "Zz" or c.islower() or c in "ACSQTacsqt":
-                    cmd = None  # only absolute M/L/H/V straight parts
+                if c in "Zz" or c.islower() or c in "CSQTcsqt":
+                    cmd = None  # only absolute M/L/H/V/A parts (agents draw
+                                # exclusively in absolute coords in this style)
                 continue
             if cmd is None:
                 continue
             nums.append(float(n))
-            if cmd in "ML" and len(nums) == 2:
-                if cmd == "L" and cur:
-                    segs.append((cur[0], cur[1], nums[0], nums[1]))
-                cur, nums = (nums[0], nums[1]), []
-                cmd = "L" if cmd == "M" else cmd
+            if cmd == "M" and len(nums) == 2:
+                if len(chain) > 1:
+                    chains.append(chain)
+                chain, nums = [(nums[0], nums[1])], []
+            elif cmd == "L" and len(nums) == 2:
+                chain.append((nums[0], nums[1]))
+                nums = []
             elif cmd == "H" and len(nums) == 1:
-                if cur:
-                    segs.append((cur[0], cur[1], nums[0], cur[1]))
-                    cur = (nums[0], cur[1])
+                if chain:
+                    chain.append((nums[0], chain[-1][1]))
                 nums = []
             elif cmd == "V" and len(nums) == 1:
-                if cur:
-                    segs.append((cur[0], cur[1], cur[0], nums[0]))
-                    cur = (cur[0], nums[0])
+                if chain:
+                    chain.append((chain[-1][0], nums[0]))
                 nums = []
-    return segs
+            elif cmd == "A" and len(nums) == 7:
+                if chain:
+                    cx, cy = chain[-1]
+                    pts = _arc_points(cx, cy, nums[0], nums[1], nums[2],
+                                       nums[3], nums[4], nums[5], nums[6])
+                    chain.extend(pts[1:])
+                nums = []
+        if len(chain) > 1:
+            chains.append(chain)
+    return chains
 
 
 def _clip_len(seg, box):
@@ -225,13 +289,23 @@ def check_layout(svg: str) -> list[str]:
             oy = min(a[3], b[3]) - max(a[1], b[1])
             if ox > 3.0 and oy > 3.0:
                 errs.append(f"text overlap: '{a[4]}' vs '{b[4]}'")
-    for seg in _segments(svg):
+    for chain in _polylines(svg):
         for box in boxes:
-            if _inside(seg[:2], box) or _inside(seg[2:], box):
-                continue  # a line may END at a label, never cross it
-            if _clip_len(seg, box) > 12.0:
-                errs.append(f"line crosses label '{box[4]}' "
-                            f"(seg {seg[0]:.0f},{seg[1]:.0f}→{seg[2]:.0f},{seg[3]:.0f})")
+            clipped = sum(_clip_len((p1[0], p1[1], p2[0], p2[1]), box)
+                          for p1, p2 in zip(chain, chain[1:]))
+            if clipped <= 12.0:
+                continue
+            # A line/curve may legitimately END at a label (a leader line
+            # landing on a caption) — exempt only when the chain's TRUE
+            # start or end point (not a synthetic arc-sample point) sits in
+            # the box and the total clipped length is little more than just
+            # that tip; anything clipping substantially more is passing
+            # through the label, not landing on it.
+            tip = ((_inside(chain[0], box) or _inside(chain[-1], box))
+                   and clipped <= 16.0)
+            if tip:
+                continue
+            errs.append(f"line crosses label '{box[4]}'")
     return errs[:10]
 
 
