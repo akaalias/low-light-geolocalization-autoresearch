@@ -6,12 +6,23 @@ implementation in archive/arch_svg_reference.py):
   - the camera-frame element carries id='frozen-input' at x=26
   - the output text block carries id='frozen-output' at x=828,
     text-anchor='start'
+  - style contract: only the five palette colors, Palatino/Georgia/serif,
+    stroke-width near the spec, no gradients/images, no emoji, and red
+    used iff some stage is marked changed (see check_style / check_changed)
 
 Usage:  .venv/bin/python -m autoresearch.figcheck [svg-or-json-path]
 Default input: runs/pending_experiment.json (field architecture_svg).
 Prints PASS or one line per violation; exit code 1 on any violation.
 The design agent iterates until PASS; the harness treats failures as a
 logged warning only (figures are record-keeping, not the metric).
+
+Deliberately NOT checked here — geometry can't judge these without risking
+false positives on legitimate elements, so they stay prompt-only: the
+"fills only faint tints (opacity <=.12)" rule (foreground glyphs like
+tick-bars/kernel-squares are correctly drawn at full ink opacity, and
+telling a tint fill from a foreground glyph fill needs to know what the
+shape represents, not just its geometry) and overall visual richness/craft
+(a holistic aesthetic judgment, not a geometric one).
 """
 import json
 import re
@@ -19,6 +30,24 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# The five-color style contract (prompt_figure.md). Hex values normalized
+# to lowercase before comparison. archive/arch_svg_reference.py's own pseudo-
+# 3D slab shading uses '#000000xx' (black + inline alpha) for faint edge/face
+# tints instead of a separate opacity attribute — that's the canonical
+# reference implementation, not a violation, so '#000000' is allowed too.
+_PALETTE = {"#111111", "#6b6a60", "#9b998c", "#8c2f1f", "#8a6a1e", "#000000"}
+_RED = "#8c2f1f"
+_FONT = "palatino,georgia,serif"
+# Calibrated against archive/arch_svg_reference.py's own stroke-widths, which
+# range 0.4 (faint hairline ticks) to 2 (accent highlight border) — this is a
+# sanity floor/ceiling for broken values, not a tight match to "~1.2/1".
+_STROKE_RANGE = (0.3, 2.2)
+_EMOJI_RANGES = (
+    (0x1F000, 0x1FFFF),  # emoji/pictograph/symbol blocks (SMP)
+    (0x2600, 0x26FF),    # misc symbols (weather/dingbat-adjacent)
+    (0x2700, 0x27BF),    # dingbats
+)
 
 
 def _num(attrs: str, name: str, default=None):
@@ -112,6 +141,79 @@ def _inside(pt, box, pad=2.0):
             and box[1] - pad <= pt[1] <= box[3] + pad)
 
 
+def _strip_cam_terrain(svg: str) -> str:
+    """Remove the frozen cam-terrain glyph (copied verbatim, own fixed
+    colors/strokes) so style checks below only see the agent's own drawing."""
+    m = re.search(r"<g[^>]*id=['\"]cam-terrain['\"][^>]*>.*?</g>", svg, re.S)
+    return svg[: m.start()] + svg[m.end():] if m else svg
+
+
+def check_style(svg: str) -> list[str]:
+    """Palette / font / stroke-width / gradients-icons-emoji contract."""
+    errs = []
+    body = _strip_cam_terrain(svg)
+
+    bad_colors = set()
+    for m in re.finditer(r"(?:fill|stroke)\s*[:=]\s*['\"]?(#[0-9a-fA-F]{3,8})",
+                          body):
+        c = m.group(1).lower()
+        rgb = c[:7]  # ignore an 8-digit hex's trailing alpha byte
+        if rgb not in _PALETTE:
+            bad_colors.add(c)
+    for c in sorted(bad_colors)[:5]:
+        errs.append(f"color {c} is not in the palette "
+                     f"({', '.join(sorted(_PALETTE))}, optionally +alpha)")
+
+    fonts = set()
+    for m in re.finditer(r"font-family\s*[:=]\s*['\"]?([^'\";]+)", svg):
+        fonts.add(re.sub(r"\s*,\s*", ",", m.group(1).strip()).lower())
+    if not fonts:
+        errs.append("missing font-family (expected Palatino,Georgia,serif)")
+    else:
+        for f in sorted(fonts - {_FONT}):
+            errs.append(f"font-family '{f}' must be Palatino,Georgia,serif")
+
+    lo, hi = _STROKE_RANGE
+    for m in re.finditer(r"stroke-width\s*[:=]\s*['\"]?([\d.]+)", body):
+        w = float(m.group(1))
+        if not lo <= w <= hi:
+            errs.append(f"stroke-width {w} outside ~{lo}-{hi} "
+                        "(spec: ~1.2 elements, 1 arrows)")
+
+    if re.search(r"<(linearGradient|radialGradient)\b", svg, re.I):
+        errs.append("no gradients allowed — fills only flat colors/tints")
+    if re.search(r"<image\b", svg, re.I):
+        errs.append("no images/icons allowed — draw everything in ink")
+
+    for m in re.finditer(r"<text[^>]*>(.*?)</text>", svg, re.S):
+        text = re.sub(r"<[^>]+>", " ", m.group(1))
+        for ch in text:
+            cp = ord(ch)
+            if any(lo <= cp <= hi for lo, hi in _EMOJI_RANGES):
+                errs.append(f"emoji-range character {ch!r} found in text "
+                            "— no emoji")
+                break
+    return errs[:15]
+
+
+def check_changed_consistency(svg: str, stages) -> list[str]:
+    """Coarse necessary condition for 'red only for what changed': red
+    present iff some stage is marked changed. Cannot verify red sits on
+    the RIGHT element — only that it isn't used gratuitously or omitted."""
+    if not stages:
+        return []
+    any_changed = any(s.get("changed") for s in stages if isinstance(s, dict))
+    red_present = bool(re.search(
+        rf"(?:fill|stroke)\s*[:=]\s*['\"]?{re.escape(_RED)}\b", svg, re.I))
+    if any_changed and not red_present:
+        return [f"a stage is marked changed but {_RED} (red) never "
+                "appears in the figure"]
+    if not any_changed and red_present:
+        return [f"no stage is marked changed but {_RED} (red) appears — "
+                "red is reserved for exactly what this experiment changed"]
+    return []
+
+
 def check_layout(svg: str) -> list[str]:
     """Geometric readability checks: text-on-text and line-through-label."""
     errs = []
@@ -173,12 +275,18 @@ def main() -> int:
         print(f"figcheck: {src} not found")
         return 1
     text = src.read_text()
-    svg = json.loads(text).get("architecture_svg", "") \
-        if src.suffix == ".json" else text
+    stages = None
+    if src.suffix == ".json":
+        d = json.loads(text)
+        svg = d.get("architecture_svg", "")
+        stages = d.get("architecture", {}).get("stages")
+    else:
+        svg = text
     if not svg.strip():
         print("figcheck: no architecture_svg found")
         return 1
-    errs = check(svg) + check_layout(svg)
+    errs = (check(svg) + check_style(svg) + check_changed_consistency(svg, stages)
+            + check_layout(svg))
     if errs:
         for e in errs:
             print(f"figcheck FAIL: {e}")
