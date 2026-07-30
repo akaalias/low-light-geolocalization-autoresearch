@@ -58,3 +58,34 @@ wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/galle
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (58 nodes)
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
+WARNING: sync with origin/main failed (conflict or offline) — 5 commit(s) ahead, record is committed locally only
+=== Experiment 62 (56/60 recorded)  run=20260730_192739_experiment62  parent=0041192d9e77a6b2e594c92cd6aa76849ff3bfda ===
+PIVOT: 23 consecutive experiments without a new best — pivot directive injected
+figure agent exited non-zero (turn limit?) — using whatever figure it wrote
+figcheck FAIL: text overlap: '1×1 squeeze, 49-d flat' vs 'single Linear → 1,024'
+figcheck FAIL: text overlap: '1×1 squeeze, 49-d flat' vs 'gate + dual head deleted'
+figcheck FAIL: line crosses label 'adaptive-β commit'
+figcheck FAIL: line crosses label 'adaptive-β commit'
+figcheck FAIL: line crosses label '1-ch layout'
+WARNING: figure violates the anchor contract (cosmetic — kept anyway)
+agents finished (design: claude-haiku-4-5-20251001, claude-sonnet-5 534s, impl: claude-haiku-4-5-20251001, claude-sonnet-5 305s)
+--- train berlin:
+modal train failed on the GPU:
+training failed on the GPU — see `modal app logs lowlight-train`
+--- train prignitz:
+modal train failed on the GPU:
+training failed on the GPU — see `modal app logs lowlight-train`
+--- train munich:
+modal train failed on the GPU:
+training failed on the GPU — see `modal app logs lowlight-train`
+--- train frankfurt:
+modal train failed on the GPU:
+training failed on the GPU — see `modal app logs lowlight-train`
+samples -> runs/20260730_192739_experiment62/samples
+REVERTED: 1000000000.0 m (best remains 743.07)
+62
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/index.html (59 experiments)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/inference-paths.html (45 figures)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (59 nodes)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html

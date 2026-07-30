@@ -1,0 +1,2 @@
+modal train failed on the GPU:
+training failed on the GPU — see `modal app logs lowlight-train`
