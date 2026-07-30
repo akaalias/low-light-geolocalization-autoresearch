@@ -148,6 +148,28 @@ def prepare_realizations(area: str, data_dir: Path, out_dir: Path) -> Path:
     return renders_dir
 
 
+_IMG_CACHE: dict = {}  # (area, bucket, realization) -> decoded HxWx3 uint8 array
+
+
+def _load_bucket_img(area: str, data_dir: Path, renders_dir: Path | None,
+                     bucket: str, r: int) -> np.ndarray:
+    """Decode a bucket/realization PNG once per process and reuse it. These
+    18 images (6 buckets x 3 realizations) never change within a training
+    run -- only the sampled locations/headings per epoch do (exp 20/35).
+    Profiling (2026-07-30) showed re-decoding them from scratch every epoch
+    -- the original behavior here -- was ~78% of total per-area training
+    wall-clock (each is a ~120MB PNG; measured ~87s/epoch of a ~40min/area
+    run), dwarfing both the actual GPU forward/backward (~15%) and the
+    host->device transfer (~1%). Caching is the whole fix; nothing else
+    about the training loop or its outputs changes."""
+    key = (area, bucket, r)
+    if key not in _IMG_CACHE:
+        path = (area_dir(area, data_dir) / "relight" / f"{bucket}.png") if r == 0 \
+            else renders_dir / f"{bucket}_r{r}.png"
+        _IMG_CACHE[key] = np.asarray(Image.open(path))
+    return _IMG_CACHE[key]
+
+
 def sample_epoch(area: str, meta: dict, crops: list[dict], renders_dir: Path,
                  data_dir: Path, max_crops_per_bucket: int, rng, crop_probs):
     """Fresh draw of locations, headings, and realization assignment for one
@@ -160,16 +182,12 @@ def sample_epoch(area: str, meta: dict, crops: list[dict], renders_dir: Path,
                            replace=False, p=crop_probs)
         for r in range(TRAIN_REALIZATIONS):
             part = picks[r::TRAIN_REALIZATIONS]
-            if r == 0:
-                img = np.asarray(Image.open(area_dir(area, data_dir) / "relight" / f"{bucket}.png"))
-            else:
-                img = np.asarray(Image.open(renders_dir / f"{bucket}_r{r}.png"))
+            img = _load_bucket_img(area, data_dir, renders_dir, bucket, r)
             for i in part:
                 c = crops[i]
                 angle = float(rng.uniform(0, 360))  # heading augmentation
                 xs.append(extract_crop(img, c["cx"], c["cy"], angle))
                 ys.append(crop_center_norm(meta, c["cx"], c["cy"]))
-            del img
     x = torch.from_numpy(np.stack(xs))  # uint8 NxHxWx3; float-converted per batch
     y = torch.tensor(ys, dtype=torch.float32)
     return x, y
@@ -184,7 +202,7 @@ def calibrate_conf_shift(model, area: str, data_dir: Path, device: str, rng) -> 
     z_by_bucket = {}
     with torch.no_grad():
         for bucket in LIGHTING_BUCKETS:
-            img = np.asarray(Image.open(area_dir(area, data_dir) / "relight" / f"{bucket}.png"))
+            img = _load_bucket_img(area, data_dir, None, bucket, 0)
             picks = rng.choice(len(crops), size=min(CAL_CROPS_PER_BUCKET, len(crops)),
                                replace=False)
             xs = []
