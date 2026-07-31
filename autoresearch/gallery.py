@@ -1890,7 +1890,7 @@ the day closes with the same 743.07&nbsp;m champion still standing.</p></div>
 
 <section class="nb-day">
 <h2>31 July 2026</h2>
-<p class="daysub">The scope gets rethought &mdash; then the evaluation itself turns out to have been asking an impossible question</p>
+<p class="daysub">Three measurement bugs found in one day — the evaluation, the score, and what the harness kept — and everything measured before today invalidated</p>
 
 <div class="nb-row"><span class="nb-time">morning</span>
 <p class="nb-text"><b>The human proposes deliberately narrowing scope.</b>
@@ -1994,35 +1994,16 @@ one-in-thirty-two-block region stays genuinely untrained as a logged-only
 diagnostic, never allowed to touch the metric, to catch a model that is a
 lookup table with no spatial structure.</p></div>
 
-<div class="nb-pull"><span class="nb-time">14:30&ndash;15:10</span>
-<div class="nb-quote"><p><b>&ldquo;There is ONLY the product requirement.&rdquo;</b>
-Pressed on why the score was a statistic about errors at all, the answer does
-not survive contact: the geometric mean had been chosen to make research
-progress <i>visible</i>, which is the same species of mistake as the two bugs
-already found today &mdash; optimising something adjacent to the goal instead
-of the goal. So the metric becomes the goal. The aircraft takes a vision fix
-every 5&ndash;10&nbsp;s and it is its only drift correction, so per frame
-exactly three things can happen: <b>confident and within 100&nbsp;m</b> is a
-<b>usable fix</b>; <b>not confident</b> is an abstention, which is safe because
-it simply waits; <b>confident and wrong</b> is a <b>false fix</b>, which feeds
-a wrong position into navigation and is worse than saying nothing.
-<b>mission score = (1 &minus; usable-fix rate) + false-fix rate</b>: zero is
-perfect, 1.0 is abstaining on everything, 2.0 is being confidently wrong on
-everything. §6 had asserted since day one that honest abstention beats
-confident guessing; no metric until now actually encoded it.</p></div></div>
-
-<div class="nb-row"><span class="nb-time">15:10</span>
-<p class="nb-text"><b>The baseline&rsquo;s new score is the argument for the
-change.</b> The same naive model that the old rulers reported as
-&ldquo;1993&nbsp;m median&rdquo; &mdash; a number that sounds like a
-measurement &mdash; scores <b>2.001</b>: it is confident on every single frame
-and wrong on every single one. Zero usable fixes, a 100% false-fix rate, the
-worst value the scale can produce. Nothing about the model changed; only the
-question being asked of it. Error statistics stay logged as diagnostics, and
-the standing check is written into the scorer: <i>if the score improves while
-the usable-fix rate does not, the metric is wrong again.</i> The lineage is
-wiped a third time and the metric propagated through every prompt, document
-and page.</p></div>
+<div class="nb-row"><span class="nb-time">12:20</span>
+<p class="nb-text"><b>Measured again, on the same instruments.</b> Berlin
+ever shown in training rises from 71.8% to <b>93.5%</b> (the remaining gap
+is the deliberate diagnostic region and its buffer). Eval questions centred
+on ground the model has seen: 0% &rarr; <b>100%</b>. Eval frames containing
+no familiar pixel at all: 65.1% &rarr; <b>0%</b>. Distance from each test
+frame to the nearest training vantage: 11.3&ndash;16.3&nbsp;m. The lineage
+resets a second time in one day &mdash; scores from the old ruler cannot be
+compared to the new one &mdash; and the five experiments run that morning
+are archived rather than deleted.</p></div>
 
 <div class="nb-pull"><span class="nb-time">13:10&ndash;13:40</span>
 <div class="nb-quote"><p><b>A second measurement bug, found the same way as the
@@ -2064,16 +2045,82 @@ the 47 reverted ones do not, though their design briefs and trained weights
 remain, which is how experiment&nbsp;2 was rebuilt. Four separate code paths
 could destroy an implementation; all four now snapshot it first.</p></div>
 
-<div class="nb-row"><span class="nb-time">12:20</span>
-<p class="nb-text"><b>Measured again, on the same instruments.</b> Berlin
-ever shown in training rises from 71.8% to <b>93.5%</b> (the remaining gap
-is the deliberate diagnostic region and its buffer). Eval questions centred
-on ground the model has seen: 0% &rarr; <b>100%</b>. Eval frames containing
-no familiar pixel at all: 65.1% &rarr; <b>0%</b>. Distance from each test
-frame to the nearest training vantage: 11.3&ndash;16.3&nbsp;m. The lineage
-resets a second time in one day &mdash; scores from the old ruler cannot be
-compared to the new one &mdash; and the five experiments run that morning
-are archived rather than deleted.</p></div>
+<div class="nb-pull"><span class="nb-time">14:30&ndash;15:10</span>
+<div class="nb-quote"><p><b>&ldquo;There is ONLY the product requirement.&rdquo;</b>
+Pressed on why the score was a statistic about errors at all, the answer does
+not survive contact: the geometric mean had been chosen to make research
+progress <i>visible</i>, which is the same species of mistake as the two bugs
+already found today &mdash; optimising something adjacent to the goal instead
+of the goal. So the metric becomes the goal. The aircraft takes a vision fix
+every 5&ndash;10&nbsp;s and it is its only drift correction, so per frame
+exactly three things can happen: <b>confident and within 100&nbsp;m</b> is a
+<b>usable fix</b>; <b>not confident</b> is an abstention, which is safe because
+it simply waits; <b>confident and wrong</b> is a <b>false fix</b>, which feeds
+a wrong position into navigation and is worse than saying nothing.
+<b>mission score = (1 &minus; usable-fix rate) + false-fix rate</b>: zero is
+perfect, 1.0 is abstaining on everything, 2.0 is being confidently wrong on
+everything. §6 had asserted since day one that honest abstention beats
+confident guessing; no metric until now actually encoded it.</p></div></div>
+
+<div class="nb-row"><span class="nb-time">15:10</span>
+<p class="nb-text"><b>The baseline&rsquo;s new score is the argument for the
+change.</b> The same naive model that the old rulers reported as
+&ldquo;1993&nbsp;m median&rdquo; &mdash; a number that sounds like a
+measurement &mdash; scores <b>2.001</b>: it is confident on every single frame
+and wrong on every single one. Zero usable fixes, a 100% false-fix rate, the
+worst value the scale can produce. Nothing about the model changed; only the
+question being asked of it. Error statistics stay logged as diagnostics, and
+the standing check is written into the scorer: <i>if the score improves while
+the usable-fix rate does not, the metric is wrong again.</i> The lineage is
+wiped a third time and the metric propagated through every prompt, document
+and page.</p></div>
+
+<div class="nb-pull"><span class="nb-time">the day in summary</span>
+<div class="nb-quote"><p><b>What changed, and what it costs.</b> Three separate
+things were found wrong today, and all three were found the same way &mdash; by
+a human looking at a picture and saying that makes no sense, not by any check
+the harness ran.</p>
+<p><b>1. The evaluation asked an impossible question.</b> Holding out one map
+block in five, plus a no-leakage buffer, left 28.2% of Berlin in no training
+crop at all and put <b>100%</b> of test questions on ground the model had never
+seen; 65% of test frames contained not one familiar pixel. For a system whose
+entire job is to memorise one city, that is unanswerable by construction. Fixed
+by holding out <i>viewpoints</i> instead of <i>regions</i>: train on all of
+Berlin, test on frames 11&ndash;17&nbsp;m off the nearest training vantage.</p>
+<p><b>2. The score rewarded the wrong behaviour &mdash; twice.</b> The median
+favours a model that guesses the map centre (tight, mediocre, unimodal) over one
+that genuinely memorises (bimodal: some places nailed, others badly missed). It
+was caught reverting the only experiment that had begun to memorise anything.
+Replacing it with a geometric mean fixed that symptom but was still a research
+proxy chosen to make progress <i>visible</i> rather than to state what the
+aircraft <i>needs</i> &mdash; the same mistake in nicer clothes. The score is now
+the product requirement itself: usable fixes minus dangerous ones.</p>
+<p><b>3. The harness was deleting its own work.</b> A reverted experiment had its
+source discarded outright; only kept experiments entered the git trail. That is
+safe only if the metric is correct and permanent, an assumption nobody had
+written down and which had just been disproved twice in a day. Of 60 archived
+experiments, the 13 kept ones survive; the 47 reverted ones do not.</p>
+<p><b>What this means for everything before today: the record is void.</b> Every
+experiment up to this point &mdash; roughly sixty-three of them, including the
+743&nbsp;m champion the project chased for a week &mdash; was scored on an
+evaluation that was largely unanswerable, using a statistic that preferred
+guessing to learning. Their verdicts do not transfer. &ldquo;Reverted&rdquo;
+mostly means &ldquo;did not help on an impossible test&rdquo;, and
+&ldquo;kept&rdquo; may mean &ldquo;guessed the centre more tidily&rdquo;. The
+lineage was therefore wiped rather than carried forward, and the old databases
+archived; the design agent is deliberately <i>not</i> given the old conclusions,
+because importing invalid refutations would steer it away from ideas that were
+never actually refuted. The catalogue of approaches tried remains readable by a
+human, but nothing about which of them <i>worked</i> survives.</p>
+<p><b>And the plateau finally has an explanation.</b> Sixty-odd experiments sat
+between 700&nbsp;m and 1&nbsp;km, and it was read as the problem being hard. On
+the corrected evaluation the naive baseline scores <b>2.001</b> &mdash;
+confidently wrong on every single frame, the worst value the scale allows &mdash;
+while the one experiment the old metric threw away had already located 8% of
+Berlin to within 100&nbsp;m. The work was not stalling because the task was
+hard. It was stalling because the instruments were pointed at the wrong
+thing.</p></div></div>
+
 </section>
 """
 
