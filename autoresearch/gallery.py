@@ -799,7 +799,15 @@ def live_row(next_id):
     built_ms = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     return f"""<tr class="live-row" id="live-row">
 <td></td><td class="num">{next_id}</td>
-<td colspan="8"><span id="live-text">experiment in progress…</span></td>
+<td class="title-cell"><b id="live-title">experiment #{next_id} in progress…</b>
+  <div class="row-why" id="live-eli5" style="display:none"></div>
+  <div class="row-why" id="live-hyp" style="display:none;opacity:.7;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:44ch"></div></td>
+<td><span class="cat" id="live-cat">—</span></td>
+<td class="mono" id="live-init">—</td>
+<td class="num">…</td><td class="num">…</td><td class="num">…</td>
+<td class="num" id="live-time">…</td>
+<td class="num">—</td>
 <td><span class="status-badge live"><span class="dot"></span>live</span></td></tr>
 <script>(function(){{
   var built={built_ms}, phases={phases_js}, st=null;
@@ -808,13 +816,22 @@ def live_row(next_id):
     train:'training Berlin',
     score:'scoring against the frozen ruler',
     publish:'logging + publishing the result'}};
-  var el=document.getElementById('live-text'); if(!el) return;
+  var elTime=document.getElementById('live-time'); if(!elTime) return;
+  var elTitle=document.getElementById('live-title');
+  var elEli5=document.getElementById('live-eli5');
+  var elHyp=document.getElementById('live-hyp');
+  var elCat=document.getElementById('live-cat');
+  var elInit=document.getElementById('live-init');
+  var shownDesign=null;
   var total=phases.reduce(function(a,p){{return a+p[1]}},0);
   function fmt(s){{s=Math.max(0,Math.floor(s));
     return s<60? s+' s' : Math.floor(s/60)+' m '+('0'+s%60).slice(-2)+' s';}}
   // Live phase truth: the loop force-pushes state/phase.json to the repo's
   // 'status' branch at every phase transition; raw.githubusercontent serves
-  // it with CORS. Elapsed counts from the experiment's true start.
+  // it with CORS. Elapsed counts from the experiment's true start. Once the
+  // design agent has written a design (title/eli5/hypothesis/...), it rides
+  // along in the same payload — so the row can show what's actually being
+  // tried well before training/scoring finish, not just a phase name.
   var RAW='https://raw.githubusercontent.com/akaalias/low-light-geolocalization-autoresearch/status/phase.json';
   function freshen(j){{
     // GitHub Pages pins Cache-Control to 10 min and headers are not
@@ -828,11 +845,20 @@ def live_row(next_id):
       location.replace(location.pathname+'?v='+v+location.hash);
     }}
   }}
+  function showDesign(d){{
+    if(!d || !d.title || shownDesign===d.title) return;
+    shownDesign=d.title;
+    elTitle.textContent=d.title;
+    if(d.eli5){{elEli5.textContent=d.eli5;elEli5.style.display='';}}
+    if(d.hypothesis){{elHyp.textContent='Hypothesis: '+d.hypothesis;elHyp.style.display='';}}
+    if(d.category){{elCat.textContent=d.category;}}
+    if(d.init_strategy){{elInit.textContent=d.init_strategy;}}
+  }}
   function refresh(){{
     fetch(RAW+'?t='+Date.now()).then(function(r){{return r.ok?r.json():null}})
       .then(function(j){{
         if(!(j&&j.phase))return;
-        st=j;freshen(j);
+        st=j;freshen(j);showDesign(j.design);
       }}).catch(function(){{}});
   }}
   refresh(); setInterval(refresh, 30000);
@@ -852,18 +878,17 @@ def live_row(next_id):
     }} else if(st && (st.phase==='waiting')){{
       msg='paused — waiting for agent capacity; resumes automatically';
     }} else if(st && now-st.phase_started < 5400){{
-      msg='running '+fmt(now-st.iter_started)+' total · now '
-         +(NAMES[st.phase]||st.phase);
+      msg=fmt(now-st.iter_started)+' · now '+(NAMES[st.phase]||st.phase);
     }} else if(st){{
-      msg='status is stale ('+fmt(now-st.phase_started)+' since last phase report) — the loop may be stopped';
+      msg='stale ('+fmt(now-st.phase_started)+' since last report)';
     }} else {{
       var t=(Date.now()-built)/1000, acc=0, ph=null;
       for(var i=0;i<phases.length;i++){{acc+=phases[i][1];
         if(t<acc){{ph=phases[i][0];break;}}}}
-      msg=ph ? 'running ~'+fmt(t)+' · estimated phase: '+ph
-             : 'running ~'+fmt(t)+' · past the usual '+fmt(total)+' — result should land any moment';
+      msg=ph ? '~'+fmt(t)+' · est. '+ph
+             : '~'+fmt(t)+' · past usual '+fmt(total);
     }}
-    el.textContent='experiment #'+{next_id}+' — '+msg;
+    elTime.textContent=msg;
   }}
   tick(); setInterval(tick,1000);
 }})();</script>"""
@@ -1082,31 +1107,33 @@ def gates_block(e, metrics):
             f"(proxy limit 250 ms)</div>")
 
 
-def figures(artifacts_dir, metrics):
+def heatmap_block(artifacts_dir, metrics):
+    """Where the model was tested and how far off it was, per area — split
+    out of figures() so it can sit in the scoreboard column, above the
+    worked example, instead of trailing at the bottom of the row."""
     art = REPO_ROOT / (artifacts_dir or "")
     if not art.exists():
         return ""
     heat = sorted(art.glob("heatmaps/*.png"))
-    samp = sorted(art.glob("samples/*.png"))
+    if not heat:
+        return ""
     med_range = {}
     for a in metrics.get("areas", []):
         meds = [c["median_error_m"] for c in a.get("buckets", {}).values()
                 if c.get("median_error_m") is not None]
         if meds:
             med_range[a["area"]] = (min(meds), max(meds))
-    out = []
-    if heat:
-        figs = []
-        for p in heat:
-            rel = Path("..") / p.relative_to(REPO_ROOT)
-            area = p.stem.replace("heatmap_", "")
-            lo_hi = med_range.get(area)
-            stat = (f"median miss {lo_hi[0]:,.0f}–{lo_hi[1]:,.0f} m across "
-                    f"lighting" if lo_hi else "")
-            figs.append(f"<figure><a href='{rel}'><img src='{rel}' loading='lazy'></a>"
-                        f"<figcaption><b>{esc(area)}</b>{stat}</figcaption></figure>")
-        out.append(
-            "<div class='figs-h'>Where the model was tested — and how far off it was</div>"
+    figs = []
+    for p in heat:
+        rel = Path("..") / p.relative_to(REPO_ROOT)
+        area = p.stem.replace("heatmap_", "")
+        lo_hi = med_range.get(area)
+        stat = (f"median miss {lo_hi[0]:,.0f}–{lo_hi[1]:,.0f} m across "
+                f"lighting" if lo_hi else "")
+        figs.append(f"<figure><a href='{rel}'><img src='{rel}' loading='lazy'></a>"
+                    f"<figcaption><b>{esc(area)}</b>{stat}</figcaption></figure>")
+    return (f"<div class='arch'>"
+            "<div class='arch-h'>Where the model was tested — and how far off it was</div>"
             "<div class='figs-intro'>Each map is one full test area. Every dot is one "
             "held-out test location: the model was "
             "shown a 128 m crop centered there and asked for its position. Dot color = the "
@@ -1114,7 +1141,15 @@ def figures(artifacts_dir, metrics):
             f"(at goal)</b>, <b style='color:#8a6a1e'>amber ≤ {TARGET_M*2.5:.0f} m</b>, "
             "<b style='color:#8c2f1f'>red beyond</b>. <i>A working model turns these maps "
             "green; spatial clusters of red reveal which parts of an area confuse it.</i></div>"
-            f"<div class='thumbs maps'>{''.join(figs)}</div>")
+            f"<div class='thumbs maps'>{''.join(figs)}</div></div>")
+
+
+def figures(artifacts_dir):
+    art = REPO_ROOT / (artifacts_dir or "")
+    if not art.exists():
+        return ""
+    samp = sorted(art.glob("samples/*.png"))
+    out = []
     if samp:
         by_area = {}
         for p in samp:
@@ -2631,6 +2666,7 @@ def render():
 <div class="detail-grid">
 <div class="explain">{''.join(blocks)}</div>
 <div>
+{heatmap_block(e['artifacts_dir'], metrics)}
 {worked_example_block(e)}
 <div class="score-head">Scoreboard — median error (m) per area × lighting</div>
 <div class="score-sub">the worst cell (underlined) is the experiment's score;
@@ -2645,7 +2681,7 @@ agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duratio
 {prompt_block(e)}
 </div>
 </div>
-{figures(e['artifacts_dir'], metrics)}
+{figures(e['artifacts_dir'])}
 </div></td></tr>""")
 
     body.append(f"</tbody></table>{HELP}</div>")
