@@ -13,7 +13,7 @@ metric. Full context: `CLAUDE.md`.
 
 | Path | Status | What |
 |---|---|---|
-| `pipeline/` | **FROZEN** | bbox-generic fetch (Sentinel-2, open-licensed), 6-bucket synthetic low-light relighting, deterministic train/eval split, §6 scoring with ESP32-P4 deployment gates |
+| `pipeline/` | **FROZEN** | bbox-generic fetch (Sentinel-2, open-licensed), 6-bucket synthetic low-light relighting, deterministic split holding out **viewpoints, not regions** (training covers the whole bbox; eval frames sit 11-17 m off the nearest training vantage — see `pipeline/dataset.py` for why a region-based holdout was wrong), §6 scoring with ESP32-P4 deployment gates |
 | `areas.yaml` | **FROZEN** | 4 development areas + hamburg blind holdout |
 | `model/` | agent-editable | model architecture + training procedure (the loop's playground) |
 | `autoresearch/` | mostly frozen | `loop.sh` harness, SQLite schema + logger, gallery renderer, per-iteration agent prompt |

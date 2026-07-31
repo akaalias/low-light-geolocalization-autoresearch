@@ -1147,7 +1147,9 @@ def heatmap_block(artifacts_dir, metrics):
     return (f"<div class='arch'>"
             "<div class='arch-h'>Where the model was tested — and how far off it was</div>"
             "<div class='figs-intro'>Each map is one full test area. Every dot is one "
-            "held-out test location: the model was "
+            "held-out <i>viewpoint</i>: the ground under it was mapped during training, "
+            "but this exact framing — 11–17 m off the nearest training vantage, at its "
+            "own rotation — is one the model has never seen. It was "
             "shown a 128 m crop centered there and asked for its position. Dot color = the "
             f"distance between its answer and the truth — <b style='color:#3c9c3c'>green ≤ {TARGET_M:.0f} m "
             f"(at goal)</b>, <b style='color:#8a6a1e'>amber ≤ {TARGET_M*2.5:.0f} m</b>, "
@@ -1525,13 +1527,21 @@ HELP = f"""
 <dl class="help-grid">
 <dt>Worst-case error</dt><dd>The single number the loop optimizes. On this
 branch (berlin-slim), every experiment trains <b>one model on Berlin only</b>,
-tested on held-out map crops it never saw during training, on the raw
-daytime imagery as fetched (no synthetic relighting). That gives a median
-position error, taken as the <b>worst</b> bucket's score, not an average —
-main-branch runs use the same worst-not-average logic across a 4-area ×
-6-lighting-bucket grid, so a good result in one cell can't hide a bad one
-elsewhere. Mission milestone on this branch: <b>≤ {TARGET_M:.0f} m</b> (main
-branch target: ≤ 20 m).</dd>
+on the raw daytime imagery as fetched (no synthetic relighting). It is tested
+on held-out <b>viewpoints</b>, not held-out regions: training covers all of
+Berlin — the model is supposed to memorize its one box — and the test frames
+sit 11–17&nbsp;m off the nearest training vantage, each at its own rotation.
+Mapped ground, new view; that is what the aircraft actually faces. That gives
+a median position error, taken as the <b>worst</b> bucket's score, not an
+average, so a good result in one cell can't hide a bad one elsewhere. Mission
+milestone on this branch: <b>≤ {TARGET_M:.0f} m</b> (main branch target:
+≤ 20 m).</dd>
+<dt>Region-holdout (diagnostic)</dt><dd>A small 1-in-32-block slice of Berlin
+is kept genuinely out of training and scored separately. It is <b>logged and
+never optimized</b> — it cannot move keep/revert. Its only job is to show
+whether the model has real spatial structure or is just a lookup table over
+memorized vantages, so expect it to read far worse than the headline number.
+That gap is information, not failure.</dd>
 <dt>gated fail (×)</dt><dd>The §6 score also enforces the aircraft's hard
 limits: the exported model must fit the ESP32-P4 flight computer
 (<b>≤ 4 MiB</b>) and answer within the latency budget (≤ 250 ms host proxy),
@@ -1593,7 +1603,7 @@ can be re-run or audited later.</dd>
 what it tried, pre-registered alongside the technical design — read this
 first if the title looks like alphabet soup.</dd>
 <dt>One real test</dt><dd>The figure at the top of each detail view is not
-an illustration: the same held-out Berlin night crop is fed to that
+an illustration: the same held-out Berlin viewpoint is fed to that
 experiment's actual exported model, and the red glow on the map is the
 probability field recovered from the deployed ONNX artifact itself —
 with the true location (○), the model's answer (×), and the real miss
@@ -2064,7 +2074,10 @@ fetch as-is.</p>
 headless coding agent reads the full experiment history, pre-registers ONE
 focused change — hypothesis, method, expected outcome — then the harness
 trains and scores it against a single frozen ruler: the <b>worst</b>
-median position error on held-out map crops (on this branch: Berlin only,
+median position error on held-out <i>viewpoints</i> — training covers all of
+Berlin and the test frames sit 11&ndash;17&nbsp;m off the nearest training
+vantage at their own rotation, so the ground is mapped but the view is new
+(on this branch: Berlin only,
 one lighting condition; the main branch's ruler is the worst cell across
 6 lighting conditions × 4 German test areas — dense Berlin, rural
 Prignitz, Munich, Frankfurt). Improvements are kept as git commits;

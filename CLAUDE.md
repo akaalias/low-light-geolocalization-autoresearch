@@ -229,8 +229,19 @@ a stable, trustworthy eval set.
    improvement by the loop** — if it can find a better sim-to-real
    approach (e.g. learned relighting instead of hand-tuned curves), that's
    exactly the kind of novel result this project is for.
-4. **Train/eval split:** held-out crops not seen during training, per area,
-   per lighting bucket.
+4. **Train/eval split:** held-out **viewpoints**, not held-out regions.
+   Training covers every lattice position of the whole bounding box — the
+   model is meant to memorize its one box, so it is shown all of it. Eval
+   crops are off-lattice viewpoints over that same mapped ground, 11–17 m
+   from the nearest training framing and carrying a deterministic rotation:
+   the ground is mapped, the view is new, which is exactly the deployment
+   condition. A small 1-in-32-block region stays genuinely out of training
+   as a logged-only diagnostic (never scored) against a structureless
+   lookup table. **Do not reintroduce a region-based holdout as the primary
+   metric** — that was the v1 design, and it left 28.2% of Berlin in no
+   training crop and 100% of eval questions on never-seen ground, asking a
+   memorization model to locate places it had never been shown. See the
+   docstring of `pipeline/dataset.py` for the full measurement.
 
 ---
 
