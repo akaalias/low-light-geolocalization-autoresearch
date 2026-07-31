@@ -842,21 +842,46 @@ def live_row(next_id):
         ("scoring against the frozen ruler", med.get("score_s", 240)),
         ("logging + publishing", med.get("samples_s", 60) + med.get("gallery_s", 60)),
     ]
+    # Pre-fill from the LOCAL state/phase.json at render time. The JS below
+    # refreshes this from the status branch, but that fetch hits
+    # raw.githubusercontent.com, which returns 403/404 for a PRIVATE repo — so
+    # for local viewing (and any private deployment) it never resolves and the
+    # row was stuck on "Design not finished yet" even when the design existed.
+    pre = {}
+    try:
+        pj = json.loads((REPO_ROOT / "state" / "phase.json").read_text())
+        if int(pj.get("iter") or -1) == int(next_id):
+            pre = pj.get("design") or {}
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        pre = {}
+    pre_title = esc(pre.get("title") or f"experiment #{next_id} in progress…")
+    pre_cat = esc(pre.get("category") or "—")
+    pre_init = esc(pre.get("init_strategy") or "—")
+    pre_blocks = ""
+    for key, cls, label in (("eli5", "eb-eli", "In plain words"),
+                            ("hypothesis", "eb-hyp", "Hypothesis"),
+                            ("method", "eb-met", "Method"),
+                            ("expected_outcome", "eb-exp", "Expected outcome")):
+        if pre.get(key):
+            pre_blocks += (f"<div class='eb {cls}'><div class='eb-h'>{label}</div>"
+                           f"<p>{esc(pre[key])}</p></div>")
+    if not pre_blocks:
+        pre_blocks = ("<div class='eb eb-why'><div class='eb-h'>Status</div>"
+                      "<p>Design not finished yet — check back shortly.</p></div>")
     phases_js = json.dumps([[n, round(s)] for n, s in phases])
     built_ms = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
     return f"""<tr class="row-main live-row" id="r{next_id}" onclick="toggle({next_id})">
 <td><span class="caret">▸</span></td><td class="num">{next_id}</td>
-<td class="title-cell"><b id="live-title">experiment #{next_id} in progress…</b></td>
-<td><span class="cat" id="live-cat">—</span></td>
-<td class="mono" id="live-init">—</td>
+<td class="title-cell"><b id="live-title">{pre_title}</b></td>
+<td><span class="cat" id="live-cat">{pre_cat}</span></td>
+<td class="mono" id="live-init">{pre_init}</td>
 <td class="num">…</td><td class="num">…</td><td class="num">…</td>
 <td class="num" id="live-time">…</td>
 <td class="num">—</td>
 <td><span class="status-badge live"><span class="dot"></span>live</span></td></tr>
 <tr class="detail" id="d{next_id}" style="display:none"><td colspan="11">
 <div class="detail-inner"><div class="detail-grid">
-<div class="explain" id="live-explain"><div class="eb eb-why">
-<div class="eb-h">Status</div><p>Design not finished yet — check back shortly.</p></div></div>
+<div class="explain" id="live-explain">{pre_blocks}</div>
 <div><div class="score-head">Scoreboard — mission score per area × lighting</div>
 <div class="score-sub">pending — lands once training and scoring finish</div></div>
 </div></div></td></tr>

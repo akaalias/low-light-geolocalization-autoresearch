@@ -442,6 +442,14 @@ PYCHECK
       fi
     fi
 
+    # Publish the design NOW, not at the end of the experiment. The gallery
+    # was only rendered after scoring, so a design that landed at minute 5 of
+    # a 20-minute experiment stayed invisible until the whole thing finished —
+    # the LIVE row sat on "Design not finished yet" while the design existed.
+    # (The row also tries to self-refresh from the status branch, but that
+    # fetch hits raw.githubusercontent, which 403s for a PRIVATE repo, so the
+    # render-time pre-fill is what actually makes it visible.) ~1-2s.
+    $PY -m autoresearch.gallery >/dev/null 2>&1 || true
     report_phase implement
     T0=$(date +%s)
     "$CLAUDE_BIN" -p "$(cat "$RUN_DIR/prompt_impl.md")" \
