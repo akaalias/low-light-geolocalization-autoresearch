@@ -260,8 +260,10 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 /* Report register, after the author's prior research reports: the research
    question as a large serif subhead, a grey one-line descriptor, then the
    finding stated up front with the claim itself highlighted. */
-.home-q{max-width:820px;margin:18px auto 0;text-align:center;
-  font:400 30px/1.28 var(--serif);color:var(--ink)}
+/* The quoted line stands alone, the research question carries the weight. */
+.home-h1{font-style:italic}
+.home-q{max-width:860px;margin:22px auto 0;text-align:center;
+  font:400 32px/1.28 var(--serif);color:var(--ink)}
 .home-desc{max-width:640px;margin:12px auto 0;text-align:center;
   font:16px/1.5 var(--serif);color:var(--faint)}
 .bl-h{max-width:780px;margin:38px auto 0;font:700 11px var(--serif);
@@ -3135,12 +3137,9 @@ def render_overview(exps):
 {topnav('overview', root=True)}
 {compute_banner()}
 <div class="paths-wrap">
-<div class="eyebrow" style="text-align:center">Alexis Rondeau · an autonomous research project</div>
-<h1 class="home-h1">&ldquo;Not all who wander are lost&rdquo; &mdash; a 5-inch drone learns
-to recognise a city from above, with no GPS, no maps on board, and a $4 flight
-computer</h1>
-<h2 class="home-q">Can a neural network small enough to fit on a $4 chip
-memorise a whole city &mdash; well enough to replace GPS?</h2>
+<h1 class="home-h1">&ldquo;Not all who wander are lost&rdquo;</h1>
+<h2 class="home-q">Can a 5-inch drone learn to recognise a city from above
+&mdash; with no GPS, no maps on board, and a $4 flight computer?</h2>
 <p class="home-desc">A single-area visual-geolocalisation study, designed and
 run by an autonomous loop of coding agents</p>
 
@@ -3149,9 +3148,15 @@ run by an autonomous loop of coding agents</p>
 one downward camera frame into a position accurate enough to steer by, on
 {usable_pct} of frames, from a {best_mb:.1f}&nbsp;MB file with no map, no
 internet and no GPS aboard.</span> It took {n_all_exp} experiments across
-{n_eras} rebuilt evaluations to get there &mdash; and for most of them we were
-measuring the wrong thing. The trick, when we found it, was to stop asking the
-network <i>where am I</i> and start asking it <i>which tile is this</i>.</p>
+{n_eras} rebuilt evaluations to test every lever we could find &mdash;
+from-scratch and ImageNet-pretrained backbones, domain-contrastive
+pre-training, direct coordinate regression, spatial probability fields,
+soft-argmax and peak-commit decoding, dense per-patch scene coordinates,
+multi-hypothesis and Gaussian-mixture heads, vector-quantised codebooks,
+retrieve-then-rerank, sliding-window map correlation, lighting dispatchers and
+mixture-of-experts, contrastive and hardest-impostor losses, reconstruction
+auxiliaries, rotation and mirror voting, illumination-invariant channels,
+learned delighting, calibrated abstention, and quantisation-aware training.</p>
 
 <div class="stat-hero">
   <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
