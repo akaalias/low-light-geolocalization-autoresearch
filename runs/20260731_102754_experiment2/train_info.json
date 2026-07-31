@@ -1,0 +1,13 @@
+[
+  {
+    "area": "berlin",
+    "n_train_crops": 6000,
+    "epochs": 8,
+    "device": "mps",
+    "train_seconds": 83.8,
+    "onnx_bytes": 3053335,
+    "init": "from-scratch",
+    "n_cells": 2970,
+    "distinct_vantages_seen": 48000
+  }
+]

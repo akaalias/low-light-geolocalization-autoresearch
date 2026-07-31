@@ -1,0 +1,10 @@
+[berlin] 72712 lattice positions, 2970 cells, device=mps
+[berlin] epoch 1/8 loss=8.1002
+[berlin] epoch 2/8 loss=7.9043
+[berlin] epoch 3/8 loss=7.6302
+[berlin] epoch 4/8 loss=7.3422
+[berlin] epoch 5/8 loss=7.0404
+[berlin] epoch 6/8 loss=6.7607
+[berlin] epoch 7/8 loss=6.4619
+[berlin] epoch 8/8 loss=6.2271
+{"area": "berlin", "n_train_crops": 6000, "epochs": 8, "device": "mps", "train_seconds": 83.8, "onnx_bytes": 3053335, "init": "from-scratch", "n_cells": 2970, "distinct_vantages_seen": 48000}

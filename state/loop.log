@@ -1,1 +1,15 @@
 Working tree dirty — committing pending changes as a pre-loop checkpoint.
+=== Experiment 2 (1/12 recorded)  run=20260731_102754_experiment2  parent=499b7aea219a0085c11ef387ff8814c79bca4c53 ===
+agents finished (design: claude-fable-5, claude-haiku-4-5-20251001 319s, impl: claude-haiku-4-5-20251001, claude-opus-5 142s)
+--- train berlin:
+[berlin] epoch 8/8 loss=6.2271
+{"area": "berlin", "n_train_crops": 6000, "epochs": 8, "device": "mps", "train_seconds": 83.8, "onnx_bytes": 3053335, "init": "from-scratch", "n_cells": 2970, "distinct_vantages_seen": 48000}
+PRIMARY worst-case mission score: 1000000000.0000 (0=every frame a usable fix, 1=abstains everywhere, 2=confidently wrong everywhere)
+samples -> runs/20260731_102754_experiment2/samples
+REVERTED: mission score 1000000000.0 (best remains 2.00075)
+2
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/index.html (2 experiments)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/inference-paths.html (0 figures)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (2 nodes)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
