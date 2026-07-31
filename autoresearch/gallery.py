@@ -3242,8 +3242,16 @@ LINEAGE_CSS = """
 #lin .nf{fill:var(--accent)}
 #lin .nh{fill:var(--paper);stroke:#8a6a1e;stroke-width:1.6}
 #lin .np{fill:none;stroke:#8a6a1e;stroke-width:1.5}
+#lin .nu{stroke:#9b998c;stroke-width:1.5;stroke-dasharray:2 2;fill:none}
 #lin .nlab{fill:var(--faint);font:10px/1 var(--serif);stroke:none}
 #lin .hit{cursor:pointer}
+/* Evaluation-era bands: washes behind the whole diagram, each captioned in
+   place so the band is never identified by colour alone. */
+#lin .eband{pointer-events:none}
+#lin .ebound{stroke:var(--rule);stroke-width:1}
+#lin .elab{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
+  letter-spacing:.05em;stroke:none}
+#tip .pop-prov{color:var(--faint);font-style:normal}
 #lin.dim .nd,#lin.dim .edge,#lin.dim .nlab{opacity:.07}
 #lin.dim .nd.lit{opacity:.55}
 #lin.dim .nd.lit-direct{opacity:1}
@@ -3276,8 +3284,21 @@ LINEAGE_JS = r"""
   const tip = document.getElementById("tip");
   if (!host) return;
   if (!nodes.length) { host.innerHTML = '<p class="empty">No experiments yet.</p>'; return; }
+  const eras = data.eras || [];
   const esc = (s) => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const fmtM = (v) => v == null ? null : (v >= 1000 ? (v/1000).toFixed(2) + " km" : v.toFixed(1) + " m");
+  // The metric is a mission score, not a distance. This formatted it as
+  // metres for as long as the metric WAS a distance, which rendered the
+  // best result the project has ("0.040") as "0.0 m".
+  const fmtScore = (v) => v == null ? null : v.toFixed(3);
+  const provNote = {
+    rescored: "re-scored today from its exported model",
+    native: "measured on this era's own ruler",
+    derived: "rates recovered from the logged record",
+    gated: "failed a deployment gate",
+    incomparable: "ran on 10 m/px imagery — not on this ruler",
+    unrecoverable: "model and rates both lost",
+    holdout: "blind Hamburg holdout — a different area",
+  };
 
   const byKey = {}; nodes.forEach(n => byKey[n.key] = n);
   const parentsOf = {}; nodes.forEach(n => parentsOf[n.key] = (n.parents || []).filter(p => byKey[p]));
@@ -3297,10 +3318,22 @@ LINEAGE_JS = r"""
   nodes.forEach(nd => parentsOf[nd.key].forEach(pk =>
     edges.push({ c: nd.key, p: pk, dx: Math.abs(xOf[nd.key] - xOf[pk]) })));
   const maxRy = edges.length ? Math.min(CAP, Math.max(...edges.map(e => e.dx / 2))) : 18;
-  const baseY = topPad + maxRy;
+  const ERA_LAB_H = eras.length ? 20 : 0;
+  const baseY = topPad + ERA_LAB_H + maxRy;
   const H = Math.ceil(baseY + 12 + labelH);
 
   let g = "";
+  // Era bands first, so every arc and node sits on top of its own band.
+  eras.forEach((era, i) => {
+    const lo = Math.max(0, xFor(era.start) - spacing / 2);
+    const hi = Math.min(Wpx, xFor(era.end) + spacing / 2);
+    if (hi <= lo) return;
+    g += `<rect class="eband" data-era="${esc(era.key)}" x="${lo.toFixed(1)}" y="0" `
+       + `width="${(hi - lo).toFixed(1)}" height="${H}" fill="${era.tint}"/>`;
+    if (i) g += `<line class="ebound" x1="${lo.toFixed(1)}" y1="0" x2="${lo.toFixed(1)}" y2="${H}"/>`;
+    g += `<text class="elab" x="${((lo + hi) / 2).toFixed(1)}" y="15" `
+       + `text-anchor="middle" fill="${era.ink}">${esc(era.short)}</text>`;
+  });
   edges.forEach(e => {
     const a = Math.min(xOf[e.p], xOf[e.c]), b = Math.max(xOf[e.p], xOf[e.c]);
     const rx = (b - a) / 2, ry = Math.min(CAP, rx);
@@ -3312,7 +3345,14 @@ LINEAGE_JS = r"""
     const cls = nd.kind === "failed" || nd.kind === "rejected" ? "nf" : nd.kind === "kept" ? "nk"
               : nd.kind === "holdout" ? "nh" : "ndd";
     const r = nd.kind === "kept" ? 4 : nd.kind === "holdout" ? 4 : 3;
-    g += `<circle class="nd ${cls}" data-key="${esc(nd.key)}" cx="${x}" cy="${baseY}" r="${r}"/>`;
+    if (nd.kind === "unknown") {
+      // No score exists and none can be reconstructed. Drawn as a gap in the
+      // record rather than a dot, so it cannot be read as a result.
+      g += `<line class="nd nu" data-key="${esc(nd.key)}" x1="${x}" y1="${baseY - 4}" `
+         + `x2="${x}" y2="${baseY + 4}"/>`;
+    } else {
+      g += `<circle class="nd ${cls}" data-key="${esc(nd.key)}" cx="${x}" cy="${baseY}" r="${r}"/>`;
+    }
     if (nd.pivot) { const R = 6.5, cx = parseFloat(x);
       g += `<path class="nd np" data-key="${esc(nd.key)}" `
          + `d="M${cx.toFixed(1)},${(baseY + R).toFixed(1)} `
@@ -3382,13 +3422,24 @@ LINEAGE_JS = r"""
   function showPopover(nd){
     const met = nd.kind === "rejected" ? "rejected — never trained"
       : nd.kind === "failed" ? "gated fail"
-      : (fmtM(nd.metric) || "—") + (nd.kind === "holdout" ? " · blind holdout" : "");
+      : nd.kind === "unknown" ? (provNote[nd.prov] || "no score")
+      : (fmtScore(nd.metric) || "—") + (nd.kind === "holdout" ? " · blind holdout" : "");
+    const rates = (nd.usable != null)
+      ? `<div class="pop-sec"><div class="pop-h">On today's ruler</div>`
+        + `<p>${(nd.usable * 100).toFixed(1)}% usable fixes · `
+        + `${(nd["false"] * 100).toFixed(1)}% confidently wrong `
+        + `<span class="pop-prov">(${esc(provNote[nd.prov] || "")})</span></p></div>`
+      : "";
     const parents = (parentsOf[nd.key] || []).map(p =>
-      `<span class="pop-parent">↳ #${esc(p)} ${esc((byKey[p] || {}).title || "").slice(0, 48)}</span>`).join("<br>");
+      `<span class="pop-parent">↳ #${esc((byKey[p] || {}).n || p)} `
+      + `${esc((byKey[p] || {}).title || "").slice(0, 48)}</span>`).join("<br>");
+    const era = nd.eraLabel
+      ? `<div class="pop-sec"><div class="pop-h">Evaluation era</div><p>${esc(nd.eraLabel)}</p></div>` : "";
     tip.innerHTML =
       `<div class="pop-title">${esc(nd.title)}</div>`
       + `<div class="pop-meta">#${esc(nd.n)} · ${esc(nd.category || "")} · ${met}</div>`
       + (nd.summary ? `<div class="pop-sec"><div class="pop-h">In plain words</div><p>${esc(nd.summary)}</p></div>` : "")
+      + rates + era
       + (parents ? `<div class="pop-sec"><div class="pop-h">Built on</div>${parents}</div>` : "");
     tip.style.opacity = "1";
     placePopover(nd);
@@ -3404,8 +3455,14 @@ LINEAGE_JS = r"""
     const m = e.target.closest("[data-key]"); if (!m) return;
     unlit(); tip.style.opacity = "0";
   });
-  svg.addEventListener("click", e => { const m = e.target.closest("[data-key]");
-    if (m) location.href = "index.html#r" + encodeURIComponent(m.getAttribute("data-key")); });
+  // Only the current era has rows in the research log; earlier eras' records
+  // live in the archived DBs, so their nodes are hover-only rather than
+  // linking to a row that isn't there.
+  svg.addEventListener("click", e => {
+    const m = e.target.closest("[data-key]"); if (!m) return;
+    const nd = byKey[m.getAttribute("data-key")];
+    if (nd && nd.link !== false) location.href = "index.html#r" + encodeURIComponent(nd.n);
+  });
 })();
 """
 
@@ -3413,51 +3470,123 @@ LINEAGE_JS = r"""
 def render_lineage(exps):
     """gallery/research-lineage.html — the author's lineage-page idiom with
     this project's data: scrollable arc diagram, ancestry hover, eli5
-    popovers, click-through to the log."""
-    nodes = []
-    last_kept = None
-    for e in exps:
-        gated = (e["primary_metric"] or 0) >= FAIL
-        if e["kind"] == "holdout_check":
-            kind = "holdout"
-        elif is_rejected(e):
-            kind = "rejected"
-        elif gated:
-            kind = "failed"
-        elif e["kept"]:
-            kind = "kept"
-        else:
-            kind = "discarded"
-        cat = e["category"] or ""
-        pivot = bool(e.get("is_pivot"))
-        nodes.append({
-            "key": str(e["id"]), "n": str(e["id"]),
-            "title": e["title"] or "(untitled)",
-            "summary": (e["eli5"] or e["hypothesis"] or "")[:260],
-            "metric": (None if gated or e["primary_metric"] is None
-                       else round(e["primary_metric"], 1)),
-            "kind": kind, "pivot": pivot, "category": cat,
-            "parents": [str(last_kept)] if last_kept is not None else [],
-        })
-        if kind == "kept":
-            last_kept = e["id"]
+    popovers, click-through to the log.
+
+    Spans EVERY era, and the eras are deliberately not joined to each other.
+    Each wipe of the lineage restarted the search from a fresh baseline, so
+    an arc across a boundary would assert a descent that never happened. The
+    diagram is five separate forests sharing one timeline — which is itself
+    the finding: four of them died out."""
+    hist, eras = load_history()
+    if hist:
+        nodes = []
+        last_kept = None
+        prev_era = None
+        for r in hist:
+            if r["era_index"] != prev_era:      # a wipe: nothing inherits across it
+                last_kept, prev_era = None, r["era_index"]
+            prov = r["provenance"]
+            if prov == "holdout":
+                kind = "holdout"
+            elif prov == "gated":
+                kind = "failed"
+            elif prov in ("incomparable", "unrecoverable"):
+                kind = "unknown"
+            elif r["kept"]:
+                kind = "kept"
+            else:
+                kind = "discarded"
+            key = f"{r['era']}-{r['src_id']}"
+            nodes.append({
+                "key": key, "n": str(r["src_id"]),
+                "title": r["title"] or "(untitled)",
+                "summary": (r["eli5"] or r["hypothesis"] or "")[:260],
+                "metric": r["mission_score"],
+                "usable": r["usable_fix_rate"], "false": r["false_fix_rate"],
+                "kind": kind, "pivot": False, "category": r["category"] or "",
+                "era": r["era"], "eraLabel": r["era_label"], "prov": prov,
+                # Only the current era has a row in the research log to open.
+                "link": r["era"] == "mission",
+                "parents": [last_kept] if last_kept is not None else [],
+            })
+            if kind == "kept":
+                last_kept = key
+        era_meta = [{
+            "key": e["key"], "label": e["label"], "short": ERA_SHORT.get(e["key"], e["label"]),
+            "tint": ERA_TINT.get(e["key"], "rgba(107,106,96,.06)"),
+            "ink": ERA_INK.get(e["key"], "#6b6a60"),
+            "start": e["seq_start"] - 1, "end": e["seq_end"] - 1,
+            "ruler": e["ruler"], "evalSet": e["eval_set"], "note": e["note"],
+        } for e in eras]
+    else:
+        nodes, era_meta = [], []
+        last_kept = None
+        for e in exps:
+            gated = (e["primary_metric"] or 0) >= FAIL
+            if e["kind"] == "holdout_check":
+                kind = "holdout"
+            elif is_rejected(e):
+                kind = "rejected"
+            elif gated:
+                kind = "failed"
+            elif e["kept"]:
+                kind = "kept"
+            else:
+                kind = "discarded"
+            nodes.append({
+                "key": str(e["id"]), "n": str(e["id"]),
+                "title": e["title"] or "(untitled)",
+                "summary": (e["eli5"] or e["hypothesis"] or "")[:260],
+                "metric": (None if gated or e["primary_metric"] is None
+                           else e["primary_metric"]),
+                "usable": None, "false": None, "link": True,
+                "kind": kind, "pivot": bool(e.get("is_pivot")),
+                "category": e["category"] or "", "era": "", "eraLabel": "",
+                "prov": "native",
+                "parents": [str(last_kept)] if last_kept is not None else [],
+            })
+            if kind == "kept":
+                last_kept = e["id"]
     n_dev = sum(1 for nd in nodes if nd["kind"] != "holdout")
-    data_json = json.dumps({"nodes": nodes, "target": 0.0})
+    data_json = json.dumps({"nodes": nodes, "eras": era_meta, "target": 0.0})
+    if era_meta:
+        lineage_sub = (
+            f"All {n_dev} experiments, left → right in discovery order; each arc "
+            f"links an experiment to the kept design it built on. The shaded "
+            f"bands are the {len(era_meta)} <b>evaluation eras</b> &mdash; each "
+            f"time the eval set or the metric was corrected the lineage was "
+            f"wiped and the search restarted from a fresh baseline, so "
+            f"<b>no arc crosses a band boundary</b>. Nothing in the last band "
+            f"inherits from the four before it, which is exactly why the final "
+            f"run had to rediscover from scratch what earlier eras had already "
+            f"found. <b>Hover</b> to trace ancestry back to that era's root; "
+            f"experiments in the current era <b>click through</b> to the "
+            f"<a href='index.html'>research log</a>.")
+        lineage_era_key = "".join(
+            f"<span class='k'><span class='era-sw' style='background:{e['tint']}'>"
+            f"</span>{esc(e['short'])}</span>" for e in era_meta)
+    else:
+        lineage_sub = (f"{n_dev} experiments, left → right in discovery order; "
+                       f"each arc links an experiment to the kept design it built "
+                       f"on. <b>Hover</b> to trace its ancestry back to the root; "
+                       f"<b>click</b> to open its full record in the "
+                       f"<a href='index.html'>research log</a>.")
+        lineage_era_key = ""
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
 <title>Experiment Lineage — Low-Light Geolocalization</title>
 <style>{CSS}{LINEAGE_CSS}</style></head><body>
 {topnav('lineage')}
 {compute_banner()}
-{page_header("Experiment lineage: the family tree of the search", f"{n_dev} experiments, left → right in discovery order; each arc links an experiment to the kept design it built on. <b>Hover</b> to trace its ancestry back to the root; <b>click</b> to open its full record in the <a href='index.html'>research log</a>.")}
+{page_header("Experiment lineage: the family tree of the search", lineage_sub)}
 <div class="lin-head">
 <div class="legend">
   <span class="k"><span class="ldot" style="background:var(--ink)"></span>Kept (new best)</span>
   <span class="k"><span class="ldot" style="background:#9b998c"></span>Worse than best</span>
   <span class="k"><span class="ldot" style="background:var(--accent)"></span>Gated fail</span>
   <span class="k"><span class="lring"></span>Blind holdout check</span>
-  <span class="k"><span class="tri"></span>Pivot-directed (patience spent — 4+ misses in a row)</span>
   <span class="k"><span class="larc"></span>Derived from its parent</span>
+  {lineage_era_key}
 </div>
 </div>
 <div id="diagram"></div>
