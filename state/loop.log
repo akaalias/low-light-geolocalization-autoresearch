@@ -27,3 +27,8 @@ wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/galle
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (3 nodes)
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
+=== Experiment 4 (3/12 recorded)  run=20260731_095617_experiment4  parent=e4961aa7d9f85ca412e7738e91d721442a0d5224 ===
+
+Interrupted — discarding the in-flight experiment (all completed
+experiments are already committed/logged). Safe to restart with:
+  ./autoresearch/loop.sh

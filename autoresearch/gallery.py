@@ -813,7 +813,7 @@ def live_row(next_id):
 <div class="detail-inner"><div class="detail-grid">
 <div class="explain" id="live-explain"><div class="eb eb-why">
 <div class="eb-h">Status</div><p>Design not finished yet — check back shortly.</p></div></div>
-<div><div class="score-head">Scoreboard — median error (m) per area × lighting</div>
+<div><div class="score-head">Scoreboard — geometric-mean error (m) per area × lighting</div>
 <div class="score-sub">pending — lands once training and scoring finish</div></div>
 </div></div></td></tr>
 <script>(function(){{
@@ -1532,8 +1532,12 @@ on held-out <b>viewpoints</b>, not held-out regions: training covers all of
 Berlin — the model is supposed to memorize its one box — and the test frames
 sit 11–17&nbsp;m off the nearest training vantage, each at its own rotation.
 Mapped ground, new view; that is what the aircraft actually faces. That gives
-a median position error, taken as the <b>worst</b> bucket's score, not an
-average, so a good result in one cell can't hide a bad one elsewhere. Mission
+a <b>geometric-mean</b> position error, taken as the <b>worst</b> bucket's score. The
+geometric mean replaced the median because the median rewarded guessing near
+the map centre and punished genuine memorisation — a learner nails some spots
+and badly misses others, which reads worse on a median than uniform mediocrity
+does. Median, p10, p25 and hit-rate are still shown, just not optimised. Not an
+average across cells, so a good result in one cell can't hide a bad one elsewhere. Mission
 milestone on this branch: <b>≤ {TARGET_M:.0f} m</b> (main branch target:
 ≤ 20 m).</dd>
 <dt>Region-holdout (diagnostic)</dt><dd>A small 1-in-32-block slice of Berlin
@@ -1971,6 +1975,46 @@ one-in-thirty-two-block region stays genuinely untrained as a logged-only
 diagnostic, never allowed to touch the metric, to catch a model that is a
 lookup table with no spatial structure.</p></div>
 
+<div class="nb-pull"><span class="nb-time">13:10&ndash;13:40</span>
+<div class="nb-quote"><p><b>A second measurement bug, found the same way as the
+first &mdash; by looking at the map.</b> The human asks how an experiment whose
+error map is dotted with green hits can be discarded, while one with a single
+green dot in five hundred is kept. It is not the map that is wrong. A model
+that guesses near the map centre produces a tight, mediocre, unimodal error
+distribution &mdash; a decent <i>median</i> and no good tail. A model that
+genuinely memorises places produces a <b>bimodal</b> one: some spots nailed,
+the rest badly wrong when it misidentifies. The median rewards the guesser and
+punishes the learner. Experiment&nbsp;2 located <b>8%</b> of Berlin to within
+100&nbsp;m &mdash; the baseline managed 0.0%, experiment&nbsp;3 managed 0.2%
+&mdash; and was reverted for a slightly worse median, while experiment&nbsp;3,
+a marginally better centre-guesser, was kept. Tested against every candidate
+statistic, the median was the <i>only</i> one that ranked experiment&nbsp;2
+last; p25, p10, geometric mean and hit-rate all ranked it first.</p></div></div>
+
+<div class="nb-row"><span class="nb-time">13:40</span>
+<p class="nb-text"><b>The score becomes the geometric mean.</b> Chosen over a
+percentile because it reads every frame rather than one cutoff, and because on
+an error spanning two orders of magnitude the log scale is the natural one:
+pulling a single spot from 2&nbsp;km to 50&nbsp;m &mdash; actually memorising
+it &mdash; now moves the number meaningfully. Median, mean, p10, p25 and a
+product-facing hit-rate are all still recorded, just no longer optimised. This
+time no lineage reset was needed: the evaluation data never changed, only its
+summary, so all three experiments were rescored from their saved weights.
+Corrected, the history inverts &mdash; experiment&nbsp;2 becomes the champion
+at 1323.6&nbsp;m, experiment&nbsp;3 the revert.</p></div>
+
+<div class="nb-row"><span class="nb-time">13:40</span>
+<p class="nb-text"><b>And the correction exposes a hole in the harness.</b>
+Experiment&nbsp;2 was the best implementation the project had &mdash; and it no
+longer existed. Reverting an experiment ran <code>git checkout -- model/</code>,
+which deleted its source outright; only kept experiments ever entered the git
+trail. That is safe only if the scoring metric is correct and permanent, an
+assumption nobody had written down and which had just been proven false twice
+in one day. Of the 60 archived experiments, the 13 kept ones survive in git;
+the 47 reverted ones do not, though their design briefs and trained weights
+remain, which is how experiment&nbsp;2 was rebuilt. Four separate code paths
+could destroy an implementation; all four now snapshot it first.</p></div>
+
 <div class="nb-row"><span class="nb-time">12:20</span>
 <p class="nb-text"><b>Measured again, on the same instruments.</b> Berlin
 ever shown in training rises from 71.8% to <b>93.5%</b> (the remaining gap
@@ -2097,7 +2141,7 @@ fetch as-is.</p>
 headless coding agent reads the full experiment history, pre-registers ONE
 focused change — hypothesis, method, expected outcome — then the harness
 trains and scores it against a single frozen ruler: the <b>worst</b>
-median position error on held-out <i>viewpoints</i> — training covers all of
+geometric-mean position error on held-out <i>viewpoints</i> — training covers all of
 Berlin and the test frames sit 11&ndash;17&nbsp;m off the nearest training
 vantage at their own rotation, so the ground is mapped but the view is new
 (on this branch: Berlin only,
@@ -2680,7 +2724,7 @@ def render():
 <style>{CSS}</style><script>{JS}</script></head><body>
 {topnav('log')}
 {compute_banner()}
-{page_header("Where we are: The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a single GPU and measured against one frozen ruler: the <b>worst</b> median position error on held-out crops ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
+{page_header("Where we are: The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a single GPU and measured against one frozen ruler: the <b>worst</b> geometric-mean position error on held-out viewpoints ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
 <div class="status-callout">
   <div class="status-callout-h">Where we are right now</div>
   <p>{status_line}</p>
@@ -2707,7 +2751,7 @@ def render():
 <thead><tr><th></th><th>#</th><th>Experiment</th>
 <th title="Which lever the experiment pulls: architecture, loss, augmentation, relighting, training, quantization.">Category</th>
 <th title="Weight initialization: from scratch, or a permissively-licensed pretrained backbone.">Init</th>
-<th title="Worst median position error on held-out Berlin daytime crops. The one number the loop optimizes. Milestone: at or below 100 m (branch override — main-branch target is 20 m across 6 lighting conditions x 4 areas).">Worst-case error</th>
+<th title="Worst geometric-mean position error on held-out Berlin daytime viewpoints — the geometric mean is used because a median rewards centre-guessing and hides real memorisation. The one number the loop optimizes. Milestone: at or below 100 m (branch override — main-branch target is 20 m across 6 lighting conditions x 4 areas).">Worst-case error</th>
 <th title="Largest per-area exported model. Hard limit: 4 MiB (ESP32-P4 flight computer).">Model</th>
 <th title="Single-frame inference on one CPU thread - a documented proxy for the flight computer, budget 250 ms.">Latency</th>
 <th title="Wall time of the whole experiment: agent design + training all areas + scoring.">Time</th>
@@ -2763,7 +2807,7 @@ def render():
 <div>
 {heatmap_block(e['artifacts_dir'], metrics)}
 {worked_example_block(e)}
-<div class="score-head">Scoreboard — median error (m) per area × lighting</div>
+<div class="score-head">Scoreboard — geometric-mean error (m) per area × lighting</div>
 <div class="score-sub">the worst cell (underlined) is the experiment's score;
 red = failed cell, ink = at target</div>
 {cells_table(metrics)}

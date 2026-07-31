@@ -280,11 +280,22 @@ continuing, not something to quietly average away.
 
 ## 6. Target metric — the single scalar the loop optimizes
 
-**Primary (optimized by the loop):** worst-case (max, not mean) median
-position error in meters, across all 6 lighting buckets × the **4
-development areas only** (Berlin, Prignitz, Munich, Frankfurt — not the
-Hamburg holdout), evaluated on held-out crops within those areas.
-**Target: ≤ 20 m.**
+**Primary (optimized by the loop):** worst-case (max, not mean)
+**geometric-mean** position error in meters, across all lighting buckets ×
+the development areas, evaluated on held-out **viewpoints** (§4 step 4).
+**Target: ≤ 20 m** (≤ 100 m on the berlin-slim branch).
+
+**The geometric mean replaced the median on 2026-07-31, and must not be
+changed back to a median.** Measured reason: a model that guesses near the
+map centre has a tight unimodal error distribution — a decent median and no
+good tail — while a model that genuinely memorizes places is bimodal, nailing
+some spots and badly missing others. The median therefore *rewards the
+guesser and punishes the learner*. It was caught doing exactly that:
+experiment 2 located 8% of Berlin within 100 m (baseline 0.0%, experiment 3
+0.2%) and was reverted for a marginally worse median, while experiment 3 —
+a slightly better centre-guesser — was kept. Of every candidate statistic
+tested, the median was the only one that ranked experiment 2 last. Median,
+mean, p10, p25 and a product-facing hit-rate remain logged as secondaries.
 
 Use worst-case rather than mean deliberately — an average can hide a bad
 rural or night-time failure behind a good Berlin-daytime score, which is
