@@ -797,18 +797,22 @@ def live_row(next_id):
     ]
     phases_js = json.dumps([[n, round(s)] for n, s in phases])
     built_ms = int(datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000)
-    return f"""<tr class="live-row" id="live-row">
-<td></td><td class="num">{next_id}</td>
-<td class="title-cell"><b id="live-title">experiment #{next_id} in progress…</b>
-  <div class="row-why" id="live-eli5" style="display:none"></div>
-  <div class="row-why" id="live-hyp" style="display:none;opacity:.7;
-    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:44ch"></div></td>
+    return f"""<tr class="row-main live-row" id="r{next_id}" onclick="toggle({next_id})">
+<td><span class="caret">▸</span></td><td class="num">{next_id}</td>
+<td class="title-cell"><b id="live-title">experiment #{next_id} in progress…</b></td>
 <td><span class="cat" id="live-cat">—</span></td>
 <td class="mono" id="live-init">—</td>
 <td class="num">…</td><td class="num">…</td><td class="num">…</td>
 <td class="num" id="live-time">…</td>
 <td class="num">—</td>
 <td><span class="status-badge live"><span class="dot"></span>live</span></td></tr>
+<tr class="detail" id="d{next_id}" style="display:none"><td colspan="11">
+<div class="detail-inner"><div class="detail-grid">
+<div class="explain" id="live-explain"><div class="eb eb-why">
+<div class="eb-h">Status</div><p>Design not finished yet — check back shortly.</p></div></div>
+<div><div class="score-head">Scoreboard — median error (m) per area × lighting</div>
+<div class="score-sub">pending — lands once training and scoring finish</div></div>
+</div></div></td></tr>
 <script>(function(){{
   var built={built_ms}, phases={phases_js}, st=null;
   var NAMES={{design:'designing the experiment',
@@ -818,20 +822,21 @@ def live_row(next_id):
     publish:'logging + publishing the result'}};
   var elTime=document.getElementById('live-time'); if(!elTime) return;
   var elTitle=document.getElementById('live-title');
-  var elEli5=document.getElementById('live-eli5');
-  var elHyp=document.getElementById('live-hyp');
   var elCat=document.getElementById('live-cat');
   var elInit=document.getElementById('live-init');
+  var elExplain=document.getElementById('live-explain');
   var shownDesign=null;
   var total=phases.reduce(function(a,p){{return a+p[1]}},0);
   function fmt(s){{s=Math.max(0,Math.floor(s));
     return s<60? s+' s' : Math.floor(s/60)+' m '+('0'+s%60).slice(-2)+' s';}}
+  function esc(s){{var d=document.createElement('div');d.textContent=s;return d.innerHTML;}}
   // Live phase truth: the loop force-pushes state/phase.json to the repo's
   // 'status' branch at every phase transition; raw.githubusercontent serves
   // it with CORS. Elapsed counts from the experiment's true start. Once the
   // design agent has written a design (title/eli5/hypothesis/...), it rides
-  // along in the same payload — so the row can show what's actually being
-  // tried well before training/scoring finish, not just a phase name.
+  // along in the same payload — populating this row's expandable detail
+  // panel (same click-to-open behavior as every finished row) well before
+  // training/scoring finish, not just a phase name in the collapsed row.
   var RAW='https://raw.githubusercontent.com/akaalias/low-light-geolocalization-autoresearch/status/phase.json';
   function freshen(j){{
     // GitHub Pages pins Cache-Control to 10 min and headers are not
@@ -849,10 +854,14 @@ def live_row(next_id):
     if(!d || !d.title || shownDesign===d.title) return;
     shownDesign=d.title;
     elTitle.textContent=d.title;
-    if(d.eli5){{elEli5.textContent=d.eli5;elEli5.style.display='';}}
-    if(d.hypothesis){{elHyp.textContent='Hypothesis: '+d.hypothesis;elHyp.style.display='';}}
     if(d.category){{elCat.textContent=d.category;}}
     if(d.init_strategy){{elInit.textContent=d.init_strategy;}}
+    var parts=[];
+    if(d.eli5) parts.push("<div class='eb eb-eli'><div class='eb-h'>In plain words</div><p>"+esc(d.eli5)+"</p></div>");
+    if(d.hypothesis) parts.push("<div class='eb eb-hyp'><div class='eb-h'>Hypothesis</div><p>"+esc(d.hypothesis)+"</p></div>");
+    if(d.method) parts.push("<div class='eb eb-met'><div class='eb-h'>Method</div><p>"+esc(d.method)+"</p></div>");
+    if(d.expected_outcome) parts.push("<div class='eb eb-exp'><div class='eb-h'>Expected outcome</div><p>"+esc(d.expected_outcome)+"</p></div>");
+    if(parts.length) elExplain.innerHTML=parts.join('');
   }}
   function refresh(){{
     fetch(RAW+'?t='+Date.now()).then(function(r){{return r.ok?r.json():null}})
