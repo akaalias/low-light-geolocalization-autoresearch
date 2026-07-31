@@ -144,6 +144,63 @@ def rescore_one(models_dir: Path, out_json: Path) -> dict | None:
     return json.loads(out_json.read_text())
 
 
+# --- what each experiment cost -------------------------------------------
+#
+# Claude Code writes its own accounting into every runs/<id>/agent_*.json:
+# `total_cost_usd` for the invocation and `modelUsage[model].costUSD` broken
+# down per model. So this is READ, not reverse-engineered from a price list —
+# and it stays correct as prices change, because it is what was recorded.
+#
+# IMPORTANT: the agents ran on the user's claude.ai Max subscription, not on
+# API billing. These figures are therefore the *equivalent* API cost of the
+# tokens — what this research would have cost billed per token — not money
+# that left the account. Every surface that shows them must say so.
+AGENT_STAGES = ("design", "impl", "figure", "result")
+
+# The rented-GPU window. Billed by wall clock regardless of phase, so an
+# experiment's compute cost is its whole duration at the hourly rate. Before
+# and after this window the loop ran on hardware with ~$0 marginal cost (a
+# laptop, then Modal credits that were a fixed prepaid grant rather than a
+# per-experiment charge).
+POD_USD_PER_HR = 0.69
+POD_ERA_START = "2026-07-21"
+POD_ERA_END = "2026-07-23T12:00:00"
+
+
+def agent_costs(artifacts_dir: str | None) -> dict:
+    """Per-stage and per-model agent cost for one experiment's run directory."""
+    out = {"by_stage": {}, "by_model": {}, "total": 0.0, "stages_found": 0}
+    if not artifacts_dir:
+        return out
+    for stage in AGENT_STAGES:
+        f = REPO_ROOT / artifacts_dir / f"agent_{stage}.json"
+        if not f.exists():
+            continue
+        try:
+            d = json.loads(f.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        c = d.get("total_cost_usd")
+        if c is None:
+            continue
+        out["by_stage"][stage] = round(float(c), 4)
+        out["total"] += float(c)
+        out["stages_found"] += 1
+        for model, mu in (d.get("modelUsage") or {}).items():
+            out["by_model"][model] = round(
+                out["by_model"].get(model, 0.0) + (mu.get("costUSD") or 0.0), 4)
+    out["total"] = round(out["total"], 4)
+    return out
+
+
+def gpu_cost(ts: str | None, duration_s: float | None, kind: str) -> float:
+    if kind == "holdout_check" or not duration_s or not ts:
+        return 0.0
+    if ts < POD_ERA_START or ts >= POD_ERA_END:
+        return 0.0
+    return round(duration_s / 3600 * POD_USD_PER_HR, 4)
+
+
 def berlin_cell(metrics: dict) -> dict | None:
     for a in metrics.get("areas", []):
         if a.get("area") == "berlin":
@@ -206,6 +263,14 @@ CREATE TABLE IF NOT EXISTS history (
     artifacts_dir  TEXT,
     git_commit     TEXT,
     duration_s     REAL,
+    -- cost: agent spend is the EQUIVALENT API cost of tokens actually used
+    -- (recorded by Claude Code); the work ran on a Max subscription.
+    cost_agent     REAL,
+    cost_gpu       REAL,
+    cost_total     REAL,
+    cost_by_stage  TEXT,                  -- {"design":2.81,"impl":0.9,...}
+    cost_by_model  TEXT,                  -- {"claude-fable-5":2.81,...}
+    cost_stages_n  INTEGER,               -- how many agent records survived
     -- what the loop optimized at the time, in that era's own units
     era_metric     REAL,
     era_metric_kind TEXT,
@@ -277,11 +342,22 @@ def main():
                 artifacts_dir=d.get("artifacts_dir"),
                 git_commit=d.get("git_commit"), duration_s=d.get("duration_s"),
                 era_metric=era_metric, era_metric_kind=era["ruler"],
+                cost_agent=None, cost_gpu=None, cost_total=None,
+                cost_by_stage=None, cost_by_model=None, cost_stages_n=None,
                 mission_score=None, usable_fix_rate=None, false_fix_rate=None,
                 abstain_rate=None, coverage=None, median_error_m=None,
                 geomean_error_m=None, p10_error_m=None,
                 provenance="unrecoverable", rescored_json=None,
             )
+
+            ac = agent_costs(d.get("artifacts_dir"))
+            gc = gpu_cost(d.get("ts"), d.get("duration_s"), d.get("kind") or "")
+            row.update(
+                cost_agent=ac["total"], cost_gpu=gc,
+                cost_total=round(ac["total"] + gc, 4),
+                cost_by_stage=json.dumps(ac["by_stage"]) if ac["by_stage"] else None,
+                cost_by_model=json.dumps(ac["by_model"]) if ac["by_model"] else None,
+                cost_stages_n=ac["stages_found"])
 
             # --- the current era needs no re-scoring: it IS the ruler ---
             if era.get("native"):

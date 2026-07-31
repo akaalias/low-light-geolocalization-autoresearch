@@ -55,6 +55,79 @@ def cost_str(e):
     return f"${e['duration_s'] / 3600 * POD_USD_PER_HR:,.2f}"
 
 
+# What an experiment cost. Two very different kinds of money, added together
+# for the column but never conflated in the breakdown:
+#
+#   agents  — the EQUIVALENT API cost of the tokens the design, implementation,
+#             figure and summary agents actually consumed, as recorded by
+#             Claude Code itself in runs/<id>/agent_*.json. The work ran on a
+#             claude.ai Max subscription, so this is what it WOULD have cost
+#             billed per token; it is not money that left the account.
+#   GPU     — real spend, and only during the rented-pod window; the laptop
+#             and Modal-credit eras have ~$0 marginal cost per experiment.
+#
+# Rows whose run directory was deleted have no agent record and show an em
+# dash rather than a zero: "we didn't keep the receipt" and "it was free" are
+# not the same claim.
+COST_STAGE_LABEL = {"design": "design agent", "impl": "implementation agent",
+                    "figure": "figure agent", "result": "summary agent"}
+
+
+def fmt_usd(v):
+    if v is None:
+        return "—"
+    return f"${v:,.2f}" if v >= 0.005 else "$0.00"
+
+
+def cost_cell(r):
+    """The Cost column for one experiment. An em dash means unrecorded."""
+    if not r or r.get("cost_total") is None:
+        return "—"
+    if not r.get("cost_stages_n") and not r.get("cost_gpu"):
+        return "—"
+    return fmt_usd(r["cost_total"])
+
+
+def cost_block(r):
+    """Per-stage and per-model breakdown for an expanded row."""
+    if not r or r.get("cost_total") is None:
+        return ""
+    try:
+        stages = json.loads(r.get("cost_by_stage") or "{}")
+        models = json.loads(r.get("cost_by_model") or "{}")
+    except json.JSONDecodeError:
+        return ""
+    gpu = r.get("cost_gpu") or 0.0
+    if not stages and not gpu:
+        return ("<div class='eb eb-exp'><div class='eb-h'>What it cost</div>"
+                "<p>No agent accounting survives for this experiment — its run "
+                "directory was deleted. That is a missing receipt, not a zero."
+                "</p></div>")
+    rows = "".join(
+        f"<tr><td>{esc(COST_STAGE_LABEL.get(k, k))}</td>"
+        f"<td class='num'>{fmt_usd(v)}</td></tr>"
+        for k, v in sorted(stages.items(), key=lambda kv: -kv[1]))
+    if gpu:
+        rows += (f"<tr><td>rented GPU — {fmt_dur(r.get('duration_s'))} at "
+                 f"${POD_USD_PER_HR:.2f}/hr</td>"
+                 f"<td class='num'>{fmt_usd(gpu)}</td></tr>")
+    rows += (f"<tr class='cost-tot'><td>total</td>"
+             f"<td class='num'>{fmt_usd(r['cost_total'])}</td></tr>")
+    by_model = ""
+    if models:
+        by_model = ("<div class='cost-models'>by model — " + " · ".join(
+            f"{esc(m)} <b>{fmt_usd(v)}</b>"
+            for m, v in sorted(models.items(), key=lambda kv: -kv[1])) + "</div>")
+    return (f"<div class='eb eb-exp'><div class='eb-h'>What it cost</div>"
+            f"<table class='cost-t'>{rows}</table>{by_model}"
+            f"<p class='cost-note'>The agent lines are the <b>equivalent API "
+            f"cost</b> of the tokens each agent used, as recorded by the "
+            f"harness when it ran. The research ran on a claude.ai Max "
+            f"subscription, so that is what it would have cost billed per "
+            f"token — not money that left the account. The GPU line is real "
+            f"spend.</p></div>")
+
+
 def annotate_pivot(exps):
     """Mark each development experiment with whether the harness had already
     spent its patience and injected the mandatory "must pivot" directive into
@@ -326,6 +399,14 @@ rect.era:hover{filter:brightness(.985)}
   color:var(--muted)}
 .chart-note b{color:var(--ink);font-weight:600}
 .chart-foot{border-top:1px solid var(--rule);margin-top:26px;padding-top:16px}
+.cost-t{border-collapse:collapse;margin:2px 0 8px;font:13px var(--serif)}
+.cost-t td{padding:3px 16px 3px 0;border-bottom:1px solid var(--rule-soft)}
+.cost-t td.num{text-align:right;padding-left:26px;
+  font-variant-numeric:lining-nums tabular-nums}
+.cost-t tr.cost-tot td{border-bottom:none;border-top:1px solid var(--rule);
+  font-weight:700;color:var(--ink)}
+.cost-models{font:12px var(--serif);color:var(--muted);margin-bottom:6px}
+.cost-note{font:italic 12px/1.45 var(--serif);color:var(--faint);margin:0}
 /* Era headings on the model-designs page — a hard visual break, because the
    designs either side of one were judged by different instruments. */
 .era-head{background:var(--era-tint);border-top:2px solid var(--rule);
@@ -1695,7 +1776,7 @@ def history_rows_html(hist_rows, eras):
 <td class="num">{fmt_score(v) if v is not None else '—'}</td>
 <td class="num">—</td><td class="num">—</td>
 <td class="num">{fmt_dur(r['duration_s'])}</td>
-<td class="num">—</td>
+<td class="num">{cost_cell(r)}</td>
 <td><span class="st st-{cls}">{stat}</span></td></tr>""")
 
         blocks = []
@@ -1721,6 +1802,7 @@ def history_rows_html(hist_rows, eras):
             measured = (f"<div class='eb eb-res'><div class='eb-h'>Not on "
                         f"today's ruler</div><p>{HIST_PROV[prov]}</p></div>")
         blocks.append(measured)
+        blocks.append(cost_block(r))
         blocks.append(
             f"<div class='eb eb-exp'><div class='eb-h'>What it was measured "
             f"against then</div><p>Optimised: {esc(era.get('ruler', '—'))}, "
@@ -4135,11 +4217,22 @@ def render():
     # solved it stand on 78 that came before.
     if hist_rows:
         n_all = sum(1 for r in hist_rows if r["kind"] != "holdout_check")
+        c_agent = sum(r["cost_agent"] or 0 for r in hist_rows)
+        c_gpu = sum(r["cost_gpu"] or 0 for r in hist_rows)
+        n_costed = sum(1 for r in hist_rows if r["cost_stages_n"])
+        cost_line = ""
+        if c_agent or c_gpu:
+            cost_line = (
+                f" Cost of the whole search: <b>{fmt_usd(c_agent + c_gpu)}</b> "
+                f"&mdash; {fmt_usd(c_agent)} of agent tokens (equivalent API "
+                f"cost; the work ran on a Max subscription) plus "
+                f"{fmt_usd(c_gpu)} of rented GPU, recorded for {n_costed} of "
+                f"{n_all} experiments.")
         status_meta = (f"{n_dev} experiment{'s' if n_dev != 1 else ''} in this "
                        f"era, {n_kept} kept &mdash; and {n_all - n_dev} before it, "
                        f"across {len(hist_eras) - 1} earlier evaluation "
                        f"{'eras' if len(hist_eras) > 2 else 'era'}. The chart "
-                       f"below shows all {n_all}.")
+                       f"below shows all {n_all}.{cost_line}")
     else:
         status_meta = (f"{n_dev} experiment{'s' if n_dev != 1 else ''}, "
                        f"{n_kept} kept.")
@@ -4243,7 +4336,7 @@ def render():
 <th title="Largest per-area exported model. Hard limit: 4 MiB (ESP32-P4 flight computer).">Model</th>
 <th title="Single-frame inference on one CPU thread - a documented proxy for the flight computer, budget 250 ms.">Latency</th>
 <th title="Wall time of the whole experiment: agent design + training all areas + scoring.">Time</th>
-<th title="Estimated cloud-GPU compute cost for this experiment: wall time x a $0.69/hr rate, billed continuously regardless of phase, so it is the whole experiment, not just GPU training time. Shown only for the rented-GPU window; the bootstrap and local eras run at ~$0 marginal compute and show a dash.">Cost</th>
+<th title="Everything one experiment cost: the equivalent API cost of the tokens its design, implementation, figure and summary agents consumed - recorded by the harness at the time, not estimated from a price list - plus rented-GPU wall time during the pod window at $0.69/hr. The research ran on a claude.ai Max subscription, so the agent part is what it WOULD have cost billed per token, not money that left the account. An em dash means no accounting survives (the run directory was deleted), which is not the same as free.">Cost</th>
 <th>Status</th></tr></thead><tbody>"""]
     body.append(live_row((max((e["id"] for e in exps), default=0) or 0) + 1))
 
@@ -4253,6 +4346,10 @@ def render():
     cur_prefix = f"{cur_era['era_index'] + 1}." if cur_era else ""
     cur_era_label = esc(cur_era["label"]) if cur_era else ""
     cur_tint = ERA_TINT.get("mission", "") if cur_era else ""
+    # The current era's rows come from experiments.sqlite, but their cost
+    # accounting lives in the generated cross-era record — join on id so both
+    # halves of the table cost the same way.
+    hist_by_id = {r["src_id"]: r for r in hist_rows if r["era"] == "mission"}
 
     for e in reversed(exps):
         kept_cls = " kept-row" if (e["kept"] and e["kind"] != "holdout_check") else ""
@@ -4274,13 +4371,14 @@ def render():
 <td class="num">{fmt_score(e['primary_metric'])}</td>
 <td class="num">{size}</td><td class="num">{lat}</td>
 <td class="num">{fmt_dur(e.get('duration_s'))}</td>
-<td class="num">{cost_str(e)}</td>
+<td class="num">{cost_cell(hist_by_id.get(e['id']))}</td>
 <td>{status_of(e)}</td></tr>""")
 
         blocks = []
         if e.get("eli5"):
             blocks.append(f"<div class='eb eb-eli'><div class='eb-h'>In plain "
                           f"words</div><p>{esc(e['eli5'])}</p></div>")
+        blocks.append(cost_block(hist_by_id.get(e["id"])))
         _why_head = {"kept": "Why it's the new best", "rej": "Why it was rejected",
                      "fail": "Why it failed the gate", "disc": "Why it was discarded",
                      "hold": "What this holdout check is"}.get(sr_kind, "Why this status")
