@@ -393,14 +393,18 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 /* the one-frame-in / one-position-out contract: a SMALL fixed thumbnail beside
    a compact readout — deliberately not the .wex-* map layout, whose fluid
    flex:1 1 0 blew the 256px frame up to ~430px and stretched the row */
-.contract-row{display:flex;align-items:flex-start;gap:22px;margin:16px 0 30px;
-  flex-wrap:wrap}
-.contract-frame{flex:none;width:176px;margin:0}
-.contract-frame img{width:176px;height:176px;display:block;
+/* align to the same 780px measure as .pnote, otherwise the row starts at the
+   container edge while the prose around it sits in a narrower column */
+.contract-row{display:flex;align-items:flex-start;gap:24px;
+  max-width:780px;margin:18px auto 34px;flex-wrap:wrap}
+.contract-frame{flex:none;width:200px;margin:0}
+.contract-frame img{width:200px;height:200px;display:block;
   border:1px solid var(--rule)}
-.contract-frame figcaption{font-size:11px;color:var(--muted);line-height:1.55;
-  margin-top:7px;max-width:176px}
-.contract-arrow{flex:none;color:var(--accent);font-size:30px;line-height:176px;
+.contract-frame figcaption{font-size:11.5px;color:var(--muted);line-height:1.55;
+  margin-top:8px;max-width:200px}
+.contract-frame figcaption b{color:var(--ink);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.05em;font-size:11px}
+.contract-arrow{flex:none;color:var(--accent);font-size:30px;line-height:200px;
   opacity:.85}
 .contract-right{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;
   gap:11px}
@@ -993,8 +997,8 @@ def challenge_block(exps):
             "<div class='contract-row'>"
             f"<figure class='contract-frame'><a href='{fr}'>"
             f"<img src='{fr}' loading='lazy'></a>"
-            "<figcaption><b>what the UAV sees</b> — one real 128 m frame from "
-            "the downward camera. No map aboard, no internet, no GPS.</figcaption>"
+            "<figcaption><b>what the UAV sees</b> — one real 128 m frame. "
+            "No map aboard, no internet, no GPS.</figcaption>"
             "</figure>"
             "<div class='contract-arrow'>&rarr;</div>"
             "<div class='contract-right'><div class='contract-out'>"
