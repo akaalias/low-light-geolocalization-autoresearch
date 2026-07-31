@@ -1,0 +1,3 @@
+[berlin] 50 crops, device=mps
+[berlin] epoch 1/1 loss=0.2444
+{"area": "berlin", "n_train_crops": 50, "epochs": 1, "device": "mps", "train_seconds": 4.1, "onnx_bytes": 394346, "init": "from-scratch"}
