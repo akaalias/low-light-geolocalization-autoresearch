@@ -1,0 +1,10 @@
+{
+  "agent_design_s": 0,
+  "agent_impl_s": 0,
+  "train_wall_s": 14,
+  "score_s": 6,
+  "samples_s": 1,
+  "holdout_s": 0,
+  "gallery_s": 3,
+  "total_s": 33
+}
