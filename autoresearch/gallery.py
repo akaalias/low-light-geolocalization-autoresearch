@@ -257,6 +257,28 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .scope-note p:last-child{margin-bottom:0}
 /* The five steps that took the score from 2.001 to 0.040 — numbered because
    each one is a single change and the order is the argument. */
+/* Report register, after the author's prior research reports: the research
+   question as a large serif subhead, a grey one-line descriptor, then the
+   finding stated up front with the claim itself highlighted. */
+.home-q{max-width:820px;margin:18px auto 0;text-align:center;
+  font:400 30px/1.28 var(--serif);color:var(--ink)}
+.home-desc{max-width:640px;margin:12px auto 0;text-align:center;
+  font:16px/1.5 var(--serif);color:var(--faint)}
+.bl-h{max-width:780px;margin:38px auto 0;font:700 11px var(--serif);
+  font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--accent)}
+.bottom-line{max-width:780px;margin:8px auto 0;
+  font:italic 19px/1.62 var(--serif);color:#4a473e}
+.bottom-line .hl{background:#f4ecd2;box-decoration-break:clone;
+  -webkit-box-decoration-break:clone;padding:1px 2px;color:var(--ink)}
+.bottom-line i{font-style:normal;font-weight:600;color:var(--ink)}
+/* Numbered section headings: light numeral, title at reading size, and a
+   one-line italic summary so the page can be skimmed by section. */
+.rsec{max-width:780px;margin:56px auto 0;display:flex;align-items:baseline;gap:14px}
+.rsec-n{font:italic 26px var(--serif);color:var(--rule);flex:none}
+.rsec-t{margin:0;font:400 26px/1.2 var(--serif);color:var(--ink)}
+.rsec-sub{max-width:780px;margin:6px auto 18px;
+  font:italic 15px/1.55 var(--serif);color:var(--muted)}
 .answer-steps{margin:14px 0 14px;padding-left:26px}
 .answer-steps li{margin:0 0 11px;line-height:1.65}
 .answer-steps li::marker{color:var(--faint);font-weight:700}
@@ -1283,11 +1305,13 @@ def challenge_block(exps):
             + champ_answer + "</p>")
 
     return (
-        "<div class='sec-h'>The challenge, in one picture</div>"
+        # SPLIT MARKER — render_overview cuts here so the contract can sit in
+        # "The question" and the before/after maps in "The evidence", which is
+        # where each of them is actually an answer to something.
         "<div class='pnote'><p>The contract is one frame in, one position out: "
         "<i>estimate_position(frame) &rarr; (lat, lon, confidence)</i>, computed on "
         "a $4 flight computer with no map aboard.</p></div>"
-        + contract +
+        + contract + "<!--SPLIT-->"
         "<div class='pnote'><p>Run that over the whole city and you get the maps "
         "below. Every dot is one held-out viewpoint: ground the model trained on, "
         f"framed from a position and heading it has never seen. {lead}</p></div>"
@@ -2970,6 +2994,15 @@ machine-generated experiment record.</p>
     print(f"wrote {NOTEBOOK_OUT}")
 
 
+def rsec(n, title, sub=""):
+    """A numbered report section heading, in the register of the author's
+    prior research reports: a light numeral, the title in serif at reading
+    size, and a one-line italic summary so the section can be skimmed."""
+    s = f"<p class='rsec-sub'>{sub}</p>" if sub else ""
+    return (f"<div class='rsec'><span class='rsec-n'>{n}</span>"
+            f"<h2 class='rsec-t'>{title}</h2></div>{s}")
+
+
 def render_overview(exps):
     """index.html at the repo root — the project's front door: what this is,
     live status numbers from the lineage DB, and links into the gallery
@@ -3017,6 +3050,11 @@ def render_overview(exps):
     # allowed to train. Describing the architecture in prose and then not
     # showing the drawing that exists is a strange thing to do on a page whose
     # whole claim is "here is the technique that worked".
+    # The contract row belongs under "The question"; the before/after maps are
+    # evidence for "The answer", so they are placed separately.
+    _chal = challenge_block(exps)
+    chal_contract, _, chal_maps = _chal.partition("<!--SPLIT-->")
+
     champ_fig = ""
     _csvg = (champ.get("arch_svg") or "") if champ else ""
     # The figures live on a page where they are numbered, and cross-reference
@@ -3093,7 +3131,7 @@ def render_overview(exps):
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
 <title>Not all who wander are lost — Low-Light Geolocalization</title>
-<style>{CSS}</style></head><body>
+<style>{CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('overview', root=True)}
 {compute_banner()}
 <div class="paths-wrap">
@@ -3101,14 +3139,19 @@ def render_overview(exps):
 <h1 class="home-h1">&ldquo;Not all who wander are lost&rdquo; &mdash; a 5-inch drone learns
 to recognise a city from above, with no GPS, no maps on board, and a $4 flight
 computer</h1>
-<p class="psub lead">Where other aircraft ask satellites, this one has to
-<i>remember</i>. The question was whether a network small enough to fit in
-4&nbsp;MiB could hold a whole city in its weights &mdash; well enough to turn
-one glance of a camera into <i>(lat,&nbsp;lon,&nbsp;confidence)</i>, with no
-satellites, no internet and no map on board.
-<span style="color:var(--ink)">It can. Over Berlin, {usable_pct} of camera
-frames now produce a fix good enough to steer by, and the trick turned out to
-be asking the network a different question.</span></p>
+<h2 class="home-q">Can a neural network small enough to fit on a $4 chip
+memorise a whole city &mdash; well enough to replace GPS?</h2>
+<p class="home-desc">A single-area visual-geolocalisation study, designed and
+run by an autonomous loop of coding agents</p>
+
+<div class="bl-h">The bottom line</div>
+<p class="bottom-line"><span class="hl">Yes. We found a technique that turns
+one downward camera frame into a position accurate enough to steer by, on
+{usable_pct} of frames, from a {best_mb:.1f}&nbsp;MB file with no map, no
+internet and no GPS aboard.</span> It took {n_all_exp} experiments across
+{n_eras} rebuilt evaluations to get there &mdash; and for most of them we were
+measuring the wrong thing. The trick, when we found it, was to stop asking the
+network <i>where am I</i> and start asking it <i>which tile is this</i>.</p>
 
 <div class="stat-hero">
   <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
@@ -3129,9 +3172,7 @@ be asking the network a different question.</span></p>
     tokens plus rented GPU</span></div>
 </div>
 
-{challenge_block(exps)}
-
-<div class="sec-h">The question</div>
+{rsec(1, "The question", "One frame, no map, no internet &mdash; and it has to know when it doesn&rsquo;t know.")}
 <div class="pnote">
 <p>A drone is flying over a city it has been trained on. Its camera takes one
 picture straight down. From that picture alone &mdash; no GPS, no internet, no
@@ -3141,8 +3182,10 @@ it, and how much should the aircraft trust the answer?</p>
 <i>probably</i> right is worse than no position at all: a drone that believes
 a wrong fix will fly into it. So the model has to know when it doesn't know.</p>
 </div>
+{chal_contract}
 
-<div class="sec-h">The answer — ask which tile, not which coordinate</div>
+{rsec(2, "The answer", "Stop asking for a coordinate. Ask which tile.")}
+{champ_fig}
 <div class="pnote">
 <p>The obvious design asks the network for two numbers: latitude and
 longitude. It fails badly. When such a network is unsure it has no way to
@@ -3171,7 +3214,9 @@ as its own experiment.</p>
 </div>
 {champ_fig}
 
-<div class="sec-h">The verdict — what this does and does not show</div>
+{chal_maps}
+
+{rsec(3, "The verdict", "What this shows, and what it deliberately does not.")}
 <div class="pnote">
 <p><b>Shown.</b> A {best_mb:.1f}&nbsp;MB network can memorise one city well
 enough that <b>{usable_pct}</b> of held-out viewpoints over it yield a fix
@@ -3192,7 +3237,7 @@ out for the moment, along with the other three areas; the harness for both is
 still in the frozen pipeline, switched off.</p>
 </div>
 
-<div class="sec-h">How it works — think globally, memorize locally</div>
+{rsec(4, "How it works", "Think globally, memorise locally &mdash; and let the loop do the searching.")}
 <div class="pnote">
 <p>The model family is <b>scene-coordinate regression</b>: one compact
 network per flight area that encodes "what does this place look like from
@@ -3233,7 +3278,7 @@ losses, targets, samplers — that shape the weights but are torn down before
 anything flies.</p>
 </div>
 
-<div class="sec-h">Explore</div>
+{rsec(5, "Explore the record", "Every experiment, every design, every dead end.")}
 <div class="explore">
 <a class="card" href="gallery/index.html"><b>The research log</b>
 <span>Every experiment ever run, failures included: pre-registered
@@ -3252,7 +3297,7 @@ agent itself before training, in one shared visual language — frozen
 endpoints aligned so you can scroll and compare designs directly.</span></a>
 </div>
 
-<div class="sec-h">Proven alternatives — and why this project isn't using them</div>
+{rsec(6, "Proven alternatives", "GPS-denied localisation is not unsolved &mdash; this just walks a different road.")}
 <div class="pnote">
 <p>GPS-denied visual localization is not an unsolved problem. The
 established, field-tested family matches live camera frames against
@@ -3290,6 +3335,7 @@ megabytes you own.</p>
 <p class="psub num" style="margin-top:34px">updated {now} · experiments run on a single local
 machine; the loop commits every result to git as it goes</p>
 </div>
+{OVERLAY_HTML}
 {credits_html()}</body></html>"""
     OVERVIEW_OUT.write_text(html_page)
     print(f"wrote {OVERVIEW_OUT}")
