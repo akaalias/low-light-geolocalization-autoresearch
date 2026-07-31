@@ -109,11 +109,18 @@ MERGES = [
     (31.4213, 31.6001, 64, "it was starved, not refuted"),
 ]
 
-# (from_day, to_day, lane_y, label, end_label) -- ran, still open.
-# Hangs off whichever line is live at from_day, which after SPLIT_D is the
-# fork lane -- the distinction that was got wrong by hand twice.
-OPEN = [
-    (31.6100, 31.6740, 128, "Prignitz probe", "0.113"),
+# --- the second fork: Prignitz becomes the live line ---------------------
+# The probe that measured the Berlin champion on rural ground (0.113) did not
+# stay a side-branch: its RESULT opened an era, so the line it runs on is the
+# one work continues along. Berlin's lane ends at 0.040, complete rather than
+# abandoned -- there is no × on it, because nothing about it failed.
+PRIGNITZ_SPLIT_D = 31.6100   # the probe leaves the berlin-slim lane here
+PRIGNITZ_Y = 128.0           # and the era continues on its own lane
+PRIGNITZ_END_X = 4980.0   # runs on past the last node: work continues here
+BERLIN_DONE_LABEL = "berlin era · complete at 0.040"
+PRIGNITZ_NODES = [
+    (31.6740, "Prignitz probe · 0.113", "above"),
+    (31.7800, "prignitz era opens", "below"),
 ]
 
 
@@ -185,8 +192,19 @@ def build_svg() -> str:
              f"L{_f(TRUNK_X1)},{BRANCH_Y:.0f}'/>")
 
     def base_y(day):
-        """Which line is live at this instant -- trunk, or the fork lane."""
-        return BRANCH_Y if day > SPLIT_D else TRUNK_Y
+        """Which line is live at this instant.
+
+        Two forks now, so a mark can no longer assume the trunk. Asking this
+        instead of hard-coding a y is the whole point of the module: the
+        Prignitz probe was hand-placed on TRUNK_Y twice, which after the first
+        fork is the DORMANT main line, drawing it as a descendant of an
+        abandoned branch rather than of the champion that produced it.
+        """
+        if day > PRIGNITZ_SPLIT_D:
+            return PRIGNITZ_Y
+        if day > SPLIT_D:
+            return BRANCH_Y
+        return TRUNK_Y
 
     for i, (d0, d1, lane, lab, end) in enumerate(DEAD):
         p.append(_branch("dead", f"d{i}", x(d0), base_y(d0), x(d1), lane,
@@ -234,8 +252,31 @@ def build_svg() -> str:
         p.append(f"<text class='evo-tlab' data-k='t{i}' x='{_f(px)}' "
                  f"y='{ly:.0f}'>{lab}</text>")
 
-    for i, (d0, d1, lane, lab, end) in enumerate(OPEN):
-        p.append(_branch("open", f"o{i}", x(d0), base_y(d0), x(d1), lane,
-                         lab, end, "openend"))
+    # The second fork. Drawn in the trunk's own weight, not a branch's: the
+    # Prignitz line is where work continues, so it has to read as the live
+    # line rather than as another thing hanging off Berlin's.
+    px0 = x(PRIGNITZ_SPLIT_D)
+    p.append(f"<path class='evo-branch' data-k='p-fork' d='M{_f(px0)},"
+             f"{BRANCH_Y:.0f} C{_f(px0 + 15)},{BRANCH_Y:.0f} {_f(px0 + 22)},"
+             f"{PRIGNITZ_Y:.0f} {_f(px0 + 40)},{PRIGNITZ_Y:.0f} "
+             f"L{_f(x(PRIGNITZ_NODES[0][0]))},{PRIGNITZ_Y:.0f}'/>")
+    p.append(f"<line class='evo-trunk' x1='{_f(x(PRIGNITZ_NODES[0][0]))}' "
+             f"y1='{PRIGNITZ_Y:.0f}' x2='{_f(PRIGNITZ_END_X)}' "
+             f"y2='{PRIGNITZ_Y:.0f}'/>")
+    # Berlin's lane is finished, not abandoned -- no × terminator, which in
+    # this figure's vocabulary would say it failed. It reached its number.
+    p.append(f"<text class='evo-dormantlab' x='{_f(TRUNK_X1 + 12)}' "
+             f"y='{BRANCH_Y + 4:.0f}' text-anchor='start'>"
+             f"{BERLIN_DONE_LABEL}</text>")
+    for i, (d, lab, side) in enumerate(PRIGNITZ_NODES):
+        nx = x(d)
+        tick = PRIGNITZ_Y + 15 if side == "below" else PRIGNITZ_Y - 12
+        p.append(f"<line class='evo-tick' x1='{_f(nx)}' y1='{PRIGNITZ_Y:.0f}' "
+                 f"x2='{_f(nx)}' y2='{_f(tick)}'/>")
+        p.append(f"<circle class='evo-node' data-k='p{i}' cx='{_f(nx)}' "
+                 f"cy='{PRIGNITZ_Y:.0f}' r='6'/>")
+        ly = PRIGNITZ_Y + 24 if side == "below" else PRIGNITZ_Y - 24
+        p.append(f"<text class='evo-tlab' data-k='p{i}' x='{_f(nx)}' "
+                 f"y='{ly:.0f}'>{lab}</text>")
 
     return "".join(p) + "</svg>"

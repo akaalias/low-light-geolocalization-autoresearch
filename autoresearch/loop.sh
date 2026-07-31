@@ -35,7 +35,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 TARGET="${1:-100}"
-AREAS="${AREAS:-berlin prignitz}"
+AREAS="${AREAS:-prignitz}"
 EPOCHS="${EPOCHS:-8}"
 # Training budget knobs (env-overridable, champion code untouched). Crops per
 # lighting bucket × bucket count = crops/epoch; total epochs = EPOCHS ×

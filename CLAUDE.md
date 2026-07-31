@@ -135,77 +135,95 @@ derived artifact, reproducible byte-for-byte by re-running the script.
 
 ---
 
-## SCOPE OVERRIDE — the `berlin-prignitz` era (2026-07-31, evening)
+## SCOPE OVERRIDE — the `prignitz` era (2026-07-31, evening)
 
-**This supersedes the `berlin-slim` override below wherever the two conflict,
-and it amends §1 — deliberately, with the human's explicit decision.**
+**Supersedes the `berlin-slim` override below wherever the two conflict.**
+`AREAS=prignitz`. Everything else about berlin-slim still holds: one area,
+daytime only, no synthetic relighting, 100 m usable radius, figures off,
+pivot gate off, Hamburg holdout off.
 
-The goal is now **one model covering two bounding boxes**: Berlin (dense
-urban) and Prignitz (rural). `AREAS="berlin prignitz"`, and the §6 score is
-the worst case across both, as §6 always specified.
+**§1 is NOT amended. One trained model = one bounding box, as always.** A
+two-area unified model was proposed and set aside the same evening, before
+any experiment ran — see "Considered and dropped" below, so it is not
+re-proposed as though new.
 
-**§1's "one trained model = one bounding box" and "do not build a multi-area
-or multi-tenant model" no longer hold.** That rule was written when the
-approach was unproven; it has now been proven on one box and separately
-measured on a second, and the open question has changed. Read §1's warning as
-what it protects against — *averaging two areas so a bad one hides behind a
-good one* — which §6's worst-case rule already prevents on its own. Reverting
-to one-model-per-box means reversing this section, not re-litigating §1.
+### Why Prignitz, and what the era is actually for
 
-### Why this is a real research question and not a bigger softmax
+Berlin is done to 0.040 — 96.5% of frames give a usable fix. Applying that
+champion unchanged to rural Prignitz scores **0.113**, and the shape of the
+loss is the whole point:
 
-The two boxes sit 90 km apart, so their union is 88 × 71 km of which only
-**1.6% is imaged**. A grid over the union would be 384,196 cells, almost all
-of them empty ground the model has never seen. A grid over just the two
-imaged boxes is **5,995 cells** — 2,970 + 3,025, barely twice Berlin's.
+| | Berlin | Prignitz |
+|---|---:|---:|
+| mission score | 0.040 | **0.113** |
+| usable fix rate | 96.5% | 92.5% |
+| **false fix rate** | 0.50% | **3.75%** |
+| abstain rate | 3.0% | 3.8% |
+| median error | 27.1 m | 29.5 m |
 
-That shared grid does **not** fit the deployment envelope. Measured, not
-estimated: a 6,050-cell version of the current architecture exports at
-**4.88 MB against `MODEL_MAX_BYTES` = 4 MB**, and `pipeline/score.py` records
-a gated fail — worst-possible score — regardless of accuracy. The classifier
-head is why: at that many cells it is 968K of 1.25M parameters (77%), while
-the conv trunk is only ~277K.
+Usable fixes barely moved. Abstention barely moved. **Almost the entire gap
+is false fixes — a 7.5x rise in the one outcome §6 treats as worse than
+silence.** Median error is nearly unchanged, so precision is intact and the
+problem is purely calibration: belief pooling defends against mass split
+across *adjacent* cells and against mass scattered across *distant* ones, but
+not against mass landing confidently on one wrong field that looks exactly
+like the right one. Berlin never presents that case. Prignitz does constantly.
 
-So the era cannot be won by scaling the head. It needs the head to get
-structurally cheaper — low-rank factorisation (160→64→6050 saves ~571K
-parameters and lands near 2.6 MB), a hierarchical area→cell decode, shared
-cell embeddings, quantisation, or something better. That is the §3 kind of
-work, not parameter tuning.
+The unseen-region diagnostic confirms it from the other side: coverage
+*rises* to 64.2% (Berlin 38.2%) while staying 0% usable — on ground it has
+never seen, the rural model answers more readily and is wrong every time.
 
-### What the frozen pipeline already allows — do not edit it for this
-
-No frozen file needs to change. `pipeline/score.py` loads `<area>.onnx` per
-area and maps the model's normalised (u, v) through **that area's** meta, so a
-unified model is exported **twice**, each export framed to its own raster,
-sharing one trunk and one head and differing only in the decode's cell mask
-and affine constants. Both exports are gated separately, so each must fit
-4 MB on its own.
-
-A useful consequence: flying over Berlin, if belief lands on Prignitz cells,
-the Berlin-framed export reports low confidence and the frame becomes an
-honest abstention rather than a false fix. That is the correct behaviour and
-it falls out of the design.
-
-### Enforcement: none, by explicit decision
-
-The mission score cannot see whether the two exports share weights — two
-separate specialist models, each under 4 MB, pass the gates identically. A
-`sharedcheck.py` in the manner of `backbonecheck.py` was proposed and
-**deliberately declined**: if two specialists genuinely beat one shared model,
-that is the answer and the loop should be free to find it. The design agent is
-*told* the goal is a single shared model; the score adjudicates.
-
-**Watch for:** the era quietly never attempting unification, because keeping
-two independent models is the easier local optimum. If several consecutive
-experiments just tune two specialists, that is the signal to revisit this
-decision — not evidence that unification failed.
+**So the era's question is not "can it work at all" — it already half does.
+It is: cut false fixes without spending usable ones.** That is sharper than
+Berlin's question ever was, and it is the one that matters for an aircraft.
 
 ### Baseline
 
-Experiment 1 is a `SKIP_AGENT=1` seed of the **current, unmodified** code,
-which trains the two areas independently. Its worst case is Berlin 0.040 vs
-Prignitz 0.113, so the era starts at **0.113** and the question is exact:
-*can one model beat what two specialists achieve?*
+Experiment 1 is a `SKIP_AGENT=1` seed of the current unmodified `model/` code
+trained on Prignitz — the Berlin champion's architecture, which is where
+0.113 came from. The era starts there.
+
+### Considered and dropped: one model over Berlin + Prignitz
+
+Proposed and reversed the same evening, before any experiment ran. Recorded so
+it is not rediscovered as a fresh idea:
+
+- It would have amended §1's one-model-per-bbox rule, which now stands.
+- The two boxes are 90 km apart, so their union is 88 x 71 km of which only
+  **1.6% is imaged**; a union grid is 384,196 cells, nearly all empty ground.
+  A grid over just the two imaged boxes is 5,995 cells (2,970 + 3,025).
+- Measured, not estimated: that shared grid exports at **4.88 MB fp32**
+  against `MODEL_MAX_BYTES` = 4 MB — but **1.29 MB once int8-quantized**,
+  which is what esp-dl actually flashes. So size was never the real obstacle.
+  See "The size gate measures the wrong artifact" below, which is a live
+  finding independent of this dropped idea.
+- It needed no frozen-file change: `score.py` loads `<area>.onnx` per area, so
+  one shared trunk exported twice, each framed to its own raster, satisfies
+  the interface.
+
+Reversed because unifying is a different research question from the one
+Prignitz actually poses, and doing both at once would have confounded them.
+
+### OPEN FINDING: the size gate measures the wrong artifact
+
+`MODEL_MAX_BYTES = 4 * 1024 * 1024` in `pipeline/score.py` was set in the
+**bootstrap commit** (`15b43a2`) and never revisited — `git log -S` returns
+that one commit. There is no derivation behind it, and §9 still lists
+ESP32-P4 validation as open.
+
+It also weighs the **fp32** ONNX, while the README's own documented path is
+esp-video -> esp-dl, and esp-dl ingests the ONNX for **int8** quantization.
+Measured: the Berlin champion is 2.94 MB fp32 and **0.78 MB int8** — the gate
+overstates every model by ~3.8x. Nothing in `pipeline/` or `model/`
+quantizes anything, so §3's "quantization-aware training approach" is a line
+in the spec no experiment can currently act on.
+
+**Not changed yet, deliberately.** It binds on nothing in this era (a
+Prignitz model is ~0.8 MB int8, ~3 MB fp32; it passes either way), and
+changing a frozen gate changes the ruler for every archived era at once —
+`rescore_history` re-scores old models with the *current* scorer, so some of
+the 17 gated fails could flip. Worth doing as its own deliberate step, with
+that effect measured first, not as a side-effect of opening an era.
 
 ---
 
@@ -331,13 +349,6 @@ are different claims.
 ---
 
 ## 1. Critical framing — read this twice
-
-> **AMENDED 2026-07-31 (evening).** The one-model-per-bbox rule below is
-> superseded by the `berlin-prignitz` override above: the current goal is one
-> model covering Berlin *and* Prignitz. What survives from this section is the
-> reason it was written — **never average areas so a bad one hides behind a
-> good one** — and §6's worst-case rule enforces that independently of how
-> many boxes one model covers.
 
 **One trained model = one bounding box.** The model memorizes its specific
 training area directly into its weights (scene-coordinate regression /

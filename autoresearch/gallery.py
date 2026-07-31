@@ -3257,11 +3257,62 @@ the rural model answers more readily and is wrong every time.</p></div>
 database, <code>state/best.json</code> or the git trail. Scored against a
 Berlin champion it would have been logged &ldquo;reverted&rdquo;, which would be
 a meaningless verdict &mdash; the two areas are different questions, not
-competing answers to one. It is recorded here and as an open branch on the
-<a href="research-evolution.html">evolution graph</a> instead, and it stands as
-the starting line should a rural era be opened. The research question it names
-is sharper than Berlin&rsquo;s was: <i>cut false fixes without spending usable
+competing answers to one. The research question it names is sharper than
+Berlin&rsquo;s was: <i>cut false fixes without spending usable
 ones.</i></p></div>
+
+<div class="nb-row"><span class="nb-time">evening</span>
+<p class="nb-text"><b>One model over both boxes: proposed, examined, dropped
+&mdash; all before an experiment ran.</b> The idea was to stop letting each
+area find its own setup and instead iterate toward a single model covering
+Berlin <i>and</i> Prignitz, amending &sect;1&rsquo;s one-model-per-bounding-box
+rule. It survived about an hour. The arithmetic was encouraging: the boxes sit
+90&nbsp;km apart, so their union is 88&times;71&nbsp;km of which only
+<b>1.6% is imaged</b> &mdash; a union grid would be 384,196 cells, nearly all
+of it ground no camera has seen &mdash; while a grid over just the two imaged
+boxes is 5,995 cells, barely twice Berlin&rsquo;s, and telling dense city from
+open field is the easy half of that discrimination. It also needed no frozen
+file changed: the scorer loads one ONNX per area, so a shared trunk exported
+twice, each framed to its own raster, fits the existing interface. Dropped
+anyway, on the grounds that unifying is a different question from the one
+Prignitz actually poses, and running both at once would confound
+them.</p></div>
+
+<div class="nb-row"><span class="nb-time">&nbsp;</span>
+<p class="nb-text"><b>That detour turned up a real measurement bug, still
+open.</b> Checking whether a shared model would fit the ESP32-P4 gave
+4.88&nbsp;MB against a 4&nbsp;MB ceiling &mdash; an apparent blocker. It
+wasn&rsquo;t. <code>MODEL_MAX_BYTES</code> was set in the <i>bootstrap
+commit</i> and never revisited &mdash; <code>git log -S</code> returns exactly
+one commit &mdash; with no derivation behind it. And it weighs the <b>fp32</b>
+ONNX, while the deployment path this repo documents is esp&#8209;dl, which
+ingests that ONNX for <b>int8</b> quantisation. Measured: the Berlin champion
+is 2.94&nbsp;MB fp32 and <b>0.78&nbsp;MB int8</b>. The gate overstates every
+model by about 3.8&times;, and the shared model that &ldquo;failed&rdquo; is
+1.29&nbsp;MB quantised. Nothing in the pipeline quantises anything, so
+&sect;3&rsquo;s &ldquo;quantization-aware training&rdquo; is a line in the spec
+no experiment can currently act on. Left unchanged on purpose: it binds on
+nothing in the new era, and changing a frozen gate re-rules every archived era
+at once &mdash; that deserves its own step, with the effect measured
+first.</p></div>
+
+<div class="nb-row"><span class="nb-time">evening</span>
+<p class="nb-text"><b>A new era opens &mdash; Prignitz alone, and the live line
+moves with it.</b> The lineage is wiped for the sixth time and the mission
+era&rsquo;s five experiments are archived, not deleted: they stay on the
+published record as their own band, because the re-scoring machinery reads the
+archives. <code>state/best.json</code> is <i>removed</i> rather than reset
+&mdash; there is no champion until this era measures one, and leaving
+Berlin&rsquo;s 0.040 in place would score rural results against an urban
+yardstick, which is exactly the mistake made on 23&nbsp;July when a scope cut
+left that file untouched. <code>AREAS</code> now defaults to
+<code>prignitz</code>, and &sect;1 stands unamended: one model, one bounding
+box. Experiment&nbsp;1 is a seed of the unmodified champion code on rural
+ground, so the era starts from the 0.113 already measured. On the <a
+href="research-evolution.html">evolution graph</a> this is the trunk&rsquo;s
+<i>second</i> fork &mdash; Berlin&rsquo;s lane ends marked <i>complete at
+0.040</i>, with no cross on it because nothing about it failed, and the live
+line continues on rural ground.</p></div>
 
 </section>
 """
@@ -4000,7 +4051,7 @@ EVOLUTION_CSS = """
 # Generated from data (autoresearch/evofig.py), not a pasted literal.
 EVOLUTION_SVG = evofig.build_svg()
 
-EVOLUTION_TIPS = r"""{"gap": {"t": "six days of silence", "d": "The loop had died at 00:25 on the 24th and nobody was watching. Git shows a quiet week; the transcripts show an abandonment. The only interaction in the whole window is a single /compact on the 29th.", "k": "silence"}, "d0": {"t": "Sentinel-2 10 m/px", "d": "The bootstrap's imagery source - too coarse for a 100 m-altitude camera footprint. Abandoned inside 20 minutes.", "k": "abandoned"}, "d1": {"t": "Prompt-only pivot rules", "d": "Four attempts to make 'pivot' mean something by instruction alone. Experiments 37, 38 and 40 all came back on the same backbone.", "k": "abandoned"}, "d2": {"t": "3D shadow relighting", "d": "Simulate real sun angles from 3D terrain instead of flat imagery. Raised and parked the same evening; still open.", "k": "abandoned"}, "d3": {"t": "Retrieval-index probe", "d": "Shipping a few MB of reference index - the project's most-defended constraint - was briefly on the table. Three rounds, ~2,700 m against the champion's 743 m. Parked, not disproven.", "k": "abandoned"}, "s0": {"t": "Region-holdout evaluation", "d": "In force for TEN of the project's eleven days. It left 28.2% of Berlin in no training crop and put 100% of test questions on ground the model had never seen - unanswerable for a memorisation system. Every result measured against it is void.", "k": "superseded"}, "s1": {"t": "Median error as the score", "d": "Rewards a model that guesses the map centre over one that genuinely memorises. It was caught reverting the only experiment that had begun to work.", "k": "superseded"}, "s2": {"t": "RunPod - rented 4090 pod", "d": "$200 committed eleven minutes after the question was asked; the entire loop moved onto the pod, headless agents included. Abandoned three days later - not for the GPU, for the process friction around it.", "k": "superseded"}, "s3": {"t": "Modal A100 - serverless", "d": "Chosen because a STATELESS trainer that never touches git makes the two-writer problem impossible by construction. $30 of credits, four areas fanned out in parallel, ~26 min/experiment after the decode fix. Ran until the credits ran out.", "k": "superseded"}, "s4": {"t": "Berlin-only scope cut", "d": "Narrowed for six hours to survive on an M1 - but state/best.json didn't follow, so the loop briefly scored four-area results against a Berlin-only yardstick.", "k": "superseded"}, "s5": {"t": "Geometric mean", "d": "Fixed the median's symptom but was still a research proxy, chosen to make progress visible rather than to state what the aircraft needs. Lasted two hours.", "k": "superseded"}, "i0": {"t": "pod disk full", "d": "A 5.7 GB-per-iteration render cache was being committed to Git LFS; the pod's 50 GB volume filled at 23:34. Two experiments recorded as 'gated fail' had not failed on their merits - they were disk crashes written into the research record as results.", "k": "incident"}, "i1": {"t": "Fable hits its cap", "d": "The design model hit 100% of its weekly quota. Three iterations burned 30-minute retry sleeps against a wall before anyone noticed; the design step was switched to Sonnet.", "k": "incident"}, "i2": {"t": "CI out of disk", "d": "GitHub Actions died on 1.45 GB of leftover debug PNGs - over half the repo's live LFS payload, a forgotten dump from early holdout work.", "k": "incident"}, "i3": {"t": "two writers on main", "d": "The pod and the laptop both committing to main all day: repeated rebase dances, and at least one merge that silently reverted the morning's pivot-enforcement work.", "k": "incident"}, "i4": {"t": "pod won't resume", "d": "RunPod's last act: a stopped pod could not restart because the host had no free GPU. Stopped pods don't reserve one. This is what turned a compromise into a full switch.", "k": "incident"}, "i5": {"t": "loop dies unnoticed", "d": "All four Modal calls returned 'cancelled by user or a failure' 27 minutes in, at 00:25. Nobody noticed for six days.", "k": "incident"}, "i6": {"t": "credits exhausted", "d": "$30 of Modal credits gone; the loop stopped two experiments short of its target and compute returned to the laptop.", "k": "incident"}, "m0": {"t": "enforce it in the source, not the prompt", "d": "Four rounds of instructing the loop to pivot had failed. The insight was that a prompt is not a guarantee: the check had to read the code that actually resulted. backbonecheck.py fingerprints the post-implementation source and rejects before training.", "k": "insight"}, "m1": {"t": "the problem is two writers, not the platform", "d": "Three days were spent blaming RunPod. The actual cause was the pod and the laptop both committing to main. Once that was named, the fix was a rule rather than a provider: one git writer, and a remote that only trains.", "k": "insight"}, "m2": {"t": "stop guessing, profile it", "d": "Two theories about the training bottleneck - batch transfer and GPU compute - were both wrong by an order of magnitude. Instrumenting it found a 120 MB PNG being re-decoded every epoch, 78% of wall-clock.", "k": "insight"}, "m3": {"t": "it is never shown the places it is tested on", "d": "One question about one roundabout: zero training crops contained the Grosser Stern, twelve eval questions did. Measured across the city, 100% of test questions stood on ground the model had never seen. The split was rebuilt around held-out viewpoints.", "k": "insight"}, "m4": {"t": "the score must BE the product requirement", "d": "A map full of green hits had been discarded while one with a single hit was kept. Median rewarded guessing the map centre; the geometric mean that replaced it was still a proxy. The score became what the aircraft actually needs: usable fixes minus dangerous ones.", "k": "insight"}, "m5": {"t": "it was starved, not refuted", "d": "The map-cell architecture had gate-failed at 84 seconds of training, seeing a fraction of the city. Given full-lattice coverage - the same architecture, nothing else changed - it took the mission score from 2.001 to 0.183.", "k": "insight"}, "t0": {"t": "Bootstrap", "d": "Spec, empty repo, MacBook Air. Frozen pipeline, naive baseline and the whole harness in one session.", "k": "kept"}, "t1": {"t": "1 m/px orthophotos", "d": "Sentinel-2 at 10 m/px rejected within 20 minutes; the fetch stage re-frozen 50x finer before any experiment ran.", "k": "kept"}, "t2": {"t": "Relighting rebuilt", "d": "Five of six lighting buckets were effectively identical - auto-exposure was re-brightening them all. Caught by eye, not by a test.", "k": "kept"}, "t3": {"t": "Goes public", "d": "GitHub Pages, the research trail published as it runs. North star set: anyone draws a box and gets their own model, freely.", "k": "kept"}, "t4": {"t": "Pivot enforced in code", "d": "Four prompt-level attempts failed to stop the loop rebuilding on the same backbone. backbonecheck.py fingerprints the post-implementation source instead.", "k": "kept"}, "t5": {"t": "One git writer", "d": "The rule that ended three days of chaos: the laptop commits, the remote only trains. Divergence becomes impossible by construction.", "k": "kept"}, "t6": {"t": "PNG decode fix", "d": "Each ~120 MB render was re-decoded every epoch: 78% of training wall-clock against 14.5% for the actual maths.", "k": "kept"}, "t7": {"t": "berlin-slim branch", "d": "Deliberate narrowing to buy iteration speed. What if overfitting is the feature?", "k": "kept"}, "t8": {"t": "0.040 - 96.5% usable", "d": "Four experiments on a corrected evaluation and a metric that states the product requirement. 96.5% of held-out frames give a usable fix, 0.5% are confidently wrong, median miss 27 m. The first of the four was the architecture the old metric had discarded as a failure.", "k": "kept"}, "o0": {"t": "Prignitz probe", "d": "The Berlin champion, unchanged, trained and scored on the rural box - no code change needed, the cell grid comes from the raster. 0.113 against Berlin's 0.040. But the loss is not where it was expected: abstention barely moved and usable fixes barely moved (92.5% vs 96.5%); almost all of it is FALSE fixes, 0.5% to 3.75%. Fields produce confidently wrong answers where city blocks do not. Deliberately kept out of the Berlin lineage - a different area is a different question, not a competing answer - and left standing as the baseline for a rural era, should one be opened.", "k": "open"}}"""
+EVOLUTION_TIPS = r"""{"gap": {"t": "six days of silence", "d": "The loop had died at 00:25 on the 24th and nobody was watching. Git shows a quiet week; the transcripts show an abandonment. The only interaction in the whole window is a single /compact on the 29th.", "k": "silence"}, "d0": {"t": "Sentinel-2 10 m/px", "d": "The bootstrap's imagery source - too coarse for a 100 m-altitude camera footprint. Abandoned inside 20 minutes.", "k": "abandoned"}, "d1": {"t": "Prompt-only pivot rules", "d": "Four attempts to make 'pivot' mean something by instruction alone. Experiments 37, 38 and 40 all came back on the same backbone.", "k": "abandoned"}, "d2": {"t": "3D shadow relighting", "d": "Simulate real sun angles from 3D terrain instead of flat imagery. Raised and parked the same evening; still open.", "k": "abandoned"}, "d3": {"t": "Retrieval-index probe", "d": "Shipping a few MB of reference index - the project's most-defended constraint - was briefly on the table. Three rounds, ~2,700 m against the champion's 743 m. Parked, not disproven.", "k": "abandoned"}, "s0": {"t": "Region-holdout evaluation", "d": "In force for TEN of the project's eleven days. It left 28.2% of Berlin in no training crop and put 100% of test questions on ground the model had never seen - unanswerable for a memorisation system. Every result measured against it is void.", "k": "superseded"}, "s1": {"t": "Median error as the score", "d": "Rewards a model that guesses the map centre over one that genuinely memorises. It was caught reverting the only experiment that had begun to work.", "k": "superseded"}, "s2": {"t": "RunPod - rented 4090 pod", "d": "$200 committed eleven minutes after the question was asked; the entire loop moved onto the pod, headless agents included. Abandoned three days later - not for the GPU, for the process friction around it.", "k": "superseded"}, "s3": {"t": "Modal A100 - serverless", "d": "Chosen because a STATELESS trainer that never touches git makes the two-writer problem impossible by construction. $30 of credits, four areas fanned out in parallel, ~26 min/experiment after the decode fix. Ran until the credits ran out.", "k": "superseded"}, "s4": {"t": "Berlin-only scope cut", "d": "Narrowed for six hours to survive on an M1 - but state/best.json didn't follow, so the loop briefly scored four-area results against a Berlin-only yardstick.", "k": "superseded"}, "s5": {"t": "Geometric mean", "d": "Fixed the median's symptom but was still a research proxy, chosen to make progress visible rather than to state what the aircraft needs. Lasted two hours.", "k": "superseded"}, "i0": {"t": "pod disk full", "d": "A 5.7 GB-per-iteration render cache was being committed to Git LFS; the pod's 50 GB volume filled at 23:34. Two experiments recorded as 'gated fail' had not failed on their merits - they were disk crashes written into the research record as results.", "k": "incident"}, "i1": {"t": "Fable hits its cap", "d": "The design model hit 100% of its weekly quota. Three iterations burned 30-minute retry sleeps against a wall before anyone noticed; the design step was switched to Sonnet.", "k": "incident"}, "i2": {"t": "CI out of disk", "d": "GitHub Actions died on 1.45 GB of leftover debug PNGs - over half the repo's live LFS payload, a forgotten dump from early holdout work.", "k": "incident"}, "i3": {"t": "two writers on main", "d": "The pod and the laptop both committing to main all day: repeated rebase dances, and at least one merge that silently reverted the morning's pivot-enforcement work.", "k": "incident"}, "i4": {"t": "pod won't resume", "d": "RunPod's last act: a stopped pod could not restart because the host had no free GPU. Stopped pods don't reserve one. This is what turned a compromise into a full switch.", "k": "incident"}, "i5": {"t": "loop dies unnoticed", "d": "All four Modal calls returned 'cancelled by user or a failure' 27 minutes in, at 00:25. Nobody noticed for six days.", "k": "incident"}, "i6": {"t": "credits exhausted", "d": "$30 of Modal credits gone; the loop stopped two experiments short of its target and compute returned to the laptop.", "k": "incident"}, "m0": {"t": "enforce it in the source, not the prompt", "d": "Four rounds of instructing the loop to pivot had failed. The insight was that a prompt is not a guarantee: the check had to read the code that actually resulted. backbonecheck.py fingerprints the post-implementation source and rejects before training.", "k": "insight"}, "m1": {"t": "the problem is two writers, not the platform", "d": "Three days were spent blaming RunPod. The actual cause was the pod and the laptop both committing to main. Once that was named, the fix was a rule rather than a provider: one git writer, and a remote that only trains.", "k": "insight"}, "m2": {"t": "stop guessing, profile it", "d": "Two theories about the training bottleneck - batch transfer and GPU compute - were both wrong by an order of magnitude. Instrumenting it found a 120 MB PNG being re-decoded every epoch, 78% of wall-clock.", "k": "insight"}, "m3": {"t": "it is never shown the places it is tested on", "d": "One question about one roundabout: zero training crops contained the Grosser Stern, twelve eval questions did. Measured across the city, 100% of test questions stood on ground the model had never seen. The split was rebuilt around held-out viewpoints.", "k": "insight"}, "m4": {"t": "the score must BE the product requirement", "d": "A map full of green hits had been discarded while one with a single hit was kept. Median rewarded guessing the map centre; the geometric mean that replaced it was still a proxy. The score became what the aircraft actually needs: usable fixes minus dangerous ones.", "k": "insight"}, "m5": {"t": "it was starved, not refuted", "d": "The map-cell architecture had gate-failed at 84 seconds of training, seeing a fraction of the city. Given full-lattice coverage - the same architecture, nothing else changed - it took the mission score from 2.001 to 0.183.", "k": "insight"}, "t0": {"t": "Bootstrap", "d": "Spec, empty repo, MacBook Air. Frozen pipeline, naive baseline and the whole harness in one session.", "k": "kept"}, "t1": {"t": "1 m/px orthophotos", "d": "Sentinel-2 at 10 m/px rejected within 20 minutes; the fetch stage re-frozen 50x finer before any experiment ran.", "k": "kept"}, "t2": {"t": "Relighting rebuilt", "d": "Five of six lighting buckets were effectively identical - auto-exposure was re-brightening them all. Caught by eye, not by a test.", "k": "kept"}, "t3": {"t": "Goes public", "d": "GitHub Pages, the research trail published as it runs. North star set: anyone draws a box and gets their own model, freely.", "k": "kept"}, "t4": {"t": "Pivot enforced in code", "d": "Four prompt-level attempts failed to stop the loop rebuilding on the same backbone. backbonecheck.py fingerprints the post-implementation source instead.", "k": "kept"}, "t5": {"t": "One git writer", "d": "The rule that ended three days of chaos: the laptop commits, the remote only trains. Divergence becomes impossible by construction.", "k": "kept"}, "t6": {"t": "PNG decode fix", "d": "Each ~120 MB render was re-decoded every epoch: 78% of training wall-clock against 14.5% for the actual maths.", "k": "kept"}, "t7": {"t": "berlin-slim branch", "d": "Deliberate narrowing to buy iteration speed. What if overfitting is the feature?", "k": "kept"}, "t8": {"t": "0.040 - 96.5% usable", "d": "Four experiments on a corrected evaluation and a metric that states the product requirement. 96.5% of held-out frames give a usable fix, 0.5% are confidently wrong, median miss 27 m. The first of the four was the architecture the old metric had discarded as a failure.", "k": "kept"}, "p0": {"t": "Prignitz probe - 0.113", "d": "The Berlin champion, unchanged, trained and scored on the rural box. No code change was needed at all: the cell grid comes from the raster, so pointing it at another bounding box is a config change. It scored 0.113 against Berlin's 0.040 - but the loss is not where it was expected. Usable fixes barely moved (92.5% vs 96.5%) and abstention barely moved (3.8% vs 3.0%); almost the whole gap is FALSE fixes, 0.5% to 3.75%, a 7.5x rise in the one outcome the mission score treats as worse than silence. Median error is nearly unchanged at 29.5 m, so precision is intact and the problem is calibration: a field can look exactly like another field 3 km away, and city blocks never do.", "k": "kept"}, "p1": {"t": "prignitz era opens", "d": "The probe's RESULT opened an era rather than closing a question. Work continues on rural ground with one model per bounding box, as always - a two-area unified model was proposed the same evening and dropped before any experiment ran, because unifying is a different question from the one Prignitz poses and doing both at once would confound them. The era's aim is exact: cut false fixes without spending usable ones.", "k": "kept"}, "p-fork": {"t": "the line moves to Prignitz", "d": "Berlin's lane ends complete, not abandoned - it reached 0.040 and there is no cross on it, because nothing about it failed. What continues is the rural problem.", "k": "kept"}}"""
 
 EVOLUTION_JS = r"""
 (function(){
@@ -4008,8 +4059,7 @@ EVOLUTION_JS = r"""
   var svg=document.getElementById('evo-svg'), tip=document.getElementById('evo-tip');
   if(!svg||!tip) return;
   var KIND={kept:'on the trunk \u2014 this survived',abandoned:'tried and abandoned',
-            superseded:'ran as the mainline, then replaced',silence:'nothing happened',
-            open:'branched off \u2014 still open'};
+            superseded:'ran as the mainline, then replaced',silence:'nothing happened'};
   function show(k,ev){
     var d=tips[k]; if(!d) return;
     tip.innerHTML="<span class='tk "+d.k+"'>"+(KIND[d.k]||d.k)+"</span>"+
@@ -4119,7 +4169,17 @@ def evolution_era_bands(eras):
     # what continues to the right is the dormant-main line and the fork lane.
     # Scraping it silently cut the last era band 207 px short of the work it
     # was supposed to cover.
-    content_end = min(VW, evofig.TRUNK_X1 + 60)
+    content_end = min(VW, max(evofig.TRUNK_X1, evofig.PRIGNITZ_END_X) + 60)
+
+    # An era that has not recorded an experiment yet has no timestamps and so
+    # draws no band. It must also not COUNT as the next era for the one before
+    # it: a freshly-opened era would otherwise clamp its predecessor to the
+    # predecessor's own last experiment and stop it from running out to the
+    # right edge — which shrank the mission band from 316 px to 50 px the
+    # moment an empty era was registered after it.
+    live = [i for i, e in enumerate(eras)
+            if to_day(e["ts_start"]) is not None and to_day(e["ts_end"]) is not None]
+    last_live = live[-1] if live else None
 
     parts, prev_row = [], 1
     for i, era in enumerate(eras):
@@ -4128,12 +4188,13 @@ def evolution_era_bands(eras):
             continue
         # An era runs until the next one starts, so its band should too —
         # otherwise the gaps between eras read as unaccounted-for time.
-        if i + 1 < len(eras):
-            nxt = to_day(eras[i + 1]["ts_start"])
+        nxt_live = next((j for j in live if j > i), None)
+        if nxt_live is not None:
+            nxt = to_day(eras[nxt_live]["ts_start"])
             if nxt is not None:
                 d1 = nxt
         lo = max(0.0, x_of(d0) if i else 0.0)
-        hi = min(content_end, x_of(d1) if i + 1 < len(eras) else content_end)
+        hi = min(content_end, content_end if i == last_live else x_of(d1))
         if hi - lo < 1:
             continue
         key = era["key"]
@@ -4217,12 +4278,7 @@ def render_evolution(exps):
       "stroke-width='2' fill='none'/><path d='M28.5,8 L32,12 L35.5,8 z' fill='#111111'/>"
       "</svg><b>an insight that merged in</b> &mdash; the arrow is where it changed the project</span>"
       "<span class='k'><svg width='22' height='12'><path d='M11,1 l5.5,5.5 l-5.5,5.5 "
-      "l-5.5,-5.5 z' fill='#8c2f1f'/></svg><b>incident</b> &mdash; something broke</span>"
-      "<span class='k'><svg width='36' height='12'><line x1='0' y1='6' x2='27' y2='6' "
-      "stroke='#111111' stroke-width='2' stroke-dasharray='6 4' opacity='.85'/>"
-      "<circle cx='30' cy='6' r='5' fill='#fffff8' stroke='#111111' stroke-width='2'/>"
-      "</svg><b>branched off, still open</b> &mdash; it ran and produced a real "
-      "number, but nothing has been concluded yet</span>")
+      "l-5.5,-5.5 z' fill='#8c2f1f'/></svg><b>incident</b> &mdash; something broke</span>")
     _, eras = load_history()
     bands = evolution_era_bands(eras)
     # Splice the bands in right after the opening <svg …> so they sit behind
@@ -4245,11 +4301,12 @@ def render_evolution(exps):
 {page_header("Research evolution: the shape of the search",
   "The <a href='research-lineage.html'>experiment lineage</a> shows what the loop "
   "tried. This shows what happened to the <i>research itself</i>. Time runs left to "
-  "right. The dark line is the path that survived; above it are branches that left "
-  "the trunk &mdash; grey and &times;-ended if they were abandoned, dark and "
-  "hollow-ended if they are still open; everything <b>below</b> ran as the mainline "
-  "for a while before being replaced &mdash; including which machine the work ran "
-  "on. <b>Hover anything</b> for what happened and why.")}
+  "right. The dark line is the path that survived &mdash; it <b>forks twice</b>, "
+  "first to berlin-slim and then to Prignitz, and each fork is where the live work "
+  "moved. Grey, &times;-ended branches above it were tried and abandoned; "
+  "everything <b>below</b> ran as the mainline for a while before being replaced "
+  "&mdash; including which machine the work ran on. <b>Hover anything</b> for what "
+  "happened and why.")}
 <div class="evo">
 <div class="evo-prose"><div class="evo-key">{key}</div></div>
 <p class="evo-scrollhint">scroll sideways &rarr; eleven days, 20&ndash;31 July</p>\n<div class="evo-figure">{evo_svg}</div>
@@ -4266,7 +4323,7 @@ against them had to be thrown away.</p></div>
     EVOLUTION_OUT.write_text(body)
     print(f"wrote {EVOLUTION_OUT} (graph: {len(evofig.TRUNK_NODES)} trunk nodes, "
           f"{len(evofig.DEAD)} abandoned, {len(evofig.SUPER)} superseded, "
-          f"{len(evofig.OPEN)} open)")
+          f"{len(evofig.PRIGNITZ_NODES)} on the prignitz fork)")
 
 
 LINEAGE_OUT = REPO_ROOT / "gallery" / "research-lineage.html"
