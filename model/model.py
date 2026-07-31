@@ -22,7 +22,11 @@ Belief scattered across DISTANT cells still falls below threshold, so genuine
 far-field ambiguity remains a safe abstention rather than a false fix. Cell
 size is chosen so the parameterization alone suffices: a 128 m cell's
 half-diagonal is 90.5 m, inside the 100 m usable radius, so naming the right
-cell is already a usable fix.
+cell is already a usable fix. The TRAINING TARGETS are decode-consistent: the
+cell target is a bilinear tent distribution over the <=4 nearest cell centres
+(so a border view is taught the honest split its pooled decode will produce,
+not an arbitrary one-cell label), and the offset target is the residual the
+pooled centroid leaves rather than the position that centroid already encodes.
 
 The whole decode (softmax -> argmax -> neighborhood mask -> pooled centroid ->
 offset -> conf) lives INSIDE the exported graph, because the scorer runs the
@@ -112,16 +116,15 @@ def build_model(meta: dict) -> nn.Module:
 
 
 def loss_fn(logits: torch.Tensor, offset_pred: torch.Tensor,
-            target_cell_idx: torch.Tensor, target_offset: torch.Tensor) -> torch.Tensor:
-    """Cross-entropy on the true map cell + smooth-L1 on the within-cell offset.
-
-    No confidence loss term: confidence IS the softmax mass on the winning
-    cell, so honest abstention falls out of the parameterization rather than
-    being trained against a proxy target. Label smoothing is light (0.05) so a
-    memorized cell can still reach ~0.95 and clear the scorer's 0.3 threshold.
+            soft_target: torch.Tensor, offset_target: torch.Tensor) -> torch.Tensor:
+    """Soft cross-entropy against a bilinear tent distribution over cell
+    centres + smooth-L1 on a residual offset target. soft_target is a dense
+    [B, n_cells] distribution (already includes label smoothing);
+    offset_target is [B, 2] in (-0.5, 0.5) cell units, the residual the
+    pooled-centroid decode leaves. No confidence loss term, as before.
     """
-    return (F.cross_entropy(logits, target_cell_idx, label_smoothing=0.05)
-            + 1.0 * F.smooth_l1_loss(offset_pred, target_offset))
+    ce = -(soft_target * F.log_softmax(logits, dim=1)).sum(dim=1).mean()
+    return ce + 1.0 * F.smooth_l1_loss(offset_pred, offset_target)
 
 
 def export_onnx(model: nn.Module, path: str):
