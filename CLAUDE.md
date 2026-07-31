@@ -135,6 +135,80 @@ derived artifact, reproducible byte-for-byte by re-running the script.
 
 ---
 
+## SCOPE OVERRIDE — the `berlin-prignitz` era (2026-07-31, evening)
+
+**This supersedes the `berlin-slim` override below wherever the two conflict,
+and it amends §1 — deliberately, with the human's explicit decision.**
+
+The goal is now **one model covering two bounding boxes**: Berlin (dense
+urban) and Prignitz (rural). `AREAS="berlin prignitz"`, and the §6 score is
+the worst case across both, as §6 always specified.
+
+**§1's "one trained model = one bounding box" and "do not build a multi-area
+or multi-tenant model" no longer hold.** That rule was written when the
+approach was unproven; it has now been proven on one box and separately
+measured on a second, and the open question has changed. Read §1's warning as
+what it protects against — *averaging two areas so a bad one hides behind a
+good one* — which §6's worst-case rule already prevents on its own. Reverting
+to one-model-per-box means reversing this section, not re-litigating §1.
+
+### Why this is a real research question and not a bigger softmax
+
+The two boxes sit 90 km apart, so their union is 88 × 71 km of which only
+**1.6% is imaged**. A grid over the union would be 384,196 cells, almost all
+of them empty ground the model has never seen. A grid over just the two
+imaged boxes is **5,995 cells** — 2,970 + 3,025, barely twice Berlin's.
+
+That shared grid does **not** fit the deployment envelope. Measured, not
+estimated: a 6,050-cell version of the current architecture exports at
+**4.88 MB against `MODEL_MAX_BYTES` = 4 MB**, and `pipeline/score.py` records
+a gated fail — worst-possible score — regardless of accuracy. The classifier
+head is why: at that many cells it is 968K of 1.25M parameters (77%), while
+the conv trunk is only ~277K.
+
+So the era cannot be won by scaling the head. It needs the head to get
+structurally cheaper — low-rank factorisation (160→64→6050 saves ~571K
+parameters and lands near 2.6 MB), a hierarchical area→cell decode, shared
+cell embeddings, quantisation, or something better. That is the §3 kind of
+work, not parameter tuning.
+
+### What the frozen pipeline already allows — do not edit it for this
+
+No frozen file needs to change. `pipeline/score.py` loads `<area>.onnx` per
+area and maps the model's normalised (u, v) through **that area's** meta, so a
+unified model is exported **twice**, each export framed to its own raster,
+sharing one trunk and one head and differing only in the decode's cell mask
+and affine constants. Both exports are gated separately, so each must fit
+4 MB on its own.
+
+A useful consequence: flying over Berlin, if belief lands on Prignitz cells,
+the Berlin-framed export reports low confidence and the frame becomes an
+honest abstention rather than a false fix. That is the correct behaviour and
+it falls out of the design.
+
+### Enforcement: none, by explicit decision
+
+The mission score cannot see whether the two exports share weights — two
+separate specialist models, each under 4 MB, pass the gates identically. A
+`sharedcheck.py` in the manner of `backbonecheck.py` was proposed and
+**deliberately declined**: if two specialists genuinely beat one shared model,
+that is the answer and the loop should be free to find it. The design agent is
+*told* the goal is a single shared model; the score adjudicates.
+
+**Watch for:** the era quietly never attempting unification, because keeping
+two independent models is the easier local optimum. If several consecutive
+experiments just tune two specialists, that is the signal to revisit this
+decision — not evidence that unification failed.
+
+### Baseline
+
+Experiment 1 is a `SKIP_AGENT=1` seed of the **current, unmodified** code,
+which trains the two areas independently. Its worst case is Berlin 0.040 vs
+Prignitz 0.113, so the era starts at **0.113** and the question is exact:
+*can one model beat what two specialists achieve?*
+
+---
+
 ## SCOPE OVERRIDE — the `berlin-slim` configuration (2026-07-31)
 
 **Merged into `main` on 2026-07-31 and now the project's default.** This began
@@ -257,6 +331,13 @@ are different claims.
 ---
 
 ## 1. Critical framing — read this twice
+
+> **AMENDED 2026-07-31 (evening).** The one-model-per-bbox rule below is
+> superseded by the `berlin-prignitz` override above: the current goal is one
+> model covering Berlin *and* Prignitz. What survives from this section is the
+> reason it was written — **never average areas so a bad one hides behind a
+> good one** — and §6's worst-case rule enforces that independently of how
+> many boxes one model covers.
 
 **One trained model = one bounding box.** The model memorizes its specific
 training area directly into its weights (scene-coordinate regression /
