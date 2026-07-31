@@ -135,13 +135,22 @@ derived artifact, reproducible byte-for-byte by re-running the script.
 
 ---
 
-## BRANCH OVERRIDE — `berlin-slim` (2026-07-31)
+## SCOPE OVERRIDE — the `berlin-slim` configuration (2026-07-31)
 
-This branch is a deliberate, scoped fork of the spec below, traded for much
-faster iteration. It supersedes specific sections; everything else in this
-file still holds. **Do not treat this section as evidence the main-branch
-spec was wrong** — it's a scoped experiment, not a reversal of the project's
-direction (see memory: `berlin-slim-branch-pivot`).
+**Merged into `main` on 2026-07-31 and now the project's default.** This began
+as a scoped fork; `main` was fast-forwarded to it so the published site would
+carry the result, and local work is back on `main`. The `berlin-slim` branch
+still exists at the same commit but is no longer where work happens — if you
+find yourself on it, you are on a leftover.
+
+So read every "this branch" below as "the current configuration". It is a
+deliberate, scoped narrowing of the spec that follows, traded for much faster
+iteration, and it supersedes specific sections; everything else in this file
+still holds. **Do not treat this section as evidence the original spec was
+wrong** — it is a scoped experiment, not a reversal of the project's direction
+(see memory: `berlin-slim-branch-pivot`). Widening back out to the full
+four-area, six-lighting-bucket problem means reversing the items below, not
+undoing the merge.
 
 - **§0/§1 (general-purpose, one-model-per-bbox, four independent runs):**
   superseded. This branch optimizes for **one locale only — Berlin.** The

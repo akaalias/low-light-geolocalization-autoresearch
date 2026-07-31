@@ -249,6 +249,12 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
   color:#4a473e}
 .pnote p{margin:0 0 10px}
 .pnote b{color:var(--ink)}
+/* Moved off the overview hero, where it competed with the headline number.
+   Set as an aside so it reads as context for the figures, not as a preamble
+   the reader has to get through first. */
+.scope-note{border-left:2px solid var(--rule);padding:2px 0 2px 18px;
+  margin-top:34px;font-size:13.5px;color:var(--muted)}
+.scope-note p:last-child{margin-bottom:0}
 /* the optimized number gets its own centred row; the three below are the
    human-readable breakdown of it */
 .stat-hero{max-width:300px;margin:32px auto 6px;text-align:center}
@@ -1972,7 +1978,7 @@ def figures(artifacts_dir):
             area = p.stem.split("_")[0]
             by_area.setdefault(area, []).append(p)
         inner = [
-            "<div class='figs-intro'>On this branch (berlin-slim), training and eval use "
+            "<div class='figs-intro'>In the current configuration, training and eval use "
             "the raw daytime reference imagery as fetched — no synthetic relighting, no "
             "low-light sensor simulation (that machinery still exists in the frozen pipeline "
             "and is used on the main branch's 6-lighting-condition setup, just disabled "
@@ -2965,6 +2971,15 @@ def render_overview(exps):
     pages. Same airloom-style typography and shared topnav as the rest."""
     dev = [e for e in exps if e["kind"] != "holdout_check"]
     n_kept = sum(1 for e in dev if e["kept"])
+    # The three tiles under the headline describe the SEARCH, not the model:
+    # how many rulers it was measured against, how many attempts it took, and
+    # what that came to. The model's own error stats are one line above and on
+    # the research log; repeating them here spent the most valuable space on
+    # the page restating the hero number.
+    _hist, _eras = load_history()
+    n_all_exp = sum(1 for r in _hist if r["kind"] != "holdout_check")
+    n_eras = len(_eras)
+    cost_all = sum((r["cost_agent"] or 0) + (r["cost_gpu"] or 0) for r in _hist)
     best = next((e["primary_metric"] for e in reversed(dev)
                  if e["kept"] and e["primary_metric"]
                  and e["primary_metric"] < FAIL), None)
@@ -3033,14 +3048,7 @@ what its flight area looks like from above
 well enough to turn one glance of a camera into
 <i>(lat,&nbsp;lon,&nbsp;confidence)</i>?</span> No
 satellites to jam or lose, no internet — if it can be done at all. Nobody
-knows yet; finding out is the project. And the research is not done by me:
-an <b>autonomous loop of coding agents</b> designs, trains, and scores one
-pre-registered experiment at a time, keeping only what measurably helps.
-This site is its live lab notebook. <b>This branch (berlin-slim)</b> is a
-deliberately narrowed, fast-iteration fork: one locale (Berlin), raw
-daytime imagery only, no synthetic low-light simulation — trading the
-main project's full scope for faster rounds while the loop searches for
-an architecture worth generalizing back out.</p>
+knows yet; finding out is the project.</p>
 
 <div class="stat-hero">
   <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
@@ -3053,9 +3061,12 @@ an architecture worth generalizing back out.</p>
   because for a drone it is worse than silence.</p>
 </div>
 <div class="stats">
-  <div class="stat"><b>{med_s}</b><span>typical miss when it answers</span></div>
-  <div class="stat"><b>{abst_s}</b><span>says &ldquo;I don&rsquo;t know&rdquo; &mdash; safe</span></div>
-  <div class="stat"><b>{false_s}</b><span>confident but wrong &mdash; dangerous</span></div>
+  <div class="stat"><b>{n_eras}</b><span>research eras &mdash; each a rebuilt
+    evaluation or metric, and a lineage wiped</span></div>
+  <div class="stat"><b>{n_all_exp}</b><span>experiments designed, trained
+    and scored to get here</span></div>
+  <div class="stat"><b>{fmt_usd(cost_all)}</b><span>total cost &mdash; agent
+    tokens at API-equivalent rates, plus rented GPU</span></div>
 </div>
 
 {challenge_block(exps)}
@@ -3346,6 +3357,19 @@ def render_paths(exps):
 {page_header("Everything we tried: Experiment model designs", paths_sub)}
 <div class="paths-wrap">
 
+<div class="pnote scope-note">
+<p><b>Who designed these.</b> Not me. An <b>autonomous loop of coding agents</b>
+designs, trains and scores one pre-registered experiment at a time, keeping
+only what measurably helps; this site is its lab notebook. Every figure below
+is an agent's own proposal, drawn before it was allowed to train.</p>
+<p><b>The scope they were working in.</b> The project currently runs a
+deliberately narrowed configuration: one locale (Berlin), raw daytime imagery
+only, no synthetic low-light simulation — trading the full spec's four areas
+and six lighting conditions for faster rounds while the loop searches for an
+architecture worth generalizing back out. Designs from the earlier eras below
+were built against that wider problem, which is part of why they look
+heavier.</p>
+</div>
 <div class="contract-fig" data-ovfig data-title="The frozen contract — where the experiments happen">{contract_svg()}
 <p class="contract-cap">The shape every figure on this page shares. The gray
 endpoints are the harness's frozen contract — one camera crop in,
