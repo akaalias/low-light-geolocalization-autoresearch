@@ -2607,9 +2607,10 @@ def render():
 <td class="num">{cost_str(e)}</td>
 <td>{status_of(e)}</td></tr>""")
 
-        eli5_top = (f"<div class='eb eb-eli'><div class='eb-h'>In plain "
-                    f"words</div><p>{esc(e['eli5'])}</p></div>" if e.get("eli5") else "")
         blocks = []
+        if e.get("eli5"):
+            blocks.append(f"<div class='eb eb-eli'><div class='eb-h'>In plain "
+                          f"words</div><p>{esc(e['eli5'])}</p></div>")
         _why_head = {"kept": "Why it's the new best", "rej": "Why it was rejected",
                      "fail": "Why it failed the gate", "disc": "Why it was discarded",
                      "hold": "What this holdout check is"}.get(sr_kind, "Why this status")
@@ -2626,7 +2627,6 @@ def render():
         metrics = json.loads(e["metrics_json"] or "{}")
         body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="11">
 <div class="detail-inner">
-{eli5_top}
 {arch_block(e, chain_of(e, exps))}
 <div class="detail-grid">
 <div class="explain">{''.join(blocks)}</div>
