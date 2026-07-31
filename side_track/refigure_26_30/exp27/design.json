@@ -1,0 +1,75 @@
+{
+  "title": "Unseen-ground confidence calibration unlocks the reinstated 3\u00d7-capacity trunk",
+  "hypothesis": "Exp 26's capacity scaling delivered its predicted accuracy gain but was vetoed solely by the coverage gate: its deployment gates passed (3.09 MB, 4.6 ms) and its like-for-like medians fell 20\u201335% (munich morning 536\u2192347 m, frankfurt evening 798\u2192466 m, prignitz morning 450\u2192350 m), yet 8 of 24 cells dropped below the 0.2 coverage floor \u2192 1e9. This iteration's forensics isolate why: calibrate_conf_shift sets the abstention threshold on TRAIN-split crops at locations the model trained on, and the 3\u00d7 trunk sharpened the confidence head's separation between trained-on and unseen ground \u2014 calibration-time keep rates were IDENTICAL between iter 5 and iter 6 (0.40\u20130.88 per bucket) while conf_shift leapt from 0.2\u20130.7 to 2.5\u20133.6 and eval coverage collapsed from 0.25\u20130.67 to 0.08\u20130.43. A threshold that keeps 40% of visited ground kept only 8\u201319% of held-out ground. Calibrating instead on train blocks fenced off from every training draw measures the confidence distribution the scorer actually faces, so the 40% keep floor transfers to eval and the real capacity gain becomes scoreable. (The same mechanism also explains exp 25's near-floor night coverage of 0.25\u20130.31 \u2014 this fix de-risks every future capacity increase, not just this one.)",
+  "method": "ONE new mechanism in model/train.py \u2014 block-held-out confidence calibration: deterministically hash ~1 in 10 train-split blocks (stable_hash, per area) into a calibration-only set; the per-epoch fresh-draw sampler uses only crops whose 182-px windows touch no calibration block (mirror of the frozen eval-buffer rule, so no calibration pixel is ever trained on); calibrate_conf_shift draws its 400 crops per bucket exclusively from calibration-block crops. MIN_KEEP_RATE=0.40, CAL_CROPS_PER_BUCKET=400, losses, schedule, sampler mechanics unchanged. Alongside, model/model.py reinstates exp 26's pre-registered architecture verbatim (MobileNetV3-Small features[:11] with stride/dilation surgery preserving the 8\u00d78 grid; int8 dynamic quantization of MatMul/Gemm at export), which was refuted only through the calibration artifact this experiment removes.",
+  "category": "training",
+  "init_strategy": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..10] (torchvision, BSD-3)",
+  "eli5": "Last round we gave the model a bigger brain and its guesses genuinely got better \u2014 but the result was thrown out on a technicality. The model is allowed to say 'no fix' when unsure, and the rules demand it answers at least 20% of the time. We tune its shyness bar using places from its own training tour, and the bigger brain became so much more confident about places it had already visited than about new ones that the bar landed wildly wrong for new ground: it went nearly silent on the exam. The fix is to fence off a slice of the map the model never gets to study and tune the shyness bar there \u2014 on ground exactly as unfamiliar as the exam's. Same bigger brain, bar set honestly.",
+  "architecture": {
+    "stages": [
+      {
+        "name": "Camera frame",
+        "detail": "128\u00d7128 px aerial crop, one of 6 simulated lighting conditions",
+        "changed": false
+      },
+      {
+        "name": "Rotation fan",
+        "detail": "the crop is copied into its four 90\u00b0 turns (exact pixel re-arrangements, no blur) and all four copies travel through the same network side by side",
+        "changed": false
+      },
+      {
+        "name": "Feature extractor",
+        "detail": "ImageNet-pretrained MobileNetV3-Small, first 11 blocks \u2014 reinstated from the vetoed round: the deeper extractor's accuracy gain was real (errors fell 20\u201335% at like-for-like confidence), and its two added blocks still skip the image-shrinking step so the 8\u00d78 grid the rest of the model reads stays intact",
+        "changed": true
+      },
+      {
+        "name": "Layout summary",
+        "detail": "a slim extra layer condenses the 8\u00d78 feature grid into a 512-number code that remembers what sits where in the crop; the texture average (96 numbers) is kept alongside",
+        "changed": false
+      },
+      {
+        "name": "Lighting gate",
+        "detail": "a tiny network reads the crop's own average brightness together with the 96-number texture summary and outputs one number: how night-like is this shot?",
+        "changed": false
+      },
+      {
+        "name": "Probability map",
+        "detail": "two scorers read each of the four turned copies and the gate blends their per-cell guesses into one voted heat map; the scorers' bulky connection tables again fly as compact 1-byte integers (measured cost ~7 m of wobble), freeing the file space that pays for the deeper feature extractor \u2014 reinstated from the vetoed round",
+        "changed": true
+      },
+      {
+        "name": "Decode",
+        "detail": "the heat map's contrast is turned up first (peaks boosted, faint background suppressed), then the answer is the balance point of the sharpened map \u2014 committing to the strongest hotspot instead of averaging every faint guess across the whole city",
+        "changed": false
+      },
+      {
+        "name": "Confidence",
+        "detail": "the model still inspects the shape of its own heat map and says 'no fix' below a tuned bar \u2014 but the bar is NOW tuned on a fenced-off slice of the map the model never trained on, so 'sure enough to answer' means the same thing on new ground as it did in training; last round it was tuned on visited places and the model went nearly silent on the exam",
+        "changed": true
+      },
+      {
+        "name": "Output",
+        "detail": "(lat, lon, confidence)",
+        "changed": false
+      },
+      {
+        "name": "Training signal",
+        "detail": "unchanged \u2014 same position and confidence grading as before",
+        "changed": false,
+        "train_only": true
+      },
+      {
+        "name": "Training data",
+        "detail": "~10% of the map's training blocks (plus a thin no-peeking ring) are fenced off from every draw and reserved for setting the confidence bar; the fresh 6,000-place draws per lighting condition now come from the remaining ground",
+        "changed": true,
+        "train_only": true
+      },
+      {
+        "name": "Training schedule",
+        "detail": "unchanged \u2014 24 fresh-draw passes with the cosine glide kept from last round",
+        "changed": false,
+        "train_only": true
+      }
+    ]
+  }
+}

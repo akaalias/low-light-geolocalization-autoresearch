@@ -1,0 +1,52 @@
+{
+  "title": "ACE-style dense per-patch scene-coordinate regression replaces global map-cell probability field",
+  "hypothesis": "The encoder never learns geo-discriminative local features because supervision is one target per 128x128 crop: the GAP bottleneck plus a single global 32x32 map-cell field gives every conv feature the same diffuse gradient, which is why fields stay near-uniform (exp-3 refuted multimodality) and errors sit at ~2.1-2.5 km, barely under the 3.2 km center-guess bound, uniformly across all lighting buckets. Dense scene-coordinate regression (the ACE/DSAC family CLAUDE.md \u00a73 explicitly names) supervises each of the 8x8 stride-16 feature cells with the map coordinate of its own patch \u2014 computable at train time from crop center + rotation \u2014 multiplying supervision density 64x on the same 4,800-crop budget and forcing local textures to become location-predictive. Because the patch-offset grid is symmetric about the crop center and rotation is linear, the unweighted mean of per-cell predictions is an unbiased crop-center estimate requiring no heading knowledge at inference, so the frozen rotated-eval contract is satisfied unchanged.",
+  "method": "In model/model.py: replace the GAP -> 1024-way map-cell logits head with (a) one 3x3 dilation-2 conv context stage on the 8x8x128 feature map (receptive field ~95 px, block-level context per cell), (b) a 1x1 conv -> sigmoid head emitting per-cell normalized (u,v) map coordinates, (c) forward output = unweighted mean of the 64 per-cell coordinates plus the existing loose sigmoid conf head on GAP'd context features. Loss becomes per-cell smooth-L1 against per-cell targets plus the unchanged 0.1-weighted conf BCE. In model/train.py: load_training_tensors computes the [2,8,8] per-cell target grid per sample by rotating the fixed patch-offset lattice by the sampled crop angle and adding the crop-center pixel coordinate (helper cell_target_grid in model.py). ONNX export contract, CLI contract, and crop sampling untouched.",
+  "architecture": {
+    "stages": [
+      {
+        "name": "Camera frame",
+        "detail": "128\u00d7128 px aerial crop, one of 6 simulated lighting conditions",
+        "changed": false,
+        "icon": "frame"
+      },
+      {
+        "name": "Feature extractor",
+        "detail": "small 4-layer CNN (~230k params) boils the image down to an 8\u00d78 grid of features",
+        "changed": false,
+        "icon": "cnn"
+      },
+      {
+        "name": "Per-patch coordinates",
+        "detail": "each of the 8\u00d78 image patches independently names the map coordinate of the ground it shows",
+        "changed": true,
+        "icon": "patches"
+      },
+      {
+        "name": "Decode",
+        "detail": "answer = plain average of the 64 per-patch answers",
+        "changed": true,
+        "icon": "balance"
+      },
+      {
+        "name": "Confidence",
+        "detail": "separate 0\u20131 score; low means the model abstains rather than guessing",
+        "changed": false,
+        "icon": "gauge"
+      },
+      {
+        "name": "Output",
+        "detail": "(lat, lon, confidence)",
+        "changed": false,
+        "icon": "pin"
+      },
+      {
+        "name": "Training signal",
+        "detail": "every patch is graded against its own true coordinate \u2014 64\u00d7 denser feedback per photo",
+        "changed": true,
+        "train_only": true,
+        "icon": "target"
+      }
+    ]
+  }
+}

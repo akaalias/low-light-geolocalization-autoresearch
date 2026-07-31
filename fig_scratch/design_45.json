@@ -1,0 +1,76 @@
+{
+  "title": "Retrieve-then-rerank: a coarse field proposes a shortlist, a pairwise comparator decides among it",
+  "hypothesis": "Two independent diagnostics from project memory (champion-failure-mode-probes) show the true cell is the champion's field top-1 pick only ~2% of the time despite landing in its own top-20 (of 1024) on 33-58% of crops in every lighting bucket: the descriptor already narrows the answer down, but a single 620-dim-input linear scorer (one fixed hyperplane per cell, trained without ever knowing which OTHER cells are in contention for a given crop) cannot finish separating a handful of genuine near-ties from the truth. Nine straight rounds (36-44) attacked this from every angle EXCEPT the one where a model gets a second, focused look at just its own top candidates: two margin-loss attempts (34, 36) pushed the SAME one-shot linear scores further apart without adding any comparison capacity; four architecture rewrites (39 coordinate-generated field, 40 coarse-to-fine field+offset, 31 neural-map correlation) reparameterized the SAME one-shot decision; four rounds (41/42/43/44) replaced the trunk's training objective (contrastive, reconstruction-joint, reconstruction-sequential) hoping a better descriptor would let the SAME one-shot linear head finish the job on its own. None of them gave the model machinery to explicitly ask 'given that it's probably cell A, B, or C, which one actually matches this crop's fine layout?' -- every design has forced one linear pass over 1024 independent hyperplanes to answer both 'roughly where' and 'precisely which of the confusable lookalikes' at once. This experiment splits that into two mechanically different stages: a coarse field (architecturally similar to the proven proposer, kept for cheap, well-calibrated shortlisting) picks the top-8 candidate cells, then a SEPARATE pairwise comparator -- a small MLP that explicitly takes the DIFFERENCE and PRODUCT between the crop's own fine local descriptor and each candidate cell's learned identity embedding -- scores only those 8, with capacity to spend specifically on telling near-ties apart rather than diluting a fixed linear budget across 1024 simultaneous binary decisions it never actually has to make at once. Before committing to this, I checked the last two rounds' raw train logs for a scientific-integrity issue: runs/20260722_214356_iter3/train_berlin.log and train_prignitz.log (exp 43) AND runs/20260722_231953_iter4/train_berlin.log and train_munich.log (exp 44) are all 0 bytes -- crashed before a single epoch printed -- while the other two areas in each run trained cleanly to a healthy converged loss every time. Two different area-subsets failed across the two runs (not the same pair), which rules out anything area-specific and points at loop.sh's four-way concurrent GPU launch (autoresearch/loop.sh:337-347) racing on CUDA context/memory init; the one thing exp 43 and exp 44 shared that earlier from-scratch rounds (41, 42) did not was a full encoder-DECODER shape reconstructing a 128x128x3 image (large intermediate activations at high spatial resolution), which is a plausible reason those two specific rounds tipped some subset of the 4 concurrent processes over a memory/timing edge that plain encoder-only designs (41, 42) never hit. Both were therefore NEVER actually refuted at the design level -- gated 1e9 by an infra race, not by their science -- and library L1 (both flavors: flying pre-model, training-only reconstruction auxiliary) is the common thread behind both crashes, so this design deliberately avoids any full-resolution pixel-reconstruction path and stays encoder-only (a small MLP over pooled descriptors, no decoder, no upsampling), both because I have no revised hypothesis that reconstruction itself was the problem and because I want this round's result to be readable as a real test of retrieve-then-rerank, not a third coin-flip against the same launch race.",
+  "method": "In model/model.py: delete the ImageNet-pretrained MobileNetV3-Small trunk entirely (no torchvision import, no checkpoint load) and replace it with a from-scratch 4-block conv stem (3->24->48->80->112 channels, stride 2 each block) that is architecturally distinct from the plain 4-stage stack reused identically across exps 41/42/43/44 -- it exposes TWO taps: the final 8x8x112 map (for the coarse stage, as before) and the intermediate 16x16x80 map (new, for the fine reranker). Coarse stage: GAP(8x8x112) + a 1x1-conv layout squeeze, into a Linear(620,1024) field head, trained with the SAME Gaussian-smoothed CE as the current champion -- this stage's only job is to propose a top-8 shortlist, not to be the final answer, so it is deliberately left close to the proven mechanism. NEW candidate re-rank stage: a 1x1 conv squeezes the 16x16x80 detail tap to 16 channels, GAP'd to a 16-d 'detail descriptor' per crop; a from-scratch nn.Embedding(1024, 16) gives every map cell a learned identity vector; for each of the coarse stage's top-8 candidate cells, a shared 2-layer MLP (64->32->1) scores [detail_desc, cell_embedding, |detail_desc-cell_embedding|, detail_desc*cell_embedding] -- a small pairwise comparator, evaluated 8 times per crop, that can spend nonlinear capacity specifically on the confusable-pair discrimination the diagnosed wall names, something a single 1024-way linear layer structurally cannot do. Decode and confidence move from the 1024-way field to this K=8 rerank output (sharpened soft-argmax over just the 8 candidate cell centers; confidence from the top1-vs-top2 margin of the K-way softmax). C4 rotation voting (kept, changed only in scope): all 4 rotations still feed the coarse stage exactly as today (geometric-mean logit average, unchanged mechanism) so shortlist quality keeps the proven heading-robustness; the fine reranker reads only the as-given (unrotated) crop's detail tap, both to bound compute/memory (see crash forensics above) and because its job -- comparing THIS crop's actual texture against a handful of candidate cells -- does not need the same rotation-marginalization the coarse proposer does. Lighting gate: removed (no day/night expert blend), consistent with every from-scratch round since 41 -- the two-stage split is the new mechanism for handling appearance ambiguity, not a lighting-conditional branch. Loss (loss_fn): coarse Gaussian-CE (unchanged formula) + a new rerank cross-entropy (target = the true cell's position within the K candidate indices, with the true cell force-included in the training-time candidate set by replacing the coarse stage's weakest of the top-8 whenever it isn't already present, so the reranker's gradient always reaches a real comparison against the truth) + the existing coordinate L2 (now against the K-way decode) + the existing confidence BCE, unchanged weights. model/train.py: remove the pretrained-vs-head 10x LR split (single Adam group at 1e-3, since nothing is pretrained anymore, matching exp 44's precedent) and add one line computing each batch's true cell index from yb to pass into forward() for the forced-inclusion rule; sample_epoch, compute_cell_weights (confusability sampler, exp 35, kept), prepare_realizations, calibrate_conf_shift, and the epoch/schedule constants are all untouched verbatim.",
+  "architecture": {
+    "stages": [
+      {
+        "name": "Camera frame",
+        "detail": "128\u00d7128 px aerial crop, one of 6 simulated lighting conditions",
+        "changed": false
+      },
+      {
+        "name": "Rotation fan",
+        "detail": "the crop and its three 90\u00b0 pixel rotations all feed the feature extractor and coarse field for the heading-robust shortlist vote, same C4 mechanism as before; the NEW fine comparator stage, unlike the coarse stage, only ever looks at the as-given (unrotated) crop's own detail features -- it isn't asked to be heading-invariant, only to compare this exact crop against a handful of named candidates",
+        "changed": true
+      },
+      {
+        "name": "Feature extractor",
+        "detail": "a new from-scratch, 4-block conv stack (3->24->48->80->112 channels, stride 2 each block, no borrowed ImageNet weights, no MobileNetV3 family, no checkpoint file) -- structurally different from the plain stack reused in the last four rounds because it keeps and exposes an intermediate finer-resolution tap (16x16x80) alongside the final coarse tap (8x8x112), feeding two separate downstream jobs instead of one",
+        "changed": true
+      },
+      {
+        "name": "Layout summary",
+        "detail": "same recipe as before -- a 1x1 conv squeezes the final 8x8 feature grid into a spatial code, kept alongside the pooled texture average -- resized for the new 112-channel trunk; feeds only the coarse proposer stage",
+        "changed": true
+      },
+      {
+        "name": "Lighting gate",
+        "detail": "REMOVED: no day/night expert blend. The new two-stage retrieve-then-rerank split is this round's mechanism for handling appearance ambiguity instead of a lighting-conditional branch",
+        "changed": true
+      },
+      {
+        "name": "Probability map",
+        "detail": "a coarse field (same Gaussian-smoothed-CE-trained linear scorer shape as the old single field, now explicitly a PROPOSER, not the final answer) reads the layout summary into a heat map over all 1024 map cells and its own top 8 cells become the shortlist for the next stage",
+        "changed": true
+      },
+      {
+        "name": "Candidate shortlist",
+        "detail": "NEW stage: the coarse map's top-8 highest-scoring cells (plus, during training only, the true cell forced in if the coarse stage missed it) become the small candidate set the rest of the pipeline actually decides between",
+        "changed": true
+      },
+      {
+        "name": "Candidate re-rank",
+        "detail": "NEW stage: a 16-d 'what does this crop's fine detail look like' descriptor (pooled from the trunk's finer 16x16 tap) is compared against each shortlisted cell's own learned 16-d identity vector by a small shared comparator network (looking at their difference and product, not just a plain dot product), producing one refined score per candidate -- capacity spent specifically on telling a handful of look-alikes apart, instead of one linear pass trying to rank all 1024 at once",
+        "changed": true
+      },
+      {
+        "name": "Decode",
+        "detail": "contrast-sharpened balance-point (soft-argmax) over just the 8 re-ranked candidates' positions, instead of over the full 1024-cell field -- the same sharpening mechanism as before, now applied to a much smaller, more confident set of options",
+        "changed": true
+      },
+      {
+        "name": "Confidence",
+        "detail": "reads how much the re-rank stage's top pick beats its runner-up (plus the re-rank field's own spread) instead of the old 1024-way heat map's shape -- same general idea (a clean win vs. a toss-up), computed on the new, sharper 8-way comparison",
+        "changed": true
+      },
+      {
+        "name": "Output",
+        "detail": "(lat, lon, confidence)",
+        "changed": false
+      },
+      {
+        "name": "Training signal",
+        "detail": "the coarse proposer keeps training on the usual 'light up the true cell' grading (Gaussian-smoothed cross-entropy over all 1024 cells) so it stays a reliable shortlister; NEW: the re-rank stage separately trains on 'pick the true cell out of your 8 finalists' (cross-entropy over just the shortlist, with the true cell always included as an option during training so the comparator always gets to learn from a real answer); the existing coordinate-accuracy and confidence-calibration grading carry over unchanged, just computed on the new 8-way decode",
+        "changed": true,
+        "train_only": true
+      },
+      {
+        "name": "Training schedule",
+        "detail": "since nothing is borrowed/pretrained anymore, all parameters (feature extractor, both heads, the comparator, the cell identity vectors) train together in one learning-rate group instead of the old slow-trunk/fast-head split reserved for gently fine-tuning pretrained features; same total epoch budget and cosine schedule shape as before",
+        "changed": true,
+        "train_only": true
+      }
+    ]
+  }
+}

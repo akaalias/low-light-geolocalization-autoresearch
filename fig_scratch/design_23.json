@@ -1,0 +1,66 @@
+{
+  "title": "Daytime-redraw auxiliary: a throwaway decoder must reconstruct the clean daytime crop from the encoder's features",
+  "hypothesis": "The binding constraint is still the held-out-location generalization gap the exp-18 probe measured (train-split crops 267-400 m median vs eval-split 708-1153 m, ~3x, in every bucket), and after exp 20 the error profile is flat across lighting buckets and areas \u2014 flat but mediocre (best 839.12 m vs the ~20 m target). The trunk is the shared weak link that flatness points at: every gradient it receives comes from ONE whole-crop place grade per crop at a gentle 1e-4 LR, while its ImageNet-pretrained features were never adapted to the sim's night-time statistics (sensor gain noise, lamp thinning, washed-out color are far outside ImageNet's input distribution). So lighting nuisance still reaches the descriptor, and the 1024-way head must generalize jointly across location x lighting with only ~30k single-exposure examples (exp 20) to do it. This experiment builds on library entry L1, flavor B (training-only reconstruction auxiliary): a small throwaway decoder must redraw the clean daytime reference crop \u2014 same location, same heading, pixel-aligned pairs free from the frozen sim \u2014 from the encoder's 8x8x48 feature grid, with an L1 loss at 64x64 weighted 0.3, then be deleted before export. All six lighting renders of a place share ONE daytime answer, so the cheapest way down this loss is features that cancel lighting and noise while preserving ground structure: canonicalization inside the encoder, at zero inference cost. Two mechanisms should move the Sec-6 metric: (a) descriptor variance across buckets collapses, so the head's capacity and exp 20's fresh location draws concentrate on place discrimination alone instead of place x lighting; (b) unlike reverted exp 22, whose dense auxiliary was per-patch PLACE classification \u2014 64 more memorization targets of exactly the kind the transfer gap punishes \u2014 night-to-day redrawing is location-generic (the same inversion applies everywhere on the map, and under exp 20's sampling no location is seen often enough to memorize its output), so its gradients transfer to never-trained eval terrain by construction. It is also materially different from refuted exp 9 (cross-lighting NT-Xent): that was a contrastive ranking objective on the GLOBAL descriptor of the old from-scratch encoder, satisfiable by collapsing information; a dense generative target must PRESERVE structure per pixel, and it acts on today's pretrained trunk.",
+  "method": "ONE change: attach a training-only reconstruction decoder to the encoder. model/model.py gains ReconDecoder (~55k params: 1x1 conv 48->64 then 3x [nearest-upsample x2 + 3x3 conv + ReLU] 64->48->32->24, final 1x1 conv ->3 + sigmoid; 8x8x48 in, 64x64x3 out), build_recon_decoder(), constants RECON_SIZE=64 / LAMBDA_RECON=0.3, and an optional return_feat flag on TinyLocNet.forward exposing the identity-turn feature map. model/train.py loads the daytime reference raster once per area, samples for every training crop the pixel-aligned clean reference crop (same cx/cy/angle) downsampled to 64x64, and adds LAMBDA_RECON * L1(decoder(feat), target) to the existing loss. Decoder params train at the head LR (1e-3) and are discarded \u2014 never exported. Everything else (architecture, decode, confidence, calibration, sampling, epochs, LRs, ONNX export) is untouched; the exported graph is byte-identical in shape to the current best.",
+  "architecture": {
+    "stages": [
+      {
+        "name": "Camera frame",
+        "detail": "128\u00d7128 px aerial crop, one of 6 simulated lighting conditions",
+        "changed": false
+      },
+      {
+        "name": "Rotation fan",
+        "detail": "the crop is copied into its four 90\u00b0 turns (exact pixel re-arrangements, no blur) and all four copies travel through the same network side by side",
+        "changed": false
+      },
+      {
+        "name": "Feature extractor",
+        "detail": "ImageNet-pretrained MobileNetV3-Small (first 9 blocks, 190k params), gently fine-tuned",
+        "changed": false
+      },
+      {
+        "name": "Layout summary",
+        "detail": "a slim extra layer condenses the 8\u00d78 feature grid into a 512-number code that remembers what sits where in the crop; the texture average (48 numbers) is kept alongside",
+        "changed": false
+      },
+      {
+        "name": "Lighting gate",
+        "detail": "a tiny network reads the crop's own average brightness together with the 48-number texture summary and outputs one number: how night-like is this shot?",
+        "changed": false
+      },
+      {
+        "name": "Probability map",
+        "detail": "two scorers read each of the four turned copies and the gate blends their per-cell guesses; the four resulting heat maps are averaged into one voted map \u2014 a location only stays hot if it wins from every direction",
+        "changed": false
+      },
+      {
+        "name": "Decode",
+        "detail": "the heat map's contrast is turned up first (peaks boosted, faint background suppressed), then the answer is the balance point of the sharpened map \u2014 committing to the strongest hotspot instead of averaging every faint guess across the whole city",
+        "changed": false
+      },
+      {
+        "name": "Confidence",
+        "detail": "the model inspects the shape of its own heat map \u2014 one crisp hotspot means sure, a washed-out smear means unsure \u2014 and below a tuned bar it says 'no fix' instead of guessing; the bar is set so it still answers at least 40% of the time in every lighting condition",
+        "changed": false
+      },
+      {
+        "name": "Output",
+        "detail": "(lat, lon, confidence)",
+        "changed": false
+      },
+      {
+        "name": "Training signal",
+        "detail": "position and confidence grading at the crop centre are unchanged; NEW: during practice only, a small throwaway decoder must redraw the clean DAYTIME version of the crop (same spot, same heading, half resolution) purely from the network's internal features \u2014 every lighting condition of a place shares the same daytime answer, so the features are pushed to see through darkness and sensor grain; the decoder is deleted before export, the flying network is byte-identical in shape",
+        "changed": true,
+        "train_only": true
+      },
+      {
+        "name": "Training data",
+        "detail": "each pass still draws a fresh 6,000 locations per bucket (fresh headings and simulator-roll mix, kept from the previous experiment); each practice image comes from one of three independently rolled versions of the lighting simulator",
+        "changed": false,
+        "train_only": true
+      }
+    ]
+  }
+}

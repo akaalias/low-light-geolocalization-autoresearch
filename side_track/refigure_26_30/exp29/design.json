@@ -1,0 +1,75 @@
+{
+  "title": "Stride-8 fine-layout tap: the field scorer reads an 8-m-resolution mid-trunk snapshot, int8-paid",
+  "hypothesis": "The binding constraint is the information content of the head's readout, not trunk capacity, optimization, or memorization \u2014 this is exp 26's own pre-registered diagnostic fork (a), now demonstrated by the joint record: exp 20 removed memorization (train-split and eval-split medians are EQUAL), exp 25 trained to a genuine loss plateau and moved the metric only 5.2%, and exps 26+28 tripled trunk depth/channels and made things WORSE at the designed operating point (1057.68 m vs 797.91 m best). Per the plateau rule this iteration leaves the capacity-scaling mechanism entirely and attacks the bottleneck those refutations jointly point at. The field scorer today sees only a 560-d summary of the crop: a 48-d GAP plus a 512-d layout code squeezed from the stride-16 8x8 grid \u2014 every layout cell aggregates a 16x16 m patch, so NOTHING finer than 16 m granularity survives to the 1024-way cell scorer, while the ~215 m map cells it must discriminate differ precisely in sub-16-m arrangement (building outlines, road widths, lot patterns) that the 1 m/px input plainly contains. Two signatures say the discarded fine scale is what's missing: midday errors equal night errors in every area (656-839 m metros) even though midday crops carry clean 1-m detail \u2014 if the readout could use it, daytime would lead; and rural prignitz (distinctive macro-structure, low self-similarity) beats all three self-similar metros (449-539 m), the signature of lookalike-cell confusion, not lighting. The change adds the one axis never scaled: SPATIAL resolution of the readout. The trunk's stride-8 activation (features block 3, 16x16x24) is tapped, squeezed by a 1x1 conv to 4 channels, and flattened into a 1,024-d fine layout code concatenated into the bright field head's input (560 -> 1,584). Trunk computation, pretrained weights, C4 vote, decode, confidence, and training are all byte-identical \u2014 unlike refuted exps 26/28, no capacity is added to the encoder; the head is simply allowed to SEE a scale the encoder already computes and then throws away. The enlarged FC heads fly as int8 (quantize_dynamic on MatMul/Gemm only), which runs/_probe_iter6_quant2.py proved metrically inert on this exact head family (~7 m median decode shift, no ConvInteger, latency fine): estimated export ~2.6 MB against the 4 MiB gate.",
+  "method": "model/model.py only. (1) TinyLocNet.__init__: probe the stride-8 tap shape by running features[:4] on a zero tensor (gives 24x16x16); add self.fine_squeeze = nn.Conv2d(24, 4, 1); widen loc_logits input from feat_ch + layout_ch*8*8 = 560 to feat_ch + layout_ch*8*8 + 4*16*16 = 1584. (2) forward: run the trunk as an enumerated loop over self.features, capturing the activation after block index 3 as the tap; fine4 = self.fine_squeeze(tap).flatten(1); bright head becomes self.loc_logits(torch.cat([f4, layout4, fine4], dim=1)). Dark head, gate, conf head, C4 stack, decode, loss_fn all untouched. (3) export_onnx: export fp32 to <stem>_fp32_debug.onnx, then onnxruntime.quantization.quantize_dynamic(QInt8, op_types_to_quantize=['MatMul','Gemm']) to the contract path <out>/models/<area>.onnx; assert no ConvInteger node and size <= 4 MiB. model/train.py unchanged.",
+  "category": "architecture",
+  "init_strategy": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..8] (torchvision, BSD-3) \u2014 unchanged",
+  "eli5": "Before guessing where it is, the model boils each camera frame down to a short summary \u2014 like describing a neighborhood in 560 numbers, where each number can only talk about 16-metre-wide squares. At that coarseness, two similar districts blur together, and our last three experiments proved that a bigger brain and longer studying don't help \u2014 the tell-apart detail was already thrown away before the guessing stage ever saw it. This experiment keeps everything else identical but lets the guesser also look at a sharper, earlier snapshot from inside the network, where building edges and narrow roads are still visible at roughly 8-metre precision. To keep the file small enough for the drone's tiny computer, the guesser's bulky lookup tables are stored as compact 1-byte numbers \u2014 a trick we measured beforehand to be harmless.",
+  "architecture": {
+    "stages": [
+      {
+        "name": "Camera frame",
+        "detail": "128\u00d7128 px aerial crop, one of 6 simulated lighting conditions",
+        "changed": false
+      },
+      {
+        "name": "Rotation fan",
+        "detail": "the crop is copied into its four 90\u00b0 turns (exact pixel re-arrangements, no blur) and all four copies travel through the same network side by side",
+        "changed": false
+      },
+      {
+        "name": "Feature extractor",
+        "detail": "ImageNet-pretrained MobileNetV3-Small, first 9 blocks \u2014 untouched this round; it shrinks the image in steps and its final grid is 8\u00d78",
+        "changed": false
+      },
+      {
+        "name": "Layout summary",
+        "detail": "alongside the usual 512-number map of what sits where (drawn from the final 8\u00d78 grid, 16-m squares) and the 48-number texture average, a second, sharper snapshot is now taken HALFWAY through the extractor \u2014 before the image shrinks past 16\u00d716 \u2014 and condensed into 1,024 extra numbers that record where fine details like building edges and narrow roads sit, at about 8-metre precision",
+        "changed": true
+      },
+      {
+        "name": "Lighting gate",
+        "detail": "a tiny network reads the crop's own average brightness together with the 48-number texture summary and outputs one number: how night-like is this shot?",
+        "changed": false
+      },
+      {
+        "name": "Probability map",
+        "detail": "two scorers read each of the four turned copies and the gate blends their per-cell guesses into one voted heat map; the main scorer's connection table grows to read the new sharper snapshot (1,584 inputs instead of 560), and the bulky tables fly as compact 1-byte integers \u2014 a storage trick measured beforehand to cost only ~7 m of wobble",
+        "changed": true
+      },
+      {
+        "name": "Decode",
+        "detail": "the heat map's contrast is turned up first (peaks boosted, faint background suppressed), then the answer is the balance point of the sharpened map \u2014 committing to the strongest hotspot instead of averaging every faint guess across the whole city",
+        "changed": false
+      },
+      {
+        "name": "Confidence",
+        "detail": "the model inspects the shape of its own heat map and says 'no fix' below a tuned bar \u2014 tuned as before on places it visited during training",
+        "changed": false
+      },
+      {
+        "name": "Output",
+        "detail": "(lat, lon, confidence)",
+        "changed": false
+      },
+      {
+        "name": "Training signal",
+        "detail": "unchanged \u2014 same position and confidence grading as before",
+        "changed": false,
+        "train_only": true
+      },
+      {
+        "name": "Training data",
+        "detail": "unchanged \u2014 a fresh 6,000-place draw per lighting condition every pass, each place seen at a fresh heading and one of three relight re-renders",
+        "changed": false,
+        "train_only": true
+      },
+      {
+        "name": "Training schedule",
+        "detail": "unchanged \u2014 24 fresh-draw passes with the cosine glide kept from round 5",
+        "changed": false,
+        "train_only": true
+      }
+    ]
+  }
+}

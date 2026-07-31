@@ -1,0 +1,36 @@
+[0s] 44939 train crops, 15585 eval crops, device=mps
+[0s] computing confusability weights (exp-35 trick, reused)...
+[1s] training contrastive head, 1200 steps, batch=256...
+/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/side_track/retrieval_probe/probe.py:159: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /Users/runner/work/pytorch/pytorch/torch/csrc/utils/tensor_numpy.cpp:219.)
+  return torch.from_numpy(c).permute(2, 0, 1).float().div_(255.0)
+[18s] step 0/1200 loss=6.1872
+[97s] step 100/1200 loss=0.3883
+[177s] step 200/1200 loss=0.1773
+[257s] step 300/1200 loss=0.1048
+[337s] step 400/1200 loss=0.0734
+[417s] step 500/1200 loss=0.0525
+[497s] step 600/1200 loss=0.0429
+[578s] step 700/1200 loss=0.0308
+[658s] step 800/1200 loss=0.0331
+[738s] step 900/1200 loss=0.0383
+[818s] step 1000/1200 loss=0.0301
+[901s] step 1100/1200 loss=0.0280
+[989s] building retrieval index (8000 locations, 4 views/location averaged)...
+[1024s] index built: (8000, 64)
+[1024s] evaluating retrieval error per bucket...
+[1025s]   morning: median 2696.3 m (n=150)
+[1026s]   midday: median 2327.5 m (n=150)
+[1027s]   afternoon: median 2191.9 m (n=150)
+[1028s]   early_evening: median 2546.0 m (n=150)
+[1029s]   evening: median 2379.6 m (n=150)
+[1030s]   night: median 2346.6 m (n=150)
+
+=== RESULT ===
+  morning: 2696.3 m
+  midday: 2327.5 m
+  afternoon: 2191.9 m
+  early_evening: 2546.0 m
+  evening: 2379.6 m
+  night: 2346.6 m
+worst-case median across buckets: 2696.3 m
+(champion classification-decode baseline: 743.1 m)

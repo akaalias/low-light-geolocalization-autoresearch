@@ -1,0 +1,67 @@
+{
+  "title": "Multi-hypothesis coordinate regression replaces the 1024-cell field",
+  "hypothesis": "The champion's field/decode mechanism (32x32-cell classification field -> beta-sharpened soft-argmax) has been completely unchanged since round 16 -- twenty rounds (17-36) have only churned satellite modules around it (samplers, auxiliary losses, gates, a margin hinge) while the frozen core keeps producing the exact failure mode diagnosed in runs/_probe_iter12_field.py and recorded in project memory 'champion-failure-mode-probes': the true cell is the field's top-1 pick on only ~2% of eval crops, yet lands in the field's own top-20 (of 1024) on 33-58% of crops in every lighting bucket. That gap means the descriptor already carries enough signal to narrow the answer down to a small neighborhood -- the failure is specifically that a 1024-way ranking problem is too hard for the head to solve, not that the features are uninformative. Round 34's and round 36's margin-hinge losses attacked this by pushing individual impostor cells down within the SAME 1024-way field and both failed to beat the champion (1e9 gated-fail, then 754.22 vs 743.07) -- evidence the bottleneck is the discretization itself, not which cells get extra gradient. Shrinking the ranking problem from 1-of-1024 fixed grid cells to 1-of-8 data-dependent candidate points should make correct-hypothesis selection tractable while a small K also sidesteps exp 5's diagnosed sparse-supervision problem (a rigid 1024-cell grid needs many training locations per cell to learn anything; 8 free-floating points just need to drift toward wherever they're useful, no fixed-cell occupancy requirement).",
+  "method": "In model/model.py, delete the 1024-way classification field entirely (loc_logits, dark_logits, gate, cell_u/cell_v grid, GRID_K, DECODE_BETA, the beta-sharpened soft-argmax decode) and replace it with a K=8 multi-hypothesis regression head: a small MLP reads [GAP descriptor, layout code, raw brightness] and outputs 8 candidate (u,v) points (each an offset added to one of 8 fixed, non-trainable anchor positions spread across the map, purely to break symmetry at init) plus 8 softmax mixture weights. Each of the 4 C4-rotation views independently picks its own highest-weight hypothesis; the 4 views' winning points are blended into the final (u,v) by a softmax over their own weights (replacing the old logit-averaging C4 vote with a point-averaging C4 vote). Confidence is rebuilt from the spread of the 4 views' winning points (tight agreement = confident) and their mean weight, replacing the old field-peak/entropy signal. Training signal changes from Gaussian-smoothed 1024-way cross-entropy + coordinate L2 to a winner-take-all regression loss (only the hypothesis nearest the true (u,v) gets the full L2 gradient each step; the other 7 get an epsilon=0.05 trickle to avoid dead hypotheses) plus an 8-way cross-entropy that trains the weight head to identify which hypothesis was nearest. The exp-35 confusability-weighted sampler (Training data, kept, unchanged) still needs a 32x32 grid to define 'look-alike cells' for oversampling -- since model.py no longer has any grid, that constant moves into model/train.py as a standalone CONFUSABILITY_GRID_K, with identical value and math, so the sampler's actual behavior is byte-for-byte unchanged.",
+  "architecture": {
+    "stages": [
+      {
+        "name": "Camera frame",
+        "detail": "128\u00d7128 px aerial crop, one of 6 simulated lighting conditions",
+        "changed": false
+      },
+      {
+        "name": "Rotation fan",
+        "detail": "the crop is copied into its four 90\u00b0 turns (exact pixel re-arrangements, no blur) and all four copies travel through the same network side by side",
+        "changed": false
+      },
+      {
+        "name": "Feature extractor",
+        "detail": "ImageNet-pretrained MobileNetV3-Small (first 9 blocks, 190k params), gently fine-tuned",
+        "changed": false
+      },
+      {
+        "name": "Layout summary",
+        "detail": "a slim extra layer condenses the 8\u00d78 feature grid into a 512-number code that remembers what sits where in the crop; the texture average (48 numbers) is kept alongside",
+        "changed": false
+      },
+      {
+        "name": "Multi-hypothesis head",
+        "detail": "a small network reads the layout code, texture average, and the crop's own brightness (no separate day/night expert anymore -- brightness is just one more input number) and proposes 8 candidate map points plus a confidence weight for each, instead of scoring 1,024 fixed map tiles",
+        "changed": true
+      },
+      {
+        "name": "4-view weighted vote",
+        "detail": "each of the four rotated copies picks its own most-confident candidate point; the four picked points are blended into one answer, weighted by how confident each heading was -- replaces the old contrast-sharpened averaging over the 1,024-tile scoreboard",
+        "changed": true
+      },
+      {
+        "name": "Confidence",
+        "detail": "confidence now comes from how tightly the four headings' picks agree with each other and how sure the winning pick was, instead of reading the shape of the old 1,024-tile scoreboard; still abstains below a tuned bar, still answers at least 40% of the time in every lighting condition",
+        "changed": true
+      },
+      {
+        "name": "Output",
+        "detail": "(lat, lon, confidence)",
+        "changed": false
+      },
+      {
+        "name": "Training data",
+        "detail": "every pass still draws a fresh 6,000 places per bucket, weighted so places whose map tile looks like some far-off tile are drawn roughly twice as often -- unchanged from round 35, just no longer sharing its map-grid constant with the model itself",
+        "changed": false,
+        "train_only": true
+      },
+      {
+        "name": "Training signal",
+        "detail": "instead of grading all 1,024 tiles at once, each training example only grades its single closest candidate point in full (a direct distance penalty) while the other 7 candidates get a small trickle of the same penalty so none of them go completely unused; a second signal teaches the confidence weights to point at whichever of the 8 candidates turned out closest",
+        "changed": true,
+        "train_only": true
+      },
+      {
+        "name": "Training schedule",
+        "detail": "unchanged \u2014 24 fresh-draw passes with the cosine learning-rate glide kept from round 25",
+        "changed": false,
+        "train_only": true
+      }
+    ]
+  }
+}

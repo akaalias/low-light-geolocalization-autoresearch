@@ -1,0 +1,75 @@
+{
+  "title": "Rerun, never scored: unseen-ground confidence calibration + reinstated 3x trunk (iter 7 died on a full disk before training)",
+  "hypothesis": "Exp 27's recorded 1e9 is an infrastructure artifact, not a refutation: its train logs end in OSError [Errno 28] No space left on device inside prepare_realizations of the FIRST area (berlin), before a single optimizer step \u2014 metrics.json has an empty areas list and timings.json shows score_s=0, train_wall_s=158. The disk was filled by ~5.7 GB/iteration of per-area training scratch that earlier iterations never purged; the harness fix ('Never persist per-area training scratch') landed right after, and the volume now has 42 GB free against a ~6 GB per-run scratch need, so the crash cause is removed. The scientific hypothesis is therefore still the untested, pre-registered exp-27 one, restated: exp 26's 3x-capacity pretrained trunk delivered real accuracy gains (like-for-like medians down 20-35%: munich morning 536->347 m, frankfurt evening 798->466 m, prignitz morning 450->350 m; deployment gates passed at 3.09 MB / 4.6 ms) but was vetoed solely by the coverage gate, because calibrate_conf_shift tunes the abstention threshold on TRAIN-visited ground: the bigger trunk sharpened the confidence head's separation between visited and unseen ground, conf_shift leapt from 0.2-0.7 to 2.5-3.6 at identical calibration-time keep rates, and eval coverage collapsed to 0.08-0.43 (8 of 24 cells under the 0.2 floor). Calibrating on train blocks fenced off from every training draw measures the confidence distribution the scorer actually faces, so the 0.40 keep floor transfers to eval and the real capacity gain becomes scoreable. Precedent for this rerun: exp 24 retested exp 23 after it was OOM-killed mid-harness and never scored \u2014 an unmeasured pre-registered design is not a refuted one.",
+  "method": "Verbatim re-registration of exp 27's pre-registered design \u2014 no design delta; the only thing that changed between iter 7 and now is the harness disk fix. ONE new mechanism in model/train.py \u2014 block-held-out confidence calibration: deterministically hash ~1 in 10 train-split blocks (stable_hash, per area) into a calibration-only set; the per-epoch fresh-draw sampler uses only crops whose 182-px windows touch no calibration block (mirror of the frozen eval-buffer rule, so no calibration pixel is ever trained on); calibrate_conf_shift draws its 400 crops per bucket exclusively from calibration-block crops. MIN_KEEP_RATE=0.40, CAL_CROPS_PER_BUCKET=400, losses, schedule, sampler mechanics unchanged. Alongside, model/model.py reinstates exp 26's pre-registered architecture verbatim (MobileNetV3-Small features[:11] with stride/dilation surgery preserving the 8\u00d78 grid; int8 dynamic quantization of MatMul/Gemm at export), which was refuted only through the calibration artifact this experiment removes.",
+  "category": "training",
+  "init_strategy": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..10] (torchvision, BSD-3)",
+  "eli5": "Two rounds ago we gave the model a bigger brain and its guesses genuinely got better \u2014 but the result was thrown out on a technicality: the bar for when the model may say 'no fix, not sure' was tuned on places it had already visited, and the bigger brain is so much more confident on visited ground that the bar landed wildly wrong for new ground \u2014 it went nearly silent on the exam. Last round we designed the honest fix \u2014 fence off a slice of the map the model never studies and tune the bar there \u2014 but the computer's hard drive filled up before training even began, so that experiment was marked 'failed' without ever actually running. The disk problem is fixed; this round simply runs the same experiment for real.",
+  "architecture": {
+    "stages": [
+      {
+        "name": "Camera frame",
+        "detail": "128\u00d7128 px aerial crop, one of 6 simulated lighting conditions",
+        "changed": false
+      },
+      {
+        "name": "Rotation fan",
+        "detail": "the crop is copied into its four 90\u00b0 turns (exact pixel re-arrangements, no blur) and all four copies travel through the same network side by side",
+        "changed": false
+      },
+      {
+        "name": "Feature extractor",
+        "detail": "ImageNet-pretrained MobileNetV3-Small, first 11 blocks \u2014 reinstated from the vetoed round: the deeper extractor's accuracy gain was real (errors fell 20\u201335% at like-for-like confidence), and its two added blocks still skip the image-shrinking step so the 8\u00d78 grid the rest of the model reads stays intact",
+        "changed": true
+      },
+      {
+        "name": "Layout summary",
+        "detail": "a slim extra layer condenses the 8\u00d78 feature grid into a 512-number code that remembers what sits where in the crop; the texture average (96 numbers) is kept alongside",
+        "changed": false
+      },
+      {
+        "name": "Lighting gate",
+        "detail": "a tiny network reads the crop's own average brightness together with the 96-number texture summary and outputs one number: how night-like is this shot?",
+        "changed": false
+      },
+      {
+        "name": "Probability map",
+        "detail": "two scorers read each of the four turned copies and the gate blends their per-cell guesses into one voted heat map; the scorers' bulky connection tables again fly as compact 1-byte integers (measured cost ~7 m of wobble), freeing the file space that pays for the deeper feature extractor \u2014 reinstated from the vetoed round",
+        "changed": true
+      },
+      {
+        "name": "Decode",
+        "detail": "the heat map's contrast is turned up first (peaks boosted, faint background suppressed), then the answer is the balance point of the sharpened map \u2014 committing to the strongest hotspot instead of averaging every faint guess across the whole city",
+        "changed": false
+      },
+      {
+        "name": "Confidence",
+        "detail": "the model still inspects the shape of its own heat map and says 'no fix' below a tuned bar \u2014 but the bar is NOW tuned on a fenced-off slice of the map the model never trained on, so 'sure enough to answer' means the same thing on new ground as it did in training; last round it was tuned on visited places and the model went nearly silent on the exam",
+        "changed": true
+      },
+      {
+        "name": "Output",
+        "detail": "(lat, lon, confidence)",
+        "changed": false
+      },
+      {
+        "name": "Training signal",
+        "detail": "unchanged \u2014 same position and confidence grading as before",
+        "changed": false,
+        "train_only": true
+      },
+      {
+        "name": "Training data",
+        "detail": "~10% of the map's training blocks (plus a thin no-peeking ring) are fenced off from every draw and reserved for setting the confidence bar; the fresh 6,000-place draws per lighting condition now come from the remaining ground",
+        "changed": true,
+        "train_only": true
+      },
+      {
+        "name": "Training schedule",
+        "detail": "unchanged \u2014 24 fresh-draw passes with the cosine glide kept from last round",
+        "changed": false,
+        "train_only": true
+      }
+    ]
+  }
+}

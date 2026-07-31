@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/side_track/profile/run_profile.py", line 18, in <module>
+    res = fn.remote(
+          ^^^^^^^^^^
+  File "/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/.venv/lib/python3.12/site-packages/modal/_object.py", line 45, in wrapped
+    return await method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/.venv/lib/python3.12/site-packages/modal/_functions.py", line 1757, in remote
+    return await self._call_function(args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/.venv/lib/python3.12/site-packages/modal/_functions.py", line 1695, in _call_function
+    return await invocation.run_function()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/.venv/lib/python3.12/site-packages/modal/_functions.py", line 476, in run_function
+    return await _process_result(
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/.venv/lib/python3.12/site-packages/modal/_utils/function_utils.py", line 550, in _process_result
+    raise RemoteError(result.exception)
+modal.exception.RemoteError: Function call was cancelled by user or a failure.

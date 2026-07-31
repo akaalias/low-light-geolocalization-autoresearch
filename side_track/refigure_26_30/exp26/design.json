@@ -1,0 +1,75 @@
+{
+  "title": "Deployment-envelope capacity scaling: 3\u00d7 pretrained trunk depth paid for by int8 FC-head storage",
+  "hypothesis": "The binding constraint is model capacity, demonstrated by exp 25's own pre-registered fork: convergence-scaled training drove the loss to a genuine plateau (berlin 6.29\u21924.78, flat for the last 5 epochs at near-zero LR; prignitz 4.51) yet the metric moved only 5.2% (839.12\u2192797.91 m) against the 10\u201325% predicted if optimization were binding \u2014 and train-split and eval-split unfiltered medians are now EQUAL, so the model cannot even fit its training locations. A converged, non-memorizing, underfitting model has exactly one lever left: make it bigger. The only prior capacity experiment (exp 8, reverted) scaled a FROM-SCRATCH encoder in the pre-pretrained era; exp 11 then showed pretrained features are what carry this task, and pretrained capacity has never been scaled since \u2014 the trunk has sat at 190k params (MobileNetV3-Small features[:9]) for 15 iterations because the 4 MiB deployment gate appeared full (3.30 MB). Fresh probes (runs/_probe_iter6_quant2.py, _probe_iter6_export.py) break that impasse: int8 dynamic quantization of ONLY the FC heads (which hold 727k of the 823k params) is metrically inert on the current best model \u2014 median decode shift 0.001 uv \u2248 7 m against 650\u2013800 m medians, conf shift 0.006, latency fine \u2014 while shrinking the export 3.30\u21921.44 MB. The freed bytes exactly pay for tripling the pretrained trunk: features[:9]\u2192[:11] (190k\u2192576k ImageNet-pretrained params, 48\u219296 output channels), with block 9's stride-2 depthwise run at stride 1 and block 10's depthwise dilated 2 (the standard DeepLab trick) so the 8\u00d78 feature grid every kept head reads is preserved and all pretrained weights load with unchanged shapes. Dry-run export of the full candidate: 3,091,446 bytes and 4.8 ms single-thread \u2014 both frozen gates pass with margin.",
+  "method": "model/model.py: (a) trunk builder loads MobileNetV3-Small features[:11] from a new pretrained snapshot model/pretrained/mnv3s_features10.pt, sets features[9]'s depthwise stride (2,2)\u2192(1,1) and features[10]'s depthwise dilation\u21922/padding\u21924 \u2014 output 96\u00d78\u00d78; all heads re-width automatically via the existing shape probe. (b) export_onnx exports fp32 to a temp file then writes the final artifact with onnxruntime quantize_dynamic(op_types=['MatMul','Gemm'], QInt8) \u2014 conv layers stay fp32. model/train.py: only the init-strategy log string changes. Sampler, losses, decode, calibration, EPOCH_MULT=3, cosine schedule: all untouched; the two new pretrained blocks land in the existing 1e-4 trunk LR group automatically.",
+  "category": "architecture",
+  "init_strategy": "pretrained:mobilenet_v3_small IMAGENET1K_V1 features[0..10] (torchvision, BSD-3)",
+  "eli5": "Last round we gave the model three times longer to study and it finished everything it could hold \u2014 yet scores barely moved. That means its brain is full: it isn't failing to study, it's out of room. The drone's flight computer caps the model file at 4 MB and we were already near the cap, but we found that the biggest part of the file \u2014 a huge table of connection strengths \u2014 works just as well stored as cheap 1-byte numbers instead of exact 4-byte ones (we measured: answers move by ~7 meters on errors of ~700). The space that trick frees pays for a three-times-bigger image-understanding brain, borrowed from the same well-trained library the model already uses.",
+  "architecture": {
+    "stages": [
+      {
+        "name": "Camera frame",
+        "detail": "128\u00d7128 px aerial crop, one of 6 simulated lighting conditions",
+        "changed": false
+      },
+      {
+        "name": "Rotation fan",
+        "detail": "the crop is copied into its four 90\u00b0 turns (exact pixel re-arrangements, no blur) and all four copies travel through the same network side by side",
+        "changed": false
+      },
+      {
+        "name": "Feature extractor",
+        "detail": "ImageNet-pretrained MobileNetV3-Small \u2014 NOW the first 11 blocks instead of 9, tripling the borrowed capacity (576k vs 190k params); the two added blocks skip their usual image-shrinking step and look through a wider spacing instead, so the 8\u00d78 grid the rest of the model reads stays intact and every pretrained weight still fits",
+        "changed": true
+      },
+      {
+        "name": "Layout summary",
+        "detail": "a slim extra layer condenses the 8\u00d78 feature grid into a 512-number code that remembers what sits where in the crop; the texture average (96 numbers) is kept alongside",
+        "changed": false
+      },
+      {
+        "name": "Lighting gate",
+        "detail": "a tiny network reads the crop's own average brightness together with the 96-number texture summary and outputs one number: how night-like is this shot?",
+        "changed": false
+      },
+      {
+        "name": "Probability map",
+        "detail": "two scorers read each of the four turned copies and the gate blends their per-cell guesses; the four resulting heat maps are averaged into one voted map \u2014 same mechanics as before, but the scorers' bulky connection tables now fly as compact 1-byte integers instead of 4-byte decimals (measured cost: ~7 m of wobble against ~700 m errors), freeing the file space that pays for the deeper feature extractor",
+        "changed": true
+      },
+      {
+        "name": "Decode",
+        "detail": "the heat map's contrast is turned up first (peaks boosted, faint background suppressed), then the answer is the balance point of the sharpened map \u2014 committing to the strongest hotspot instead of averaging every faint guess across the whole city",
+        "changed": false
+      },
+      {
+        "name": "Confidence",
+        "detail": "the model inspects the shape of its own heat map \u2014 one crisp hotspot means sure, a washed-out smear means unsure \u2014 and below a tuned bar it says 'no fix' instead of guessing; the bar is set so it still answers at least 40% of the time in every lighting condition",
+        "changed": false
+      },
+      {
+        "name": "Output",
+        "detail": "(lat, lon, confidence)",
+        "changed": false
+      },
+      {
+        "name": "Training signal",
+        "detail": "unchanged \u2014 same position and confidence grading as before",
+        "changed": false,
+        "train_only": true
+      },
+      {
+        "name": "Training data",
+        "detail": "unchanged \u2014 every pass draws a fresh set of 6,000 places per lighting condition (new headings, new simulator-roll mix), so memorizing individual crops doesn't pay",
+        "changed": false,
+        "train_only": true
+      },
+      {
+        "name": "Training schedule",
+        "detail": "unchanged \u2014 24 fresh-draw passes with the cosine glide kept from last round",
+        "changed": false,
+        "train_only": true
+      }
+    ]
+  }
+}

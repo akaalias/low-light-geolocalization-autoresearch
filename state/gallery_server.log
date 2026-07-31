@@ -1436,3 +1436,10 @@
 ::1 - - [30/Jul/2026 20:47:11] "GET /runs/bootstrap_baseline_v4/samples/prignitz_midday.png HTTP/1.1" 200 -
 ::1 - - [30/Jul/2026 20:47:11] "GET /runs/bootstrap_baseline_v4/samples/prignitz_night.png HTTP/1.1" 200 -
 ::1 - - [30/Jul/2026 20:53:43] "GET /index.html HTTP/1.1" 200 -
+::1 - - [30/Jul/2026 23:01:20] "GET /gallery/index.html HTTP/1.1" 200 -
+::1 - - [30/Jul/2026 23:01:20] code 404, message File not found
+::1 - - [30/Jul/2026 23:01:20] "GET /favicon.ico HTTP/1.1" 404 -
+::1 - - [30/Jul/2026 23:01:25] "GET /runs/20260730_195356_experiment63/worked/frame.png HTTP/1.1" 200 -
+::1 - - [30/Jul/2026 23:01:25] "GET /runs/20260730_195356_experiment63/worked/map.png HTTP/1.1" 200 -
+::1 - - [30/Jul/2026 23:01:47] "GET /runs/20260730_171527_experiment60/worked/frame.png HTTP/1.1" 304 -
+::1 - - [30/Jul/2026 23:01:47] "GET /runs/20260730_171527_experiment60/worked/map.png HTTP/1.1" 304 -

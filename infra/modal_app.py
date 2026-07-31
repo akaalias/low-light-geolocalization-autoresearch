@@ -14,8 +14,13 @@ import modal
 
 app = modal.App("lowlight-train")
 
-# Frozen pipeline + config baked in; training deps installed. model/ is NOT
-# baked — it changes every experiment and is passed in as function args.
+# Frozen pipeline + config baked in; training deps installed. model/*.py is
+# NOT baked — it changes every experiment and is passed in as function args.
+# model/pretrained/ IS baked: static torchvision-derived weight files, not
+# per-experiment code, that a pretrained-trunk design loads by local path
+# (model/model.py's PRETRAINED_TRUNK_PATH) — without this, any experiment
+# choosing a pretrained init fails on Modal with FileNotFoundError, since the
+# per-call model.py/train.py strings can't carry binary assets.
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
@@ -24,6 +29,7 @@ image = (
     )
     .add_local_dir("pipeline", "/repo/pipeline")
     .add_local_file("areas.yaml", "/repo/areas.yaml")
+    .add_local_dir("model/pretrained", "/repo/model/pretrained")
 )
 
 data_vol = modal.Volume.from_name("lowlight-data", create_if_missing=True)

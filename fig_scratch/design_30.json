@@ -1,0 +1,72 @@
+{
+  "title": "Supervised lighting dispatcher: day/dusk/night specialist field heads replace the two-expert blend, int8-paid",
+  "hypothesis": "The last four reverted experiments (26-29) all attacked capacity or readout width and were jointly refuted; per the plateau rule this iteration leaves that family entirely and opens the one design family CLAUDE.md \u00a73 explicitly invites but the history has never tried: dispatcher + lighting-condition specialist models. The evidence it targets: the champion's per-bucket medians LOOK flat (berlin 632-760 m), but that flatness is manufactured by the confidence gate \u2014 night keeps only 25-31% of crops vs 50-67% for daytime buckets, so the model abstains its way to parity in low light instead of localizing to parity, and the binding \u00a76 cell is a low-ambient one (frankfurt EVENING, 797.91 m at 0.46 coverage). The mechanism: all six lighting regimes share ONE 560\u21921024 template table, plus exp 12's deliberately crippled texture-only 'dark expert' (48-d input, no layout access, unsupervised gate). The same map cell must therefore be recognized by one template averaged across appearance regimes with nearly disjoint cues \u2014 daytime shadow/texture vs night's active-light constellations \u2014 so every template is a compromise, worst exactly where cues are scarcest. Exp 12 is direct evidence the axis works: even its crippled version was kept (-8%). This experiment builds the full version: each regime gets its own complete layout-aware 560\u21921024 template table, routing is SUPERVISED (bucket labels are free at train time), and the 3x table storage is paid in int8 FC bytes, which exps 26/29 mechanically proved passes the frozen gates at ~7 m accuracy cost.",
+  "method": "model/model.py: delete dark_logits and the sigmoid gate; replace loc_logits with three identical specialist heads Linear(560\u21921024) in an nn.ModuleList (day/dusk/night) and add a 3-way dispatcher MLP Linear(49\u219216)-ReLU-Linear(16\u21923) reading [lum, GAP]; per turned copy, field logits = \u03a3_k softmax(dispatcher)_k \u00b7 specialist_k(desc); C4 vote, decode, confidence all unchanged. loss_fn gains a supervised routing term: 0.3 \u00d7 cross-entropy of the dispatcher logits vs the crop's regime (morning/midday/afternoon\u2192day, early_evening/evening\u2192dusk, night\u2192night). model/train.py: sample_epoch also returns the per-crop regime index; the train step passes it to loss_fn. export_onnx: fp32 export to <area>_fp32_debug.onnx, then onnxruntime.quantization.quantize_dynamic(QInt8, op_types=['MatMul','Gemm']) to the contract path \u2014 the exact recipe exps 26/29 validated (convs stay fp32; no ConvInteger); assert size \u2264 4 MiB.",
+  "architecture": {
+    "stages": [
+      {
+        "name": "Camera frame",
+        "detail": "128\u00d7128 px aerial crop, one of 6 simulated lighting conditions",
+        "changed": false
+      },
+      {
+        "name": "Rotation fan",
+        "detail": "the crop is copied into its four 90\u00b0 turns (exact pixel re-arrangements, no blur) and all four copies travel through the same network side by side",
+        "changed": false
+      },
+      {
+        "name": "Feature extractor",
+        "detail": "ImageNet-pretrained MobileNetV3-Small (first 9 blocks, 190k params), gently fine-tuned",
+        "changed": false
+      },
+      {
+        "name": "Layout summary",
+        "detail": "a slim extra layer condenses the 8\u00d78 feature grid into a 512-number code that remembers what sits where in the crop; the texture average (48 numbers) is kept alongside",
+        "changed": false
+      },
+      {
+        "name": "Lighting dispatcher",
+        "detail": "REPLACES the old lighting gate: instead of one 'how night-like?' number blending two scorers, a tiny receptionist network reads the crop's brightness and its 48-number texture summary and outputs three routing weights \u2014 how day-like, dusk-like and night-like the shot is. During training it is told the true time of day, so the routing is learned supervised instead of guessed",
+        "changed": true
+      },
+      {
+        "name": "Probability map",
+        "detail": "three FULL place-scorers \u2014 day, dusk and night specialists, each with the complete what-sits-where readout \u2014 score every map cell, and their per-cell guesses are mixed using the dispatcher's three weights; the four turned copies are still averaged into one voted heat map. The old design was one shared full scorer plus a texture-only night helper; now each lighting regime owns its whole catalog, stored as compact 1-byte integers so three catalogs still fit the flight computer (a storage trick measured beforehand to cost only ~7 m)",
+        "changed": true
+      },
+      {
+        "name": "Decode",
+        "detail": "the heat map's contrast is turned up first (peaks boosted, faint background suppressed), then the answer is the balance point of the sharpened map \u2014 committing to the strongest hotspot instead of averaging every faint guess across the whole city",
+        "changed": false
+      },
+      {
+        "name": "Confidence",
+        "detail": "the model inspects the shape of its own heat map and says 'no fix' below a tuned bar \u2014 tuned as before on places it visited during training",
+        "changed": false
+      },
+      {
+        "name": "Output",
+        "detail": "(lat, lon, confidence)",
+        "changed": false
+      },
+      {
+        "name": "Training signal",
+        "detail": "one NEW grading: the dispatcher's routing is graded against the true lighting condition of each training crop (known for free in the simulator, weight 0.3); position and confidence grading unchanged",
+        "changed": true,
+        "train_only": true
+      },
+      {
+        "name": "Training data",
+        "detail": "unchanged \u2014 a fresh 6,000-place draw per lighting condition every pass, each place seen at a fresh heading and one of three relight re-renders",
+        "changed": false,
+        "train_only": true
+      },
+      {
+        "name": "Training schedule",
+        "detail": "unchanged \u2014 24 fresh-draw passes with the cosine glide kept from round 5",
+        "changed": false,
+        "train_only": true
+      }
+    ]
+  }
+}
