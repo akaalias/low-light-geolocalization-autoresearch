@@ -1,0 +1,23 @@
+{
+  "kind": "development",
+  "areas": [
+    {
+      "area": "berlin",
+      "buckets": {
+        "asis": {
+          "n_eval": 400,
+          "coverage": 0.1075,
+          "median_error_m": 743.27,
+          "mean_error_m": 1310.03,
+          "score": 1000000000.0
+        }
+      },
+      "gates": {
+        "model_bytes": 2539641,
+        "latency_ms_host_proxy": 0.63
+      }
+    }
+  ],
+  "primary_worst_median_error_m": 1000000000.0,
+  "target_m": 100.0
+}

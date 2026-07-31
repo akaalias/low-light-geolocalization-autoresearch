@@ -1,0 +1,10 @@
+[berlin] 6000 crops, device=mps
+[berlin] epoch 1/8 loss=9.3379
+[berlin] epoch 2/8 loss=8.6110
+[berlin] epoch 3/8 loss=8.1703
+[berlin] epoch 4/8 loss=7.8404
+[berlin] epoch 5/8 loss=7.5457
+[berlin] epoch 6/8 loss=7.3012
+[berlin] epoch 7/8 loss=7.0899
+[berlin] epoch 8/8 loss=6.8726
+{"area": "berlin", "n_train_crops": 6000, "epochs": 8, "device": "mps", "train_seconds": 32.2, "onnx_bytes": 2539641, "init": "from-scratch"}
