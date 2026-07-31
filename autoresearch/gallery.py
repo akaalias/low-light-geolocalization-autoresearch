@@ -20,9 +20,13 @@ Usage: python -m autoresearch.gallery   # writes both pages
 
 import datetime
 import html
+import io
 import json
+import keyword
 import math
 import re
+import subprocess
+import tokenize
 from pathlib import Path
 
 import numpy as np
@@ -678,6 +682,38 @@ details.trywrap>summary{cursor:pointer;color:var(--muted);font-weight:600;
 details.trywrap>summary::-webkit-details-marker{display:none}
 details.trywrap>summary::before{content:"\\25b8  ";color:var(--faint)}
 details.trywrap[open]>summary::before{content:"\\25be  "}
+
+/* Inline agent-editable source. The search space is two files, so the code
+   is primary evidence, not an appendix -- but it is long, so it stays folded
+   until asked for. Muted syntax tints only: this is a printed-page palette,
+   not an IDE theme, and the code should read as part of the document. */
+.src-prov{font-size:12.5px;color:var(--muted);margin:10px 0 12px;max-width:70ch;
+  line-height:1.5}
+.src-prov code{font:11.5px var(--mono);color:var(--ink)}
+a.src-link{color:var(--accent);border-bottom:1px solid var(--rule);
+  text-decoration:none;white-space:nowrap}
+a.src-link:hover{border-bottom-color:var(--accent)}
+.src-file{margin:0 0 14px}
+.src-h{font:600 11px var(--mono);color:var(--muted);text-transform:uppercase;
+  letter-spacing:.06em;padding:0 0 5px;border-bottom:1px solid var(--rule);
+  display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.src-lines{font-weight:400;color:var(--faint);text-transform:none;
+  letter-spacing:0;font-variant-numeric:tabular-nums}
+pre.src{font:11.5px/1.62 var(--mono);background:#fff;border:1px solid var(--rule-soft);
+  border-top:none;margin:0;padding:10px 12px 10px 0;overflow-x:auto;
+  max-height:30em;overflow-y:auto;counter-reset:l;white-space:pre;tab-size:4}
+pre.src .ln{counter-increment:l;display:inline-block;width:3.2em;
+  padding-right:1em;text-align:right;color:#c9c6b6;
+  font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none}
+pre.src .ln::before{content:counter(l)}
+pre.src .k{color:#8c2f1f}                    /* keyword */
+pre.src .s{color:#3f6b46}                    /* string  */
+pre.src .c{color:#9b998c;font-style:italic}  /* comment */
+pre.src .n{color:#2f5c8c}                    /* number  */
+pre.src .b{color:#6b4a8c}                    /* builtin/self */
+pre.src .o{color:#8a877a}                    /* operator */
+@media(max-width:700px){pre.src{font-size:10.5px}
+  pre.src .ln{width:2.4em;padding-right:.6em}}
 
 .help{margin-top:16px;font-size:13.5px;color:#4a473e;max-width:960px}
 .help>summary{cursor:pointer;color:var(--muted);font-weight:600;list-style:none;
@@ -1877,6 +1913,7 @@ def history_rows_html(hist_rows, eras):
 <div class="provenance">era {esc(era.get('label', ''))} &middot; ts {esc((r['ts'] or '')[:19])} &middot;
 commit {esc((r['git_commit'] or '')[:12]) or '—'} &middot; artifacts {esc(r['artifacts_dir'] or '—')} &middot;
 took {fmt_dur(r['duration_s'])}</div>
+{source_block(r)}
 </div></div></div></td></tr>""")
     return "".join(out)
 
@@ -2190,6 +2227,232 @@ Every experiment is shown this same crop.</figcaption></figure>
 </div></div>"""
     return f"<div class='arch'><div class='arch-h'>One real test, end to end</div>{fig}</div>"
 
+
+
+# --------------------------------------------------------------------------
+# The agent-editable source, inline, per experiment.
+#
+# The whole search space is two files -- model/model.py and model/train.py --
+# so an experiment IS a diff of those two. Showing the prose without the code
+# describes the research; showing the code is the research.
+#
+# WHERE THE SOURCE COMES FROM, and why the distinction is load-bearing:
+#
+#   exact         runs/<id>/model_src/{model,train}.py -- the bytes that
+#                 actually trained, snapshotted by loop.sh's snapshot_model_src()
+#                 before any revert can destroy them. Only exists from
+#                 2026-07-31 on, which is when that guard was added.
+#   reconstructed read out of the experiment's own git commit tree. Sound ONLY
+#                 for kept=1 rows: the loop commits model/ and THEN records
+#                 HEAD, so a kept row's git_commit is its own commit.
+#   unavailable   neither survives.
+#
+# `git_commit` is HEAD-at-logging-time, NOT "the commit holding this
+# experiment's code". On a REVERTED row the loop ran `git checkout -- model/`
+# and never committed, so HEAD is some unrelated commit -- experiment 2 of the
+# mission era points at "overview: add 'The challenge, in one picture' hero",
+# which touches no model file at all. Reading model/ out of that tree yields
+# the CHAMPION's code wearing the reverted experiment's label: it renders
+# perfectly and is a lie. Hence the kept=1 guard, and hence `unavailable` is a
+# state we draw rather than a gap we paper over.
+# --------------------------------------------------------------------------
+
+SRC_FILES = ("model.py", "train.py")
+
+
+def github_base():
+    """Repo web URL for permalinks, from the origin remote. None if absent."""
+    try:
+        url = subprocess.run(["git", "remote", "get-url", "origin"], cwd=REPO_ROOT,
+                             capture_output=True, text=True, timeout=5).stdout.strip()
+    except Exception:
+        return None
+    if not url:
+        return None
+    if url.startswith("git@"):                      # git@github.com:o/r.git
+        url = "https://" + url[4:].replace(":", "/", 1)
+    return url[:-4] if url.endswith(".git") else url
+
+
+GITHUB = github_base()
+
+_PY_KW = frozenset(keyword.kwlist) | frozenset(getattr(keyword, "softkwlist", []))
+_PY_CONST = frozenset(("True", "False", "None", "self", "cls"))
+
+
+def _span(cls, text):
+    """Wrap text in a span, RE-OPENING it at every newline.
+
+    A triple-quoted string or a long call spans lines; if its span crossed a
+    line break the per-line gutter below would emit unbalanced HTML. Closing
+    and reopening per line keeps every line independently well-formed.
+    """
+    parts = esc(text).split("\n")
+    if not cls:
+        return "\n".join(parts)
+    return "\n".join(f"<span class='{cls}'>{p}</span>" if p else "" for p in parts)
+
+
+def highlight_py(src):
+    """Python -> highlighted HTML, using the stdlib tokenizer only.
+
+    Deliberately no pygments: it happens to be importable in this venv but is
+    not in requirements.txt, and a page generator that works only on the
+    machine that grew a transitive dependency is not reproducible-from-nothing.
+    On any tokenize error (truncated or non-UTF8 source) this falls back to
+    escaped plain text rather than dropping the code.
+    """
+    try:
+        toks = list(tokenize.generate_tokens(io.StringIO(src).readline))
+    except (tokenize.TokenError, IndentationError, SyntaxError, ValueError):
+        return esc(src)
+    # Absolute offsets, not row/col bookkeeping. NEWLINE and NL tokens carry
+    # "\n" as their own text, so filling gaps line-by-line emits every line
+    # break twice; slicing the original source between token spans cannot.
+    starts, acc = [0], 0
+    for ln in src.split("\n"):
+        acc += len(ln) + 1
+        starts.append(acc)
+    at = lambda r, c: starts[r - 1] + c
+    out, prev = [], 0
+    for tt, tok, (srow, scol), (erow, ecol), _ in toks:
+        s, e2 = at(srow, scol), at(erow, ecol)
+        if s > prev:                                 # gap: indentation, blanks
+            out.append(esc(src[prev:s]))
+        if tt == tokenize.COMMENT:
+            cls = "c"
+        elif tt == tokenize.STRING:
+            cls = "s"
+        elif tt == tokenize.NUMBER:
+            cls = "n"
+        elif tt == tokenize.NAME:
+            cls = "k" if tok in _PY_KW else "b" if tok in _PY_CONST else ""
+        elif tt == tokenize.OP:
+            cls = "o"
+        else:
+            cls = ""
+        out.append(_span(cls, src[s:e2]))            # slice, not tok: identical
+        prev = max(prev, e2)
+    out.append(esc(src[prev:]))
+    return "".join(out)
+
+
+def numbered(html):
+    """Line-number gutter. Safe because highlight_py never spans a newline."""
+    return "".join(f"<span class='ln'></span>{ln}\n"
+                   for ln in html.split("\n"))
+
+
+def source_of(e):
+    """(state, {filename: text}, permalink_or_None) for one experiment row.
+
+    Accepts both the live `experiments` row and a `lineage_history` row --
+    both carry artifacts_dir / git_commit / kept under those names.
+    """
+    commit = (e.get("git_commit") or "").strip()
+    art = e.get("artifacts_dir")
+    url = f"{GITHUB}/tree/{commit}/model" if (GITHUB and commit and e.get("kept")) else None
+
+    if art:                                          # exact: the trained bytes
+        d = REPO_ROOT / art / "model_src"
+        got = {}
+        for name in SRC_FILES:
+            p = d / name
+            if p.exists():
+                try:
+                    got[name] = p.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    pass
+        if got:
+            return "exact", got, url
+
+    if commit and e.get("kept"):                     # reconstructed: kept only
+        got = read_frozen_src(commit) or git_src(commit)
+        if got:
+            return "reconstructed", got, url
+
+    return "unavailable", {}, None
+
+
+FROZEN_SRC = REPO_ROOT / "site_assets" / "experiment_src"
+
+
+def read_frozen_src(commit):
+    """Recovered source, frozen into plain git by infra/freeze_experiment_src.py.
+
+    CI must not need deep git history to render this page. `actions/checkout`
+    defaults to fetch-depth 1, so `git show <old-commit>:model/model.py` fails
+    there — and it fails SILENTLY, degrading all 16 reconstructed rows to
+    "not retained" on the live site while they look right on the machine that
+    rendered them. Cloning full history instead is not an option: .git is
+    8.8 GB, in a job that has already run out of disk once.
+
+    So the recovered text (147 KB total) is frozen to site_assets/ as ordinary
+    git objects, exactly as the referenced images were after the LFS budget
+    incident. Same lesson, same shape: publishing must not depend on fetching
+    something large.
+    """
+    d = FROZEN_SRC / commit[:12]
+    got = {}
+    for name in SRC_FILES:
+        p = d / name
+        if p.exists():
+            try:
+                got[name] = p.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                pass
+    return got
+
+
+def git_src(commit):
+    """Read model/ out of a commit tree. Local dev and the freeze script only —
+    returns {} on a shallow clone, which read_frozen_src() is there to cover."""
+    got = {}
+    for name in SRC_FILES:
+        r = subprocess.run(["git", "show", f"{commit}:model/{name}"],
+                           cwd=REPO_ROOT, capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout:
+            got[name] = r.stdout
+    return got
+
+
+SRC_PROV = {
+    "exact": "The exact bytes that trained this run, snapshotted before the "
+             "keep/revert decision could touch them.",
+    "reconstructed": "Read back out of this experiment&rsquo;s own commit. It was "
+                     "kept, so the loop committed <code>model/</code> and then "
+                     "recorded that commit &mdash; the tree is this "
+                     "experiment&rsquo;s code.",
+    "unavailable": "Source not retained. Until 2026-07-31 the loop discarded a "
+                   "reverted experiment&rsquo;s code outright, and this row "
+                   "predates that fix. Its design record, its verdict and its "
+                   "exported model survive; the code does not. It is left blank "
+                   "rather than filled with the parent&rsquo;s code, which is "
+                   "what this row&rsquo;s recorded commit actually contains.",
+}
+
+
+def source_block(e):
+    """The two agent-editable files, inline, collapsed, with provenance."""
+    state, files, url = source_of(e)
+    if state == "unavailable":
+        return (f"<details class='trywrap srcwrap'><summary>The code for this "
+                f"experiment &mdash; not retained</summary>"
+                f"<div class='src-prov'>{SRC_PROV['unavailable']}</div></details>")
+    link = (f" &middot; <a class='src-link' href='{esc(url)}' target='_blank' "
+            f"rel='noopener'>on GitHub &#8599;</a>") if url else ""
+    parts = [f"<div class='src-prov'>{SRC_PROV[state]}{link}</div>"]
+    for name in SRC_FILES:
+        if name not in files:
+            continue
+        body = files[name]
+        parts.append(
+            f"<div class='src-file'><div class='src-h'>model/{esc(name)}"
+            f"<span class='src-lines'>{len(body.splitlines())} lines</span></div>"
+            f"<pre class='src'><code>{numbered(highlight_py(body))}</code></pre></div>")
+    label = "the exact code that trained it" if state == "exact" else "its code, from the commit"
+    return (f"<details class='trywrap srcwrap'><summary>The code for this "
+            f"experiment &mdash; {label}</summary>{''.join(parts)}</details>")
 
 
 def prompt_block(e):
@@ -2959,6 +3222,44 @@ Berlin to within 100&nbsp;m. The work was not stalling because the task was
 hard. It was stalling because the instruments were pointed at the wrong
 thing.</p></div></div>
 
+<div class="nb-row"><span class="nb-time">evening</span>
+<p class="nb-text"><b>The champion is pointed at rural Prignitz &mdash; a
+measurement, not an experiment.</b> Experiment&nbsp;5&rsquo;s code, unchanged,
+trained and scored on the rural bounding box instead of Berlin: same
+architecture, same eight epochs, same hyperparameters, only the box is
+different. It needed no code change at all &mdash; the cell grid comes from the
+raster (Berlin 55&times;54 = 2,970 cells, Prignitz 55&times;55 = 3,025), which is
+the genericity requirement of &sect;0 being exercised rather than asserted.
+Result: <b>0.113</b> against Berlin&rsquo;s 0.040.</p></div>
+
+<div class="nb-row"><span class="nb-time">&nbsp;</span>
+<p class="nb-text">The interesting part is <i>where</i> the 2.8&times; went.
+The prediction beforehand was that fields would be indistinguishable and the
+model would abstain more &mdash; the safe failure. It did not.
+Abstention barely moved (3.0% &rarr; 3.8%) and usable fixes barely moved
+(96.5% &rarr; 92.5%); <b>almost the entire loss is false fixes, 0.5% &rarr;
+3.75%</b>, a 7.5&times; rise in exactly the outcome the mission score treats as
+worse than silence. Median error is nearly unchanged at 29.5&nbsp;m, so when it
+is right it is just as sharp: the gap is calibration, not precision. Belief
+pooling protects against mass split across <i>adjacent</i> cells and against
+mass scattered across <i>distant</i> ones, but not against mass landing
+confidently on one wrong field that looks exactly like the right one &mdash; a
+case Berlin never presents and Prignitz presents constantly. The unseen-region
+diagnostic says the same thing from the other side: coverage <i>rises</i> to
+64.2% (Berlin 38.2%) while staying 0% usable, i.e. on ground it has never seen
+the rural model answers more readily and is wrong every time.</p></div>
+
+<div class="nb-row"><span class="nb-time">&nbsp;</span>
+<p class="nb-text">Nothing from this run was written to the experiment
+database, <code>state/best.json</code> or the git trail. Scored against a
+Berlin champion it would have been logged &ldquo;reverted&rdquo;, which would be
+a meaningless verdict &mdash; the two areas are different questions, not
+competing answers to one. It is recorded here and as an open branch on the
+<a href="research-evolution.html">evolution graph</a> instead, and it stands as
+the starting line should a rural era be opened. The research question it names
+is sharper than Berlin&rsquo;s was: <i>cut false fixes without spending usable
+ones.</i></p></div>
+
 </section>
 """
 
@@ -3645,13 +3946,20 @@ EVOLUTION_CSS = """
 .evo-end line{stroke:#9b998c;stroke-width:2;stroke-linecap:round}
 .evo-super{fill:none;stroke:#8c2f1f;stroke-width:2}
 .evo-endr{fill:var(--paper);stroke:#8c2f1f;stroke-width:2}
+/* An OPEN branch: ran, produced a real number, and is still live -- neither
+   abandoned (grey ×) nor superseded (red ○). Ink, because it belongs to the
+   living trunk; dashed and hollow-tipped, because it has not resolved. */
+.evo-open{fill:none;stroke:#111111;stroke-width:2;stroke-dasharray:6 4;opacity:.85}
+.evo-openend{fill:var(--paper);stroke:#111111;stroke-width:2}
 .evo-rejoin{fill:none;stroke:#8c2f1f;stroke-width:1.2;stroke-dasharray:2 3;opacity:.6}
 .evo-lab{font:600 10.5px var(--serif);cursor:pointer}
 .evo-lab.d{fill:#6b6a60}
 .evo-lab.s{fill:#8c2f1f}
+.evo-lab.o{fill:var(--ink)}
 .evo-endlab{font:600 9.5px var(--serif);letter-spacing:.02em;pointer-events:none}
 .evo-endlab.s{fill:#8c2f1f}
 .evo-endlab.d{fill:#6b6a60}
+.evo-endlab.o{fill:var(--ink)}
 .evo-pin{stroke:#8c2f1f;stroke-width:1;stroke-dasharray:2 2}
 .evo-pindot{fill:#8c2f1f;cursor:pointer}
 .evo-pinlab{fill:#8c2f1f;font:600 9px var(--serif);cursor:pointer;
@@ -3680,12 +3988,13 @@ EVOLUTION_CSS = """
 #evo-tip .tk.kept{color:#111111}
 #evo-tip .tk.abandoned{color:#6b6a60}
 #evo-tip .tk.superseded{color:#8c2f1f}
+#evo-tip .tk.open{color:#111111}
 #evo-tip .tk.silence{color:var(--faint)}
 """
 
 EVOLUTION_SVG = """<svg id='evo-svg' viewBox='0 0 5349 608' width='5349' height='608' role='img' aria-label='research process as a branching graph'><line class='evo-grid' x1='306.5' y1='30' x2='306.5' y2='574'/><text class='evo-day' x='312.5' y='22'>21 Jul</text><line class='evo-grid' x1='610.5' y1='30' x2='610.5' y2='574'/><text class='evo-day' x='616.5' y='22'>22 Jul</text><line class='evo-grid' x1='1538.5' y1='30' x2='1538.5' y2='574'/><text class='evo-day' x='1544.5' y='22'>23 Jul</text><line class='evo-grid' x1='2362.5' y1='30' x2='2362.5' y2='574'/><text class='evo-day' x='2368.5' y='22'>24 Jul</text><line class='evo-grid' x1='2562.5' y1='30' x2='2562.5' y2='574'/><text class='evo-day' x='2568.5' y='22'>25 Jul</text><line class='evo-grid' x1='2658.5' y1='30' x2='2658.5' y2='574'/><text class='evo-day' x='2664.5' y='22'>26 Jul</text><line class='evo-grid' x1='2754.5' y1='30' x2='2754.5' y2='574'/><text class='evo-day' x='2760.5' y='22'>27 Jul</text><line class='evo-grid' x1='2850.5' y1='30' x2='2850.5' y2='574'/><text class='evo-day' x='2856.5' y='22'>28 Jul</text><line class='evo-grid' x1='2946.5' y1='30' x2='2946.5' y2='574'/><text class='evo-day' x='2952.5' y='22'>29 Jul</text><line class='evo-grid' x1='3042.5' y1='30' x2='3042.5' y2='574'/><text class='evo-day' x='3048.5' y='22'>30 Jul</text><line class='evo-grid' x1='3970.5' y1='30' x2='3970.5' y2='574'/><text class='evo-day' x='3976.5' y='22'>31 Jul</text><rect class='evo-gap' x='2366.5' y='242' width='1390.6' height='28'/><text class='evo-gaplab' x='3061.8' y='235'>six days of silence</text><line class='evo-trunk' x1='52.0' y1='256' x2='4629.7' y2='256'/><path class='evo-dead' data-k='d0' d='M84.0,256 C99.0,256 84.0,128.0 108.0,128.0 L141.7,128.0'/><g class='evo-end' data-k='d0'><line x1='137.2' y1='123.5' x2='146.2' y2='132.5'/><line x1='137.2' y1='132.5' x2='146.2' y2='123.5'/></g><text class='evo-lab d' data-k='d0' x='116.0' y='118.0' text-anchor='start'>Sentinel-2 10 m/px</text><text class='evo-endlab d' data-k='d0' x='152.7' y='132.0' text-anchor='start'>dropped in 20 min</text><path class='evo-dead' data-k='d1' d='M1074.5,256 C1089.5,256 1074.5,128.0 1098.5,128.0 L1399.3,128.0'/><g class='evo-end' data-k='d1'><line x1='1394.8' y1='123.5' x2='1403.8' y2='132.5'/><line x1='1394.8' y1='132.5' x2='1403.8' y2='123.5'/></g><text class='evo-lab d' data-k='d1' x='1106.5' y='118.0' text-anchor='start'>Prompt-only pivot rules</text><text class='evo-endlab d' data-k='d1' x='1410.3' y='132.0' text-anchor='start'>never worked</text><path class='evo-dead' data-k='d2' d='M3859.1,256 C3868.4,256 3859.1,64.0 3874.0,64.0 L3887.0,64.0'/><g class='evo-end' data-k='d2'><line x1='3882.5' y1='59.5' x2='3891.5' y2='68.5'/><line x1='3882.5' y1='68.5' x2='3891.5' y2='59.5'/></g><text class='evo-lab d' data-k='d2' x='3882.0' y='54.0' text-anchor='start'>3D shadow relighting</text><text class='evo-endlab d' data-k='d2' x='3898.0' y='68.0' text-anchor='start'>parked</text><path class='evo-dead' data-k='d3' d='M3877.7,256 C3890.1,256 3877.7,128.0 3897.5,128.0 L3914.8,128.0'/><g class='evo-end' data-k='d3'><line x1='3910.3' y1='123.5' x2='3919.3' y2='132.5'/><line x1='3910.3' y1='132.5' x2='3919.3' y2='123.5'/></g><text class='evo-lab d' data-k='d3' x='3905.5' y='118.0' text-anchor='start'>Retrieval-index probe</text><text class='evo-endlab d' data-k='d3' x='3925.8' y='132.0' text-anchor='start'>parked, not disproven</text><path class='evo-super' data-k='s0' d='M100.5,256 C115.5,256 100.5,320.0 124.5,320.0 L4455.5,320.0'/><circle class='evo-endr' data-k='s0' cx='4455.5' cy='320.0' r='5'/><text class='evo-lab s' data-k='s0' x='132.5' y='310.0' text-anchor='start'>Region-holdout evaluation</text><text class='evo-endlab s' data-k='s0' x='4466.5' y='324.0' text-anchor='start'>→ held-out viewpoints</text><path class='evo-super' data-k='s1' d='M100.5,256 C115.5,256 100.5,384.0 124.5,384.0 L4507.1,384.0'/><circle class='evo-endr' data-k='s1' cx='4507.1' cy='384.0' r='5'/><text class='evo-lab s' data-k='s1' x='132.5' y='374.0' text-anchor='start'>Median error as the score</text><text class='evo-endlab s' data-k='s1' x='4518.1' y='388.0' text-anchor='start'>→ mission score</text><path class='evo-super' data-k='s2' d='M406.8,256 C421.8,256 406.8,448.0 430.8,448.0 L2032.9,448.0'/><circle class='evo-endr' data-k='s2' cx='2032.9' cy='448.0' r='5'/><text class='evo-lab s' data-k='s2' x='438.8' y='438.0' text-anchor='start'>RunPod - rented 4090 pod</text><text class='evo-endlab s' data-k='s2' x='2043.9' y='452.0' text-anchor='start'>→ Modal</text><path class='evo-super' data-k='s3' d='M2032.9,256 C2047.9,256 2032.9,448.0 2056.9,448.0 L3933.4,448.0'/><circle class='evo-endr' data-k='s3' cx='3933.4' cy='448.0' r='5'/><text class='evo-lab s' data-k='s3' x='2064.9' y='438.0' text-anchor='start'>Modal A100 - serverless</text><text class='evo-endlab s' data-k='s3' x='3944.4' y='452.0' text-anchor='start'>credits out → local M1</text><path class='evo-super' data-k='s4' d='M1999.9,256 C2014.9,256 1999.9,512.0 2023.9,512.0 L2238.9,512.0'/><circle class='evo-endr' data-k='s4' cx='2238.9' cy='512.0' r='5'/><text class='evo-lab s' data-k='s4' x='2031.9' y='502.0' text-anchor='start'>Berlin-only scope cut</text><text class='evo-endlab s' data-k='s4' x='2249.9' y='516.0' text-anchor='start'>→ 4 areas restored</text><path class='evo-super' data-k='s5' d='M4507.1,256 C4517.4,256 4507.1,512.0 4523.6,512.0 L4538.1,512.0'/><circle class='evo-endr' data-k='s5' cx='4538.1' cy='512.0' r='5'/><text class='evo-lab s' data-k='s5' x='4531.6' y='502.0' text-anchor='start'>Geometric mean</text><text class='evo-endlab s' data-k='s5' x='4549.1' y='516.0' text-anchor='start'>→ mission score</text><path class='evo-pindot' data-k='i0' d='M638.3,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i0' x1='638.3' y1='455.0' x2='638.3' y2='468.0'/><text class='evo-pinlab' data-k='i0' x='638.3' y='479.0' text-anchor='middle'>pod disk full</text><path class='evo-pindot' data-k='i1' d='M1009.5,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i1' x1='1009.5' y1='455.0' x2='1009.5' y2='468.0'/><text class='evo-pinlab' data-k='i1' x='1009.5' y='479.0' text-anchor='middle'>Fable hits its cap</text><path class='evo-pindot' data-k='i2' d='M1213.7,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i2' x1='1213.7' y1='455.0' x2='1213.7' y2='468.0'/><text class='evo-pinlab' data-k='i2' x='1213.7' y='479.0' text-anchor='middle'>CI out of disk</text><path class='evo-pindot' data-k='i3' d='M1352.9,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i3' x1='1352.9' y1='455.0' x2='1352.9' y2='468.0'/><text class='evo-pinlab' data-k='i3' x='1352.9' y='479.0' text-anchor='middle'>two writers on main</text><path class='evo-pindot' data-k='i4' d='M2016.4,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i4' x1='2016.4' y1='455.0' x2='2016.4' y2='468.0'/><text class='evo-pinlab' data-k='i4' x='2016.4' y='479.0' text-anchor='middle'>pod won&#39;t resume</text><path class='evo-pindot' data-k='i5' d='M2366.5,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i5' x1='2366.5' y1='455.0' x2='2366.5' y2='468.0'/><text class='evo-pinlab' data-k='i5' x='2366.5' y='479.0' text-anchor='middle'>loop dies unnoticed</text><path class='evo-pindot' data-k='i6' d='M3933.4,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i6' x1='3933.4' y1='455.0' x2='3933.4' y2='468.0'/><text class='evo-pinlab' data-k='i6' x='3933.4' y='479.0' text-anchor='middle'>credits exhausted</text><path class='evo-merge' data-k='m0' d='M1143.3,192.0 L1377.3,192.0 C1392.3,192.0 1399.3,208.0 1399.3,247.0'/><path class='evo-arrow' data-k='m0' d='M1394.8,245.0 L1399.3,254.0 L1403.8,245.0 z'/><circle class='evo-mstart' data-k='m0' cx='1143.3' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m0' x='1373.3' y='183.0' text-anchor='end'>enforce it in the source, not the prompt</text><path class='evo-merge' data-k='m1' d='M1754.9,192.0 L2010.9,192.0 C2025.9,192.0 2032.9,208.0 2032.9,247.0'/><path class='evo-arrow' data-k='m1' d='M2028.4,245.0 L2032.9,254.0 L2037.4,245.0 z'/><circle class='evo-mstart' data-k='m1' cx='1754.9' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m1' x='2006.9' y='183.0' text-anchor='end'>the problem is two writers, not the platform</text><path class='evo-merge' data-k='m2' d='M3676.3,192.0 L3827.8,192.0 C3842.8,192.0 3849.8,208.0 3849.8,247.0'/><path class='evo-arrow' data-k='m2' d='M3845.3,245.0 L3849.8,254.0 L3854.3,245.0 z'/><circle class='evo-mstart' data-k='m2' cx='3676.3' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m2' x='3823.8' y='183.0' text-anchor='end'>stop guessing, profile it</text><path class='evo-merge' data-k='m3' d='M4177.5,192.0 L4433.5,192.0 C4448.5,192.0 4455.5,208.0 4455.5,247.0'/><path class='evo-arrow' data-k='m3' d='M4451.0,245.0 L4455.5,254.0 L4460.0,245.0 z'/><circle class='evo-mstart' data-k='m3' cx='4177.5' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m3' x='4429.5' y='183.0' text-anchor='end'>it is never shown the places it is tested on</text><path class='evo-merge' data-k='m4' d='M4276.6,128.0 L4516.1,128.0 C4531.1,128.0 4538.1,144.0 4538.1,247.0'/><path class='evo-arrow' data-k='m4' d='M4533.6,245.0 L4538.1,254.0 L4542.6,245.0 z'/><circle class='evo-mstart' data-k='m4' cx='4276.6' cy='128.0' r='3.5'/><text class='evo-mlab' data-k='m4' x='4512.1' y='119.0' text-anchor='end'>the score must BE the product requirement</text><path class='evo-merge' data-k='m5' d='M4405.2,64.0 L4567.7,64.0 C4582.7,64.0 4589.7,80.0 4589.7,247.0'/><path class='evo-arrow' data-k='m5' d='M4585.2,245.0 L4589.7,254.0 L4594.2,245.0 z'/><circle class='evo-mstart' data-k='m5' cx='4405.2' cy='64.0' r='3.5'/><text class='evo-mlab' data-k='m5' x='4563.7' y='55.0' text-anchor='end'>it was starved, not refuted</text><line class='evo-tick' x1='84.0' y1='256' x2='84.0' y2='271.0'/><circle class='evo-node' data-k='t0' cx='84.0' cy='256' r='6'/><text class='evo-tlab' data-k='t0' x='84.0' y='280'>Bootstrap</text><line class='evo-tick' x1='141.7' y1='256' x2='141.7' y2='244.0'/><circle class='evo-node' data-k='t1' cx='141.7' cy='256' r='6'/><text class='evo-tlab' data-k='t1' x='141.7' y='232'>1 m/px orthophotos</text><line class='evo-tick' x1='191.1' y1='256' x2='191.1' y2='271.0'/><circle class='evo-node' data-k='t2' cx='191.1' cy='256' r='6'/><text class='evo-tlab' data-k='t2' x='191.1' y='280'>Relighting rebuilt</text><line class='evo-tick' x1='461.5' y1='256' x2='461.5' y2='244.0'/><circle class='evo-node' data-k='t3' cx='461.5' cy='256' r='6'/><text class='evo-tlab' data-k='t3' x='461.5' y='232'>Goes public</text><line class='evo-tick' x1='1399.3' y1='256' x2='1399.3' y2='271.0'/><circle class='evo-node' data-k='t4' cx='1399.3' cy='256' r='6'/><text class='evo-tlab' data-k='t4' x='1399.3' y='280'>Pivot enforced in code</text><line class='evo-tick' x1='2032.9' y1='256' x2='2032.9' y2='271.0'/><circle class='evo-node' data-k='t5' cx='2032.9' cy='256' r='6'/><text class='evo-tlab' data-k='t5' x='2032.9' y='280'>One git writer</text><line class='evo-tick' x1='3849.8' y1='256' x2='3849.8' y2='271.0'/><circle class='evo-node' data-k='t6' cx='3849.8' cy='256' r='6'/><text class='evo-tlab' data-k='t6' x='3849.8' y='280'>PNG decode fix</text><line class='evo-tick' x1='4362.6' y1='256' x2='4362.6' y2='244.0'/><circle class='evo-node' data-k='t7' cx='4362.6' cy='256' r='6'/><text class='evo-tlab' data-k='t7' x='4362.6' y='232'>berlin-slim branch</text><line class='evo-tick' x1='4589.7' y1='256' x2='4589.7' y2='271.0'/><circle class='evo-node' data-k='t8' cx='4589.7' cy='256' r='6'/><text class='evo-tlab' data-k='t8' x='4589.7' y='280'>0.040 - 96.5% usable</text></svg>"""
 
-EVOLUTION_TIPS = r"""{"gap": {"t": "six days of silence", "d": "The loop had died at 00:25 on the 24th and nobody was watching. Git shows a quiet week; the transcripts show an abandonment. The only interaction in the whole window is a single /compact on the 29th.", "k": "silence"}, "d0": {"t": "Sentinel-2 10 m/px", "d": "The bootstrap's imagery source - too coarse for a 100 m-altitude camera footprint. Abandoned inside 20 minutes.", "k": "abandoned"}, "d1": {"t": "Prompt-only pivot rules", "d": "Four attempts to make 'pivot' mean something by instruction alone. Experiments 37, 38 and 40 all came back on the same backbone.", "k": "abandoned"}, "d2": {"t": "3D shadow relighting", "d": "Simulate real sun angles from 3D terrain instead of flat imagery. Raised and parked the same evening; still open.", "k": "abandoned"}, "d3": {"t": "Retrieval-index probe", "d": "Shipping a few MB of reference index - the project's most-defended constraint - was briefly on the table. Three rounds, ~2,700 m against the champion's 743 m. Parked, not disproven.", "k": "abandoned"}, "s0": {"t": "Region-holdout evaluation", "d": "In force for TEN of the project's eleven days. It left 28.2% of Berlin in no training crop and put 100% of test questions on ground the model had never seen - unanswerable for a memorisation system. Every result measured against it is void.", "k": "superseded"}, "s1": {"t": "Median error as the score", "d": "Rewards a model that guesses the map centre over one that genuinely memorises. It was caught reverting the only experiment that had begun to work.", "k": "superseded"}, "s2": {"t": "RunPod - rented 4090 pod", "d": "$200 committed eleven minutes after the question was asked; the entire loop moved onto the pod, headless agents included. Abandoned three days later - not for the GPU, for the process friction around it.", "k": "superseded"}, "s3": {"t": "Modal A100 - serverless", "d": "Chosen because a STATELESS trainer that never touches git makes the two-writer problem impossible by construction. $30 of credits, four areas fanned out in parallel, ~26 min/experiment after the decode fix. Ran until the credits ran out.", "k": "superseded"}, "s4": {"t": "Berlin-only scope cut", "d": "Narrowed for six hours to survive on an M1 - but state/best.json didn't follow, so the loop briefly scored four-area results against a Berlin-only yardstick.", "k": "superseded"}, "s5": {"t": "Geometric mean", "d": "Fixed the median's symptom but was still a research proxy, chosen to make progress visible rather than to state what the aircraft needs. Lasted two hours.", "k": "superseded"}, "i0": {"t": "pod disk full", "d": "A 5.7 GB-per-iteration render cache was being committed to Git LFS; the pod's 50 GB volume filled at 23:34. Two experiments recorded as 'gated fail' had not failed on their merits - they were disk crashes written into the research record as results.", "k": "incident"}, "i1": {"t": "Fable hits its cap", "d": "The design model hit 100% of its weekly quota. Three iterations burned 30-minute retry sleeps against a wall before anyone noticed; the design step was switched to Sonnet.", "k": "incident"}, "i2": {"t": "CI out of disk", "d": "GitHub Actions died on 1.45 GB of leftover debug PNGs - over half the repo's live LFS payload, a forgotten dump from early holdout work.", "k": "incident"}, "i3": {"t": "two writers on main", "d": "The pod and the laptop both committing to main all day: repeated rebase dances, and at least one merge that silently reverted the morning's pivot-enforcement work.", "k": "incident"}, "i4": {"t": "pod won't resume", "d": "RunPod's last act: a stopped pod could not restart because the host had no free GPU. Stopped pods don't reserve one. This is what turned a compromise into a full switch.", "k": "incident"}, "i5": {"t": "loop dies unnoticed", "d": "All four Modal calls returned 'cancelled by user or a failure' 27 minutes in, at 00:25. Nobody noticed for six days.", "k": "incident"}, "i6": {"t": "credits exhausted", "d": "$30 of Modal credits gone; the loop stopped two experiments short of its target and compute returned to the laptop.", "k": "incident"}, "m0": {"t": "enforce it in the source, not the prompt", "d": "Four rounds of instructing the loop to pivot had failed. The insight was that a prompt is not a guarantee: the check had to read the code that actually resulted. backbonecheck.py fingerprints the post-implementation source and rejects before training.", "k": "insight"}, "m1": {"t": "the problem is two writers, not the platform", "d": "Three days were spent blaming RunPod. The actual cause was the pod and the laptop both committing to main. Once that was named, the fix was a rule rather than a provider: one git writer, and a remote that only trains.", "k": "insight"}, "m2": {"t": "stop guessing, profile it", "d": "Two theories about the training bottleneck - batch transfer and GPU compute - were both wrong by an order of magnitude. Instrumenting it found a 120 MB PNG being re-decoded every epoch, 78% of wall-clock.", "k": "insight"}, "m3": {"t": "it is never shown the places it is tested on", "d": "One question about one roundabout: zero training crops contained the Grosser Stern, twelve eval questions did. Measured across the city, 100% of test questions stood on ground the model had never seen. The split was rebuilt around held-out viewpoints.", "k": "insight"}, "m4": {"t": "the score must BE the product requirement", "d": "A map full of green hits had been discarded while one with a single hit was kept. Median rewarded guessing the map centre; the geometric mean that replaced it was still a proxy. The score became what the aircraft actually needs: usable fixes minus dangerous ones.", "k": "insight"}, "m5": {"t": "it was starved, not refuted", "d": "The map-cell architecture had gate-failed at 84 seconds of training, seeing a fraction of the city. Given full-lattice coverage - the same architecture, nothing else changed - it took the mission score from 2.001 to 0.183.", "k": "insight"}, "t0": {"t": "Bootstrap", "d": "Spec, empty repo, MacBook Air. Frozen pipeline, naive baseline and the whole harness in one session.", "k": "kept"}, "t1": {"t": "1 m/px orthophotos", "d": "Sentinel-2 at 10 m/px rejected within 20 minutes; the fetch stage re-frozen 50x finer before any experiment ran.", "k": "kept"}, "t2": {"t": "Relighting rebuilt", "d": "Five of six lighting buckets were effectively identical - auto-exposure was re-brightening them all. Caught by eye, not by a test.", "k": "kept"}, "t3": {"t": "Goes public", "d": "GitHub Pages, the research trail published as it runs. North star set: anyone draws a box and gets their own model, freely.", "k": "kept"}, "t4": {"t": "Pivot enforced in code", "d": "Four prompt-level attempts failed to stop the loop rebuilding on the same backbone. backbonecheck.py fingerprints the post-implementation source instead.", "k": "kept"}, "t5": {"t": "One git writer", "d": "The rule that ended three days of chaos: the laptop commits, the remote only trains. Divergence becomes impossible by construction.", "k": "kept"}, "t6": {"t": "PNG decode fix", "d": "Each ~120 MB render was re-decoded every epoch: 78% of training wall-clock against 14.5% for the actual maths.", "k": "kept"}, "t7": {"t": "berlin-slim branch", "d": "Deliberate narrowing to buy iteration speed. What if overfitting is the feature?", "k": "kept"}, "t8": {"t": "0.040 - 96.5% usable", "d": "Four experiments on a corrected evaluation and a metric that states the product requirement. 96.5% of held-out frames give a usable fix, 0.5% are confidently wrong, median miss 27 m. The first of the four was the architecture the old metric had discarded as a failure.", "k": "kept"}}"""
+EVOLUTION_TIPS = r"""{"gap": {"t": "six days of silence", "d": "The loop had died at 00:25 on the 24th and nobody was watching. Git shows a quiet week; the transcripts show an abandonment. The only interaction in the whole window is a single /compact on the 29th.", "k": "silence"}, "d0": {"t": "Sentinel-2 10 m/px", "d": "The bootstrap's imagery source - too coarse for a 100 m-altitude camera footprint. Abandoned inside 20 minutes.", "k": "abandoned"}, "d1": {"t": "Prompt-only pivot rules", "d": "Four attempts to make 'pivot' mean something by instruction alone. Experiments 37, 38 and 40 all came back on the same backbone.", "k": "abandoned"}, "d2": {"t": "3D shadow relighting", "d": "Simulate real sun angles from 3D terrain instead of flat imagery. Raised and parked the same evening; still open.", "k": "abandoned"}, "d3": {"t": "Retrieval-index probe", "d": "Shipping a few MB of reference index - the project's most-defended constraint - was briefly on the table. Three rounds, ~2,700 m against the champion's 743 m. Parked, not disproven.", "k": "abandoned"}, "s0": {"t": "Region-holdout evaluation", "d": "In force for TEN of the project's eleven days. It left 28.2% of Berlin in no training crop and put 100% of test questions on ground the model had never seen - unanswerable for a memorisation system. Every result measured against it is void.", "k": "superseded"}, "s1": {"t": "Median error as the score", "d": "Rewards a model that guesses the map centre over one that genuinely memorises. It was caught reverting the only experiment that had begun to work.", "k": "superseded"}, "s2": {"t": "RunPod - rented 4090 pod", "d": "$200 committed eleven minutes after the question was asked; the entire loop moved onto the pod, headless agents included. Abandoned three days later - not for the GPU, for the process friction around it.", "k": "superseded"}, "s3": {"t": "Modal A100 - serverless", "d": "Chosen because a STATELESS trainer that never touches git makes the two-writer problem impossible by construction. $30 of credits, four areas fanned out in parallel, ~26 min/experiment after the decode fix. Ran until the credits ran out.", "k": "superseded"}, "s4": {"t": "Berlin-only scope cut", "d": "Narrowed for six hours to survive on an M1 - but state/best.json didn't follow, so the loop briefly scored four-area results against a Berlin-only yardstick.", "k": "superseded"}, "s5": {"t": "Geometric mean", "d": "Fixed the median's symptom but was still a research proxy, chosen to make progress visible rather than to state what the aircraft needs. Lasted two hours.", "k": "superseded"}, "i0": {"t": "pod disk full", "d": "A 5.7 GB-per-iteration render cache was being committed to Git LFS; the pod's 50 GB volume filled at 23:34. Two experiments recorded as 'gated fail' had not failed on their merits - they were disk crashes written into the research record as results.", "k": "incident"}, "i1": {"t": "Fable hits its cap", "d": "The design model hit 100% of its weekly quota. Three iterations burned 30-minute retry sleeps against a wall before anyone noticed; the design step was switched to Sonnet.", "k": "incident"}, "i2": {"t": "CI out of disk", "d": "GitHub Actions died on 1.45 GB of leftover debug PNGs - over half the repo's live LFS payload, a forgotten dump from early holdout work.", "k": "incident"}, "i3": {"t": "two writers on main", "d": "The pod and the laptop both committing to main all day: repeated rebase dances, and at least one merge that silently reverted the morning's pivot-enforcement work.", "k": "incident"}, "i4": {"t": "pod won't resume", "d": "RunPod's last act: a stopped pod could not restart because the host had no free GPU. Stopped pods don't reserve one. This is what turned a compromise into a full switch.", "k": "incident"}, "i5": {"t": "loop dies unnoticed", "d": "All four Modal calls returned 'cancelled by user or a failure' 27 minutes in, at 00:25. Nobody noticed for six days.", "k": "incident"}, "i6": {"t": "credits exhausted", "d": "$30 of Modal credits gone; the loop stopped two experiments short of its target and compute returned to the laptop.", "k": "incident"}, "m0": {"t": "enforce it in the source, not the prompt", "d": "Four rounds of instructing the loop to pivot had failed. The insight was that a prompt is not a guarantee: the check had to read the code that actually resulted. backbonecheck.py fingerprints the post-implementation source and rejects before training.", "k": "insight"}, "m1": {"t": "the problem is two writers, not the platform", "d": "Three days were spent blaming RunPod. The actual cause was the pod and the laptop both committing to main. Once that was named, the fix was a rule rather than a provider: one git writer, and a remote that only trains.", "k": "insight"}, "m2": {"t": "stop guessing, profile it", "d": "Two theories about the training bottleneck - batch transfer and GPU compute - were both wrong by an order of magnitude. Instrumenting it found a 120 MB PNG being re-decoded every epoch, 78% of wall-clock.", "k": "insight"}, "m3": {"t": "it is never shown the places it is tested on", "d": "One question about one roundabout: zero training crops contained the Grosser Stern, twelve eval questions did. Measured across the city, 100% of test questions stood on ground the model had never seen. The split was rebuilt around held-out viewpoints.", "k": "insight"}, "m4": {"t": "the score must BE the product requirement", "d": "A map full of green hits had been discarded while one with a single hit was kept. Median rewarded guessing the map centre; the geometric mean that replaced it was still a proxy. The score became what the aircraft actually needs: usable fixes minus dangerous ones.", "k": "insight"}, "m5": {"t": "it was starved, not refuted", "d": "The map-cell architecture had gate-failed at 84 seconds of training, seeing a fraction of the city. Given full-lattice coverage - the same architecture, nothing else changed - it took the mission score from 2.001 to 0.183.", "k": "insight"}, "t0": {"t": "Bootstrap", "d": "Spec, empty repo, MacBook Air. Frozen pipeline, naive baseline and the whole harness in one session.", "k": "kept"}, "t1": {"t": "1 m/px orthophotos", "d": "Sentinel-2 at 10 m/px rejected within 20 minutes; the fetch stage re-frozen 50x finer before any experiment ran.", "k": "kept"}, "t2": {"t": "Relighting rebuilt", "d": "Five of six lighting buckets were effectively identical - auto-exposure was re-brightening them all. Caught by eye, not by a test.", "k": "kept"}, "t3": {"t": "Goes public", "d": "GitHub Pages, the research trail published as it runs. North star set: anyone draws a box and gets their own model, freely.", "k": "kept"}, "t4": {"t": "Pivot enforced in code", "d": "Four prompt-level attempts failed to stop the loop rebuilding on the same backbone. backbonecheck.py fingerprints the post-implementation source instead.", "k": "kept"}, "t5": {"t": "One git writer", "d": "The rule that ended three days of chaos: the laptop commits, the remote only trains. Divergence becomes impossible by construction.", "k": "kept"}, "t6": {"t": "PNG decode fix", "d": "Each ~120 MB render was re-decoded every epoch: 78% of training wall-clock against 14.5% for the actual maths.", "k": "kept"}, "t7": {"t": "berlin-slim branch", "d": "Deliberate narrowing to buy iteration speed. What if overfitting is the feature?", "k": "kept"}, "t8": {"t": "0.040 - 96.5% usable", "d": "Four experiments on a corrected evaluation and a metric that states the product requirement. 96.5% of held-out frames give a usable fix, 0.5% are confidently wrong, median miss 27 m. The first of the four was the architecture the old metric had discarded as a failure.", "k": "kept"}, "o0": {"t": "Prignitz probe", "d": "The Berlin champion, unchanged, trained and scored on the rural box - no code change needed, the cell grid comes from the raster. 0.113 against Berlin's 0.040. But the loss is not where it was expected: abstention barely moved and usable fixes barely moved (92.5% vs 96.5%); almost all of it is FALSE fixes, 0.5% to 3.75%. Fields produce confidently wrong answers where city blocks do not. Deliberately kept out of the Berlin lineage - a different area is a different question, not a competing answer - and left standing as the baseline for a rural era, should one be opened.", "k": "open"}}"""
 
 EVOLUTION_JS = r"""
 (function(){
@@ -3693,7 +4002,8 @@ EVOLUTION_JS = r"""
   var svg=document.getElementById('evo-svg'), tip=document.getElementById('evo-tip');
   if(!svg||!tip) return;
   var KIND={kept:'on the trunk \u2014 this survived',abandoned:'tried and abandoned',
-            superseded:'ran as the mainline, then replaced',silence:'nothing happened'};
+            superseded:'ran as the mainline, then replaced',silence:'nothing happened',
+            open:'branched off \u2014 still open'};
   function show(k,ev){
     var d=tips[k]; if(!d) return;
     tip.innerHTML="<span class='tk "+d.k+"'>"+(KIND[d.k]||d.k)+"</span>"+
@@ -3911,7 +4221,22 @@ def evolution_fork_svg(svg: str) -> str:
     # original second control point (208) would sit PAST that target and bow
     # the elbow backwards, so it moves up with it.
     subs.append(("C4448.5,192.0 4455.5,208.0", "C4448.5,192.0 4455.5,200.0"))
-    return _apply(svg, subs)
+    svg = _apply(svg, subs)
+    # The Prignitz probe leaves the fork AFTER the 0.040 result, so it is drawn
+    # here rather than in EVOLUTION_SVG: it has to hang off BRANCH_Y, and that
+    # lane only exists once the surgery above has run. Anchoring it in the raw
+    # figure would have pinned it to TRUNK_Y, which after the fork is the
+    # DORMANT main line — drawing the probe as a descendant of the abandoned
+    # branch rather than of the champion that actually produced it.
+    probe = (
+        f"<path class='evo-open' data-k='o0' d='M4600.0,{BRANCH_Y:.0f} "
+        f"C4612.0,{BRANCH_Y:.0f} 4600.0,128.0 4622.0,128.0 L4666.0,128.0'/>"
+        f"<circle class='evo-openend' data-k='o0' cx='4666.0' cy='128.0' r='5'/>"
+        f"<text class='evo-lab o' data-k='o0' x='4628.0' y='118.0' "
+        f"text-anchor='start'>Prignitz probe</text>"
+        f"<text class='evo-endlab o' data-k='o0' x='4677.0' y='132.0' "
+        f"text-anchor='start'>0.113</text>")
+    return svg.replace("</svg>", probe + "</svg>")
 
 
 def _apply(svg: str, subs) -> str:
@@ -3956,7 +4281,12 @@ def render_evolution(exps):
       "stroke-width='2' fill='none'/><path d='M28.5,8 L32,12 L35.5,8 z' fill='#111111'/>"
       "</svg><b>an insight that merged in</b> &mdash; the arrow is where it changed the project</span>"
       "<span class='k'><svg width='22' height='12'><path d='M11,1 l5.5,5.5 l-5.5,5.5 "
-      "l-5.5,-5.5 z' fill='#8c2f1f'/></svg><b>incident</b> &mdash; something broke</span>")
+      "l-5.5,-5.5 z' fill='#8c2f1f'/></svg><b>incident</b> &mdash; something broke</span>"
+      "<span class='k'><svg width='36' height='12'><line x1='0' y1='6' x2='27' y2='6' "
+      "stroke='#111111' stroke-width='2' stroke-dasharray='6 4' opacity='.85'/>"
+      "<circle cx='30' cy='6' r='5' fill='#fffff8' stroke='#111111' stroke-width='2'/>"
+      "</svg><b>branched off, still open</b> &mdash; it ran and produced a real "
+      "number, but nothing has been concluded yet</span>")
     _, eras = load_history()
     bands = evolution_era_bands(eras)
     # Splice the bands in right after the opening <svg …> so they sit behind
@@ -3979,10 +4309,11 @@ def render_evolution(exps):
 {page_header("Research evolution: the shape of the search",
   "The <a href='research-lineage.html'>experiment lineage</a> shows what the loop "
   "tried. This shows what happened to the <i>research itself</i>. Time runs left to "
-  "right. The dark line is the path that survived; everything <b>above</b> it was "
-  "tried and abandoned; everything <b>below</b> ran as the mainline for a while "
-  "before being replaced &mdash; including which machine the work ran on. "
-  "<b>Hover anything</b> for what happened and why.")}
+  "right. The dark line is the path that survived; above it are branches that left "
+  "the trunk &mdash; grey and &times;-ended if they were abandoned, dark and "
+  "hollow-ended if they are still open; everything <b>below</b> ran as the mainline "
+  "for a while before being replaced &mdash; including which machine the work ran "
+  "on. <b>Hover anything</b> for what happened and why.")}
 <div class="evo">
 <div class="evo-prose"><div class="evo-key">{key}</div></div>
 <p class="evo-scrollhint">scroll sideways &rarr; eleven days, 20&ndash;31 July</p>\n<div class="evo-figure">{evo_svg}</div>
@@ -4598,6 +4929,7 @@ ink = better than abstaining on everything</div>
 <div class="provenance">ts {esc(e['ts'][:19])} · commit {esc(e['git_commit'][:12])} ·
 parent {esc((e['parent_commit'] or '')[:12]) or '—'} · artifacts {esc(e['artifacts_dir'] or '—')} ·
 agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duration_s'))}</div>
+{source_block(e)}
 {prompt_block(e)}
 </div>
 </div>
