@@ -1,0 +1,10 @@
+[berlin] 72712 lattice vantages, 6000/epoch, device=mps
+[berlin] epoch 1/8 loss=0.1595
+[berlin] epoch 2/8 loss=0.1433
+[berlin] epoch 3/8 loss=0.1340
+[berlin] epoch 4/8 loss=0.1288
+[berlin] epoch 5/8 loss=0.1244
+[berlin] epoch 6/8 loss=0.1232
+[berlin] epoch 7/8 loss=0.1225
+[berlin] epoch 8/8 loss=0.1141
+{"area": "berlin", "n_train_crops": 48000, "distinct_train_vantages": 48000, "presentations": 48000, "epochs": 8, "device": "mps", "train_seconds": 51.9, "onnx_bytes": 394346, "init": "from-scratch"}
