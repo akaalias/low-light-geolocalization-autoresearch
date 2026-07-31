@@ -14,9 +14,11 @@
 #          that many development experiments, then stops. So on a database
 #          that already has 48 experiments, `loop.sh 100` runs 52 more;
 #          `loop.sh 100` again later runs nothing. Default target: 100.
-# Env:     AREAS          (default "berlin" on this branch — see CLAUDE.md
-#                          "BRANCH OVERRIDE"; main-branch default is
-#                          "berlin prignitz munich frankfurt")
+# Env:     AREAS          (default "berlin prignitz" — the berlin-prignitz era,
+#                          see CLAUDE.md "SCOPE OVERRIDE". The goal is ONE
+#                          model covering both boxes; §6 scores the worst case
+#                          across them. Original spec default was
+#                          "berlin prignitz munich frankfurt".)
 #          PATIENCE       (default 4: consecutive non-kept experiments before
 #                          the design prompt demands a pivot — pivot
 #                          enforcement itself is force-disabled on this
@@ -33,7 +35,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 TARGET="${1:-100}"
-AREAS="${AREAS:-berlin}"
+AREAS="${AREAS:-berlin prignitz}"
 EPOCHS="${EPOCHS:-8}"
 # Training budget knobs (env-overridable, champion code untouched). Crops per
 # lighting bucket × bucket count = crops/epoch; total epochs = EPOCHS ×
