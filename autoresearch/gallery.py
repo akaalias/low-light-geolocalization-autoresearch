@@ -1334,7 +1334,6 @@ def page_header(title, sub_html):
     markup, same classes, no per-page typography. Do not hand-roll page
     headers; call this."""
     return (f"<header class='page-head'>"
-            f"<div class='eyebrow'>Alexis Rondeau · an autonomous research project</div>"
             f"<h1>{title}</h1>"
             f"<p class='page-sub'>{sub_html}</p></header>")
 
@@ -2976,7 +2975,6 @@ def render_notebook():
 {topnav('notebook')}
 {compute_banner()}
 <header class='page-head'>
-<div class='eyebrow'>Alexis Rondeau &middot; an autonomous research project</div>
 <h1>Lab notebook</h1>
 <p class='page-sub'>What we actually did, day by day &mdash; compiled from
 the project&rsquo;s session history and commit log, not just the
