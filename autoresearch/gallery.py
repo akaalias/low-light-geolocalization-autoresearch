@@ -1958,6 +1958,29 @@ was trained on, so the metric measured a capability the product never needs
 while never measuring the one it does. The loop is stopped mid-experiment;
 the split is being redesigned to hold out <i>viewpoints</i> rather than
 <i>regions</i>.</p></div>
+
+<div class="nb-row"><span class="nb-time">11:45&ndash;12:20</span>
+<p class="nb-text"><b>The split is rebuilt around viewpoints.</b> Training
+now covers every lattice position of the whole city &mdash; the model is
+supposed to memorise its one box, so it is shown all of it. Evaluation moves
+off-lattice: each test frame sits 11&ndash;17&nbsp;m from the nearest
+training vantage (17&nbsp;m being the largest offset a 24&nbsp;m lattice
+permits) and carries its own rotation. Mapped ground, unseen view &mdash;
+which is what an aircraft over a mapped area actually faces. A small
+one-in-thirty-two-block region stays genuinely untrained as a logged-only
+diagnostic, never allowed to touch the metric, to catch a model that is a
+lookup table with no spatial structure.</p></div>
+
+<div class="nb-row"><span class="nb-time">12:20</span>
+<p class="nb-text"><b>Measured again, on the same instruments.</b> Berlin
+ever shown in training rises from 71.8% to <b>93.5%</b> (the remaining gap
+is the deliberate diagnostic region and its buffer). Eval questions centred
+on ground the model has seen: 0% &rarr; <b>100%</b>. Eval frames containing
+no familiar pixel at all: 65.1% &rarr; <b>0%</b>. Distance from each test
+frame to the nearest training vantage: 11.3&ndash;16.3&nbsp;m. The lineage
+resets a second time in one day &mdash; scores from the old ruler cannot be
+compared to the new one &mdash; and the five experiments run that morning
+are archived rather than deleted.</p></div>
 </section>
 """
 
