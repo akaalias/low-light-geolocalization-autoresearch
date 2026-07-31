@@ -390,6 +390,14 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 .wex-arr{color:var(--faint);font-size:18px;flex:none;align-self:center;
   padding-bottom:34px}
 .wex-stats{display:flex;flex-direction:row;gap:28px;padding:2px 0 0}
+.contract-out{border:1px solid var(--rule);background:var(--paper);padding:14px 16px;
+  display:flex;flex-direction:column;gap:8px;justify-content:center;min-height:150px}
+.co-row{display:flex;justify-content:space-between;align-items:baseline;gap:18px;
+  border-bottom:1px dotted var(--rule);padding-bottom:6px}
+.co-row:last-child{border-bottom:none;padding-bottom:0}
+.co-k{font:600 11px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.co-v{font-size:19px;color:var(--ink)}
 .wex-num{font-size:27px;line-height:1.1;color:var(--ink)}
 .wex-lab{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:2px}
@@ -938,42 +946,83 @@ def ensure_goal_map():
 
 
 def challenge_block(exps):
-    """Overview hero: the real baseline error map beside the goal illustration."""
+    """Overview hero: what one camera frame must become, then the real
+    baseline error map beside the goal state, each stamped with its metric."""
     dev = [e for e in exps if e["kind"] != "holdout_check"]
     base = next((e for e in dev if e.get("artifacts_dir")), None)
     if not base:
         return ""
     real = REPO_ROOT / base["artifacts_dir"] / "heatmaps" / "heatmap_berlin.png"
-    if not real.exists():
-        return ""
     goal = ensure_goal_map()
-    if not goal:
+    if not real.exists() or not goal:
         return ""
     rel_real = Path(base["artifacts_dir"]) / "heatmaps" / "heatmap_berlin.png"
     rel_goal = Path("gallery") / "goal_map.png"
-    return f"""<div class="sec-h">The challenge, in one picture</div>
-<div class="pnote"><p>Every dot is one held-out viewpoint over Berlin: ground the
-model was trained on, framed from a position and heading it has never seen —
-what the aircraft actually faces. <b>Left is where we are.</b> <b>Right is what
-winning looks like.</b> Same city, same test points, same renderer; only the
-answers differ.</p></div>
-<div class="wex-row"><div class="wex-imgs">
-<figure class="wex-frame"><a href="{rel_real}"><img src="{rel_real}" loading="lazy"></a>
-<figcaption><b>where we start — measured</b> — the naive baseline. Red is a
-miss beyond 250&nbsp;m. It is confident on every frame and wrong on every
-frame, which scores {fmt_score(base['primary_metric'])} — the worst value the
-metric allows, because a confident wrong answer is worse for a drone than
-silence.</figcaption></figure>
-<div class="wex-arr">→</div>
-<figure class="wex-map"><a href="{rel_goal}"><img src="{rel_goal}" loading="lazy"></a>
-<figcaption><b>the goal — an illustration, not a result</b> — the identical test
-points drawn as if every one were a usable fix (within 100&nbsp;m). <i>No model
-produced this image.</i> It is here to show the target: a network small enough
-for a $4 flight computer that has memorised this city well enough to turn every
-glance into a position.</figcaption></figure>
-</div></div>
-"""
 
+    usable = None
+    try:
+        b = json.loads(base["metrics_json"])["areas"][0]["buckets"]
+        usable = max(c.get("usable_fix_rate") or 0.0 for c in b.values())
+    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
+        pass
+    usable_s = f"{100*usable:.0f}%" if usable is not None else "—"
+
+    info = workedexample.ensure(base["artifacts_dir"])
+    contract = ""
+    if info and "lat_true" in info:
+        fr = Path(base["artifacts_dir"]) / info["frame"]
+        contract = (
+            "<div class='wex-row'><div class='wex-imgs'>"
+            f"<figure class='wex-frame'><a href='{fr}'>"
+            f"<img src='{fr}' loading='lazy'></a>"
+            "<figcaption><b>what the UAV sees</b> — one real 128 m frame from "
+            "the downward camera. No map aboard, no internet, no GPS.</figcaption>"
+            "</figure><div class='wex-arr'>→</div>"
+            "<figure class='wex-map'><div class='contract-out'>"
+            f"<div class='co-row'><span class='co-k'>lat</span>"
+            f"<span class='co-v num'>{info['lat_true']:.5f}</span></div>"
+            f"<div class='co-row'><span class='co-k'>lon</span>"
+            f"<span class='co-v num'>{info['lon_true']:.5f}</span></div>"
+            "<div class='co-row'><span class='co-k'>confidence</span>"
+            "<span class='co-v num'>high</span></div></div>"
+            "<figcaption><b>what it must return</b> — the true answer for that "
+            f"frame. Today the baseline replies <span class='num'>"
+            f"{info['lat_pred']:.5f}, {info['lon_pred']:.5f}</span> at confidence "
+            f"<span class='num'>{info['conf']:.2f}</span> — about "
+            f"<b>{fmt_m(info['miss_m'])}</b> away, stated almost certainly. "
+            "Confident and wrong is the one answer a drone must never get."
+            "</figcaption></figure></div></div>")
+
+    return (
+        "<div class='sec-h'>The challenge, in one picture</div>"
+        "<div class='pnote'><p>The contract is one frame in, one position out: "
+        "<i>estimate_position(frame) &rarr; (lat, lon, confidence)</i>, computed on "
+        "a $4 flight computer with no map aboard.</p></div>"
+        + contract +
+        "<div class='pnote'><p>Run that over the whole city and you get the maps "
+        "below. Every dot is one held-out viewpoint: ground the model trained on, "
+        "framed from a position and heading it has never seen. <b>Left is where we "
+        "are, measured. Right is what winning looks like.</b> Same city, same test "
+        "points, same renderer — only the answers differ.</p></div>"
+        "<div class='wex-row'><div class='wex-imgs'>"
+        f"<figure class='wex-frame'><a href='{rel_real}'>"
+        f"<img src='{rel_real}' loading='lazy'></a>"
+        "<figcaption><b>where we start — measured</b><br>mission score "
+        f"<b class='num'>{fmt_score(base['primary_metric'])}</b> · usable fixes "
+        f"<b class='num'>{usable_s}</b><br>Red is a miss beyond 250 m. The "
+        "baseline is confident on every frame and wrong on every frame — the "
+        "worst value the metric allows, because for a drone a confident wrong "
+        "answer is worse than silence.</figcaption></figure>"
+        "<div class='wex-arr'>→</div>"
+        f"<figure class='wex-map'><a href='{rel_goal}'>"
+        f"<img src='{rel_goal}' loading='lazy'></a>"
+        "<figcaption><b>the goal — an illustration, not a result</b><br>"
+        "mission score <b class='num'>0.000</b> · usable fixes "
+        "<b class='num'>100%</b><br>The identical test points drawn as if every "
+        "one were a usable fix (within 100 m). <i>No model produced this "
+        "image</i> — it is the target, not an achievement: a network small "
+        "enough for a $4 board that has memorised this city well enough to turn "
+        "every glance into a position.</figcaption></figure></div></div>")
 
 def page_header(title, sub_html):
     """THE one header for every inner page (log, designs, lineage) — same

@@ -130,6 +130,10 @@ def generate(run_dir: Path) -> dict | None:
         "field_k": None if field is None else int(field.shape[0]),
         "peak_pct": None if field is None else round(100 * float(field.max()), 3),
         "uniform_pct": None if field is None else round(100 / field.size, 3),
+        # the actual coordinates, so the overview can state the contract
+        # concretely: this frame -> these numbers
+        "lat_true": round(lat_t, 6), "lon_true": round(lon_t, 6),
+        "lat_pred": round(lat_p, 6), "lon_pred": round(lon_p, 6),
         "frame": "worked/frame.png", "map": "worked/map.png",
     }
     (out / "worked.json").write_text(json.dumps(info))
@@ -142,7 +146,11 @@ def ensure(artifacts_dir: str) -> dict | None:
     cached = run_dir / "worked" / "worked.json"
     if cached.exists():
         try:
-            return json.loads(cached.read_text())
+            info = json.loads(cached.read_text())
+            # re-render pre-coordinate caches so the overview can show
+            # (lat, lon, confidence) rather than just a miss distance
+            if "lat_true" in info:
+                return info
         except (OSError, json.JSONDecodeError):
             pass
     try:
