@@ -1366,9 +1366,16 @@ def _nums_from_conclusion(concl):
 
 def _m_str(s):
     try:
-        return fmt_m(float(s))
+        v = float(s)
     except (TypeError, ValueError):
         return "—"
+    # loop.sh's best_metric() falls back to 1e18 when state/best.json doesn't
+    # exist yet (nothing to compare against — the very first experiment after
+    # a lineage reset). That's a different thing from FAIL=1e9 (a real gated
+    # failure) and fmt_m() alone can't tell them apart, so check first.
+    if v >= 1e15:
+        return "no prior best"
+    return fmt_m(v)
 
 
 def _fail_detail(e):
