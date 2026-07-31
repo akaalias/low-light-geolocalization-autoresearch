@@ -162,8 +162,16 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
   color:#4a473e}
 .pnote p{margin:0 0 10px}
 .pnote b{color:var(--ink)}
+/* the optimized number gets its own centred row; the three below are the
+   human-readable breakdown of it */
+.stat-hero{max-width:300px;margin:32px auto 6px;text-align:center}
+.stat-hero > b{display:block;font-size:52px;line-height:1.05;font-weight:600;
+  font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
+.stat-hero > span{display:block;font:600 11px var(--serif);
+  font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--muted);margin-top:6px}
 .stats{display:flex;flex-wrap:nowrap;gap:18px 30px;justify-content:center;
-  align-items:flex-start;margin:30px auto 10px;text-align:center}
+  align-items:flex-start;margin:22px auto 10px;text-align:center}
 .stat{flex:0 1 190px;max-width:210px}
 /* only the tile's OWN direct <b> is the headline number — a <b> inside the
    label used to inherit 34px and render "USABLE FIX" as a second headline */
@@ -395,7 +403,7 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
   align-self:center;padding-bottom:34px;opacity:.85}
 .wex-stats{display:flex;flex-direction:row;gap:28px;padding:2px 0 0}
 /* a bare "0.183" is meaningless without its scale — show where it sits */
-.stat-score .sc-wrap{display:block;margin-top:9px}
+.stat-hero .sc-wrap{display:block;margin-top:12px}
 .sc-bar{position:relative;display:block;height:4px;border-radius:2px;
   background:linear-gradient(90deg,#3c9c3c 0%,#c9a227 50%,#8c2f1f 100%);
   opacity:.5}
@@ -2421,11 +2429,13 @@ daytime imagery only, no synthetic low-light simulation — trading the
 main project's full scope for faster rounds while the loop searches for
 an architecture worth generalizing back out.</p>
 
+<div class="stat-hero">
+  <b>{best_s}</b><span>mission score</span>{scale_svg}
+</div>
 <div class="stats">
   <div class="stat"><b>{usable_s2}</b><span>frames with a usable fix</span></div>
   <div class="stat"><b>{med_s}</b><span>typical miss when it answers</span></div>
   <div class="stat"><b>{false_s}</b><span>confident but wrong</span></div>
-  <div class="stat stat-score"><b>{best_s}</b><span>mission score</span>{scale_svg}</div>
 </div>
 
 {challenge_block(exps)}
