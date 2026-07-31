@@ -3012,6 +3012,34 @@ def render_overview(exps):
         if m:
             n_vantages = int(m.group(1).replace(",", ""))
             break
+
+    # The winning design's own figure — the one the agent drew before it was
+    # allowed to train. Describing the architecture in prose and then not
+    # showing the drawing that exists is a strange thing to do on a page whose
+    # whole claim is "here is the technique that worked".
+    champ_fig = ""
+    _csvg = (champ.get("arch_svg") or "") if champ else ""
+    # The figures live on a page where they are numbered, and cross-reference
+    # each other ("byte-identical to Fig. 4"). Lifted onto the overview, which
+    # has no numbered figures, that points at nothing — so name the relation
+    # instead of the number.
+    _csvg = re.sub(r"\bFig\.\s*\d+(\.\d+)?\b", "the previous experiment", _csvg)
+    if _csvg.lstrip().startswith("<svg"):
+        champ_fig = (
+            f"<div class='contract-fig' data-ovfig "
+            f"data-title='The design that works — experiment {champ['id']}'>"
+            f"{_csvg}"
+            f"<p class='contract-cap'>The champion, drawn by the design agent "
+            f"<i>before</i> it was allowed to train. One camera crop enters at "
+            f"the left; the trunk squeezes it to a short vector; the wide fan "
+            f"is the choice over all {n_cells:,} map tiles; the small head "
+            f"after it is the nudge inside the winning tile. Grey is the "
+            f"harness's frozen contract, <span class='chg'>red is what this "
+            f"experiment changed</span>, and the ochre lane at the bottom is "
+            f"training-only scaffolding that never boards the aircraft. Click "
+            f"to enlarge, or see every proposal on the "
+            f"<a href='gallery/inference-paths.html'>model designs</a> "
+            f"page.</p></div>")
     best = next((e["primary_metric"] for e in reversed(dev)
                  if e["kept"] and e["primary_metric"]
                  and e["primary_metric"] < FAIL), None)
@@ -3139,8 +3167,9 @@ figures, and the <a href="gallery/index.html">research log</a> has each step
 as its own experiment.</p>
 <p>The result is one file of <b>{best_mb:.1f}&nbsp;MB</b> that answers in
 <b>{best_ms:.1f}&nbsp;ms</b>. Nothing is looked up and nothing is matched
-&mdash; the map <i>is</i> the weights.</p>
+&mdash; the map <i>is</i> the weights. Here is the whole of it:</p>
 </div>
+{champ_fig}
 
 <div class="sec-h">The verdict — what this does and does not show</div>
 <div class="pnote">
