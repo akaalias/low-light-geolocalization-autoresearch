@@ -54,6 +54,22 @@ Everything not listed above — §2 deployment constraints, §3 modeling
 approach, §7's lineage-tracking (git commit + SQLite row + gallery)
 requirement, §8-10 — still applies as written.
 
+## Working agreement: sweep after significant changes
+
+When a significant change lands here — a target/metric number, a scope
+change (areas, lighting buckets), a frozen-file behavior change, a model
+assignment — **grep the rest of the project for anything that now
+references the old value, not just the file you were asked to change.**
+This bit the project directly on 2026-07-31: the §6 target moved from
+20 m to 100 m in `pipeline/score.py`, but `autoresearch/gallery.py` had
+its *own* separate `TARGET_M = 20.0` constant plus several standalone
+hardcoded "20 m" strings, all missed in the first pass and shipped to the
+live gallery. Treat "I changed the source of truth" and "I changed every
+place that reads it" as two separate, both-required steps — the second
+one does not happen automatically, and a partial sweep (fixing the one
+place you happened to be looking at) is worse than not sweeping, because
+it looks done.
+
 ---
 
 You are Claude Code Instance #1. Your job in this session is to **bootstrap**
