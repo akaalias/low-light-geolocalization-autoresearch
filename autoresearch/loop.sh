@@ -124,6 +124,19 @@ quarantine_oversized() {
   done
 }
 
+# NEVER lose an experiment's implementation. Every path that discards model/
+# must call this first. Reverted code used to be thrown away outright, and on
+# 2026-07-31 that cost the project its best-scoring implementation: the
+# scoring metric was corrected, a previously-reverted experiment became the
+# champion, and its source no longer existed. Cheap insurance; call it before
+# every `git checkout -- model/`.
+snapshot_model_src() {
+  local dest="${1:-}"
+  [ -n "$dest" ] || return 0
+  mkdir -p "$dest/model_src" 2>/dev/null || return 0
+  cp model/*.py "$dest/model_src/" 2>/dev/null || true
+}
+
 # Draw THIS experiment's architecture figure — the agent-drawn, figcheck-
 # validated SVG in the same visual language as every prior figure (see
 # autoresearch/prompt_figure.md and archive/arch_svg_reference.py). Runs for
@@ -210,6 +223,7 @@ cleanup_interrupt() {
   echo "Interrupted — discarding the in-flight experiment (all completed"
   echo "experiments are already committed/logged). Safe to restart with:"
   echo "  ./autoresearch/loop.sh"
+  snapshot_model_src "${RUN_DIR:-}"
   git checkout -- model/ 2>/dev/null || true
   rm -f runs/pending_experiment.json
   exit 130
@@ -430,6 +444,7 @@ PYCHECK
       --allowedTools "Read,Edit,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
       --output-format json </dev/null >"$RUN_DIR/agent_impl.json" \
       || { echo "impl agent failed; skipping experiment"
+           snapshot_model_src "$RUN_DIR"
            git checkout -- model/ 2>/dev/null || true; continue; }
     T_IMPL=$(( $(date +%s) - T0 ))
     AGENT_MODEL_IMPL="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_impl.json" 2>/dev/null || echo "${IMPL_MODEL:-claude-opus-5}")"
@@ -476,6 +491,7 @@ PYCHECK
     REJECT_REASON="a pivot was demanded but the implementation still carries the champion's backbone ($CARRIED_BACKBONE) — checked against the post-implementation source; a pivot must replace the trunk outright, not re-tune, truncate, wrap, or ensemble it"
     echo "REJECTED: $REJECT_REASON — skipping training."
     echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
+    snapshot_model_src "$RUN_DIR"
     git checkout -- model/ 2>/dev/null || true
     $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
       --experiment-file "$RUN_DIR/experiment.json" \
@@ -572,8 +588,7 @@ PYMERGE
   # project had, its implementation no longer existed and had to be rebuilt
   # from its brief. A few KB of .py per experiment is nothing next to losing
   # the only copy of a champion.
-  mkdir -p "$RUN_DIR/model_src"
-  cp model/*.py "$RUN_DIR/model_src/" 2>/dev/null || true
+  snapshot_model_src "$RUN_DIR"
   RESULT="primary worst-case geomean error = $METRIC m (previous best $BEST m); full per-area/bucket breakdown in metrics.json"
   if [ "$KEEP" = "1" ]; then
     quarantine_oversized model
