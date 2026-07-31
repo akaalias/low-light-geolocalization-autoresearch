@@ -255,6 +255,11 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .scope-note{border-left:2px solid var(--rule);padding:2px 0 2px 18px;
   margin-top:34px;font-size:13.5px;color:var(--muted)}
 .scope-note p:last-child{margin-bottom:0}
+/* The five steps that took the score from 2.001 to 0.040 — numbered because
+   each one is a single change and the order is the argument. */
+.answer-steps{margin:14px 0 14px;padding-left:26px}
+.answer-steps li{margin:0 0 11px;line-height:1.65}
+.answer-steps li::marker{color:var(--faint);font-weight:700}
 /* the optimized number gets its own centred row; the three below are the
    human-readable breakdown of it */
 .stat-hero{max-width:300px;margin:32px auto 6px;text-align:center}
@@ -1981,7 +1986,7 @@ def figures(artifacts_dir):
             "<div class='figs-intro'>In the current configuration, training and eval use "
             "the raw daytime reference imagery as fetched — no synthetic relighting, no "
             "low-light sensor simulation (that machinery still exists in the frozen pipeline "
-            "and is used on the main branch's 6-lighting-condition setup, just disabled "
+            "and is used by the full spec's 6-lighting-condition setup, just switched off "
             "here). Below, one example 256 m patch per area, as-is. This illustrates the "
             "<i>dataset</i>, not this experiment's performance — the actual training set is "
             "thousands of distinct crops (see “training data” above), and this "
@@ -2980,6 +2985,33 @@ def render_overview(exps):
     n_all_exp = sum(1 for r in _hist if r["kind"] != "holdout_check")
     n_eras = len(_eras)
     cost_all = sum((r["cost_agent"] or 0) + (r["cost_gpu"] or 0) for r in _hist)
+
+    # Figures for "The answer" and "The verdict". Read from the champion's own
+    # record and training info rather than typed in, so the prose cannot drift
+    # from the model it describes the way the 0.183 numbers did.
+    champ = next((e for e in reversed(dev)
+                  if e["kept"] and e["primary_metric"] is not None
+                  and e["primary_metric"] < FAIL), None)
+    best_mb = (champ["model_bytes_max"] or 0) / 1e6 if champ else 0.0
+    best_ms = champ["latency_ms_host_proxy"] if champ else 0.0
+    cm = json.loads(champ["metrics_json"] or "{}") if champ else {}
+    cell = next((c for a in cm.get("areas", [])
+                 for c in a.get("buckets", {}).values()), {})
+    hold = next((a.get("region_holdout") or {} for a in cm.get("areas", [])), {})
+    usable_pct = f"{100*(cell.get('usable_fix_rate') or 0):.1f}%"
+    false_pct = f"{100*(cell.get('false_fix_rate') or 0):.1f}%"
+    p10_s = fmt_m(cell.get("p10_error_m"))
+    holdout_med = fmt_m(hold.get("median_error_m"))
+    # Lattice geometry. Read the vantage count out of the experiment that
+    # introduced full-lattice coverage and named it in its own title — NOT
+    # from train_info's n_train_crops, which is total VIEWS (581,696 = every
+    # vantage seen several times over) and would overstate the lattice by 8x.
+    n_cells, n_vantages = 2970, 72712
+    for e in dev:
+        m = re.search(r"all ([\d,]+) vantages", e["title"] or "")
+        if m:
+            n_vantages = int(m.group(1).replace(",", ""))
+            break
     best = next((e["primary_metric"] for e in reversed(dev)
                  if e["kept"] and e["primary_metric"]
                  and e["primary_metric"] < FAIL), None)
@@ -3041,14 +3073,14 @@ def render_overview(exps):
 <h1 class="home-h1">&ldquo;Not all who wander are lost&rdquo; &mdash; a 5-inch drone learns
 to recognise a city from above, with no GPS, no maps on board, and a $4 flight
 computer</h1>
-<p class="psub lead">Where other aircraft ask satellites, this one would
-have to <i>remember</i>. <span style="color:var(--ink)">The open
-question: can a neural network small enough to fit in 4&nbsp;MiB memorize
-what its flight area looks like from above
-well enough to turn one glance of a camera into
-<i>(lat,&nbsp;lon,&nbsp;confidence)</i>?</span> No
-satellites to jam or lose, no internet — if it can be done at all. Nobody
-knows yet; finding out is the project.</p>
+<p class="psub lead">Where other aircraft ask satellites, this one has to
+<i>remember</i>. The question was whether a network small enough to fit in
+4&nbsp;MiB could hold a whole city in its weights &mdash; well enough to turn
+one glance of a camera into <i>(lat,&nbsp;lon,&nbsp;confidence)</i>, with no
+satellites, no internet and no map on board.
+<span style="color:var(--ink)">It can. Over Berlin, {usable_pct} of camera
+frames now produce a fix good enough to steer by, and the trick turned out to
+be asking the network a different question.</span></p>
 
 <div class="stat-hero">
   <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
@@ -3071,6 +3103,66 @@ knows yet; finding out is the project.</p>
 
 {challenge_block(exps)}
 
+<div class="sec-h">The question</div>
+<div class="pnote">
+<p>A drone is flying over a city it has been trained on. Its camera takes one
+picture straight down. From that picture alone &mdash; no GPS, no internet, no
+map stored on board, and a computer that costs four dollars &mdash; where is
+it, and how much should the aircraft trust the answer?</p>
+<p>The last part is what makes it hard. A position that is merely
+<i>probably</i> right is worse than no position at all: a drone that believes
+a wrong fix will fly into it. So the model has to know when it doesn't know.</p>
+</div>
+
+<div class="sec-h">The answer — ask which tile, not which coordinate</div>
+<div class="pnote">
+<p>The obvious design asks the network for two numbers: latitude and
+longitude. It fails badly. When such a network is unsure it has no way to
+<i>say</i> so, and the safest thing it can do to keep its average error down
+is drift toward the middle of the map. Our first attempt did exactly that
+&mdash; confident on every frame, wrong on every frame.</p>
+<p><b>So we stopped asking for a coordinate and started asking a
+multiple-choice question.</b> Berlin is cut into {n_cells:,} tiles of
+128&nbsp;m, and the network points at one of them. That one change is the
+whole idea, because now the answer carries its own certainty: if the network
+is sure, its choice piles onto a single tile; if it is lost, its belief
+smears across the city, and you can see that and say nothing instead. A
+second, smaller output nudges the fix to a precise point inside the chosen
+tile, so nothing is lost to the grid.</p>
+<p>Three refinements took it from working to reliable: showing the model
+<i>every</i> vantage in the city each pass rather than a sample; letting
+neighbouring tiles pool their votes, so a photo straddling a boundary counts
+as confident rather than confused; and training it on the same soft targets
+it is scored against. The
+<a href="gallery/inference-paths.html">model designs</a> page has the
+figures, and the <a href="gallery/index.html">research log</a> has each step
+as its own experiment.</p>
+<p>The result is one file of <b>{best_mb:.1f}&nbsp;MB</b> that answers in
+<b>{best_ms:.1f}&nbsp;ms</b>. Nothing is looked up and nothing is matched
+&mdash; the map <i>is</i> the weights.</p>
+</div>
+
+<div class="sec-h">The verdict — what this does and does not show</div>
+<div class="pnote">
+<p><b>Shown.</b> A {best_mb:.1f}&nbsp;MB network can memorise one city well
+enough that <b>{usable_pct}</b> of held-out viewpoints over it yield a fix
+inside 100&nbsp;m, with <b>{false_pct}</b> confidently wrong. Typical miss
+when it answers: <b>{med_s}</b>; best decile <b>{p10_s}</b>. Those frames are
+positions and headings the model never trained on, over ground it did.</p>
+<p><b>Not shown: generalisation, and deliberately so.</b> Asked about a
+1&#8209;in&#8209;32 block of Berlin held out of training entirely, the same
+model returns <b>0% usable fixes</b> and a median miss of
+<b>{holdout_med}</b>. That is the design behaving exactly as intended rather
+than a defect: the map lives in the weights, so ground it was never shown is
+ground it cannot place. It does mean this is <i>one model per area</i>, not a
+general localiser &mdash; the pipeline takes any bounding box, but each
+trained model knows only its own.</p>
+<p><b>Not shown yet: night.</b> The current configuration trains and tests on
+raw daytime imagery. The low-light premise the project is named for is scoped
+out for the moment, along with the other three areas; the harness for both is
+still in the frozen pipeline, switched off.</p>
+</div>
+
 <div class="sec-h">How it works — think globally, memorize locally</div>
 <div class="pnote">
 <p>The model family is <b>scene-coordinate regression</b>: one compact
@@ -3079,12 +3171,12 @@ above" directly into its weights — the frozen pipeline works
 for any bounding box on Earth, but each trained model knows exactly one
 patch of it by heart. No reference imagery on the aircraft, no retrieval,
 no matching. Training data comes from a frozen pipeline that fetches
-open-licensed aerial orthophotos for any bounding box; on the main branch
-it also re-renders them under six lighting conditions, from morning to
+open-licensed aerial orthophotos for any bounding box, and under the full
+spec it also re-renders them under six lighting conditions, from morning to
 night, <b>as seen by a simulated starlight-class low-light sensor</b>
-(Sony STARVIS2 / IMX585 class — the aircraft's chosen camera) — that
-machinery is disabled on this branch, which trains on the raw daytime
-fetch as-is.</p>
+(Sony STARVIS2 / IMX585 class — the aircraft's chosen camera). That
+machinery is switched off in the current configuration, which trains on the
+raw daytime fetch as-is.</p>
 <p>The research loop is Karpathy-style autoresearch: each experiment, a
 headless coding agent reads the full experiment history, pre-registers ONE
 focused change — hypothesis, method, expected outcome — then the harness
@@ -3095,8 +3187,8 @@ the model is <i>confident and right</i>, an abstention is safe, and a confident
 wrong answer is penalised as worse than silence, because it would feed a false
 position into navigation. Training covers all of Berlin and the test frames sit
 11&ndash;17&nbsp;m off the nearest training vantage at their own rotation, so
-the ground is mapped but the view is new (on this branch: Berlin only, one
-lighting condition; the main branch adds 6 lighting conditions × 4 German test
+the ground is mapped but the view is new (currently Berlin only, one
+lighting condition; the full spec adds 6 lighting conditions × 4 German test
 areas — dense Berlin, rural Prignitz, Munich, Frankfurt). Improvements are kept
 as git commits; everything else is reverted but stays in the record.</p>
 </div>
@@ -4348,7 +4440,7 @@ def render():
     <span class="k" title="The goal: mission score 0 — every frame a usable fix."><span class="bar dash"></span>Goal (score 0)</span>
     <span class="k" title="Violated a deployment gate (model size, latency, or abstained too much) — scored as failure regardless of accuracy."><span class="x">×</span>Gated fail</span>
     <span class="k" title="Region-holdout check on genuinely untrained ground — logged for honesty, never used to decide keep/revert."><span class="ring"></span>Holdout check</span>
-    <span class="k" title="This experiment ran after the design agent had gone 4+ consecutive tries without beating the running best — the harness injects a mandatory 'do not refine the champion again, pick an absent design family' directive into its prompt. Disabled on this branch (berlin-slim) — will not appear until reintroduced."><span class="tri"></span>Pivot-directed</span>
+    <span class="k" title="This experiment ran after the design agent had gone 4+ consecutive tries without beating the running best — the harness injects a mandatory 'do not refine the champion again, pick an absent design family' directive into its prompt. Switched off in the current configuration — will not appear until reintroduced."><span class="tri"></span>Pivot-directed</span>
     <span class="k" title="No mission score exists for this experiment and none can be honestly reconstructed: either it ran on 10 m/px imagery before the switch to 1 m/px orthophotos (so it is not being asked the same question), or its model files and rate data are both gone."><span class="vrule"></span>Not on this ruler</span>
     <span class="k" title="Each shaded band is one evaluation era. Within a band the eval set and the optimized metric were held fixed; between bands one or both changed and the lineage was wiped. Hover a band for what it was measuring.">{era_band_key}Evaluation era</span>
     <span id="updated">updated {now}</span>
