@@ -162,12 +162,16 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
   color:#4a473e}
 .pnote p{margin:0 0 10px}
 .pnote b{color:var(--ink)}
-.stats{display:flex;flex-wrap:nowrap;gap:18px 36px;justify-content:center;
-  margin:30px auto 10px;text-align:center}
-.stat b{display:block;font-size:34px;line-height:1.1;font-weight:600;
+.stats{display:flex;flex-wrap:nowrap;gap:18px 30px;justify-content:center;
+  align-items:flex-start;margin:30px auto 10px;text-align:center}
+.stat{flex:0 1 190px;max-width:210px}
+/* only the tile's OWN direct <b> is the headline number — a <b> inside the
+   label used to inherit 34px and render "USABLE FIX" as a second headline */
+.stat > b{display:block;font-size:34px;line-height:1.1;font-weight:600;
   font-variant-numeric:lining-nums tabular-nums}
-.stat span{font:600 11px var(--serif);font-feature-settings:"smcp" 1;
-  text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.stat > span{display:block;font:600 10.5px var(--serif);
+  font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--muted);line-height:1.45;margin-top:5px}
 .sec-h{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
   text-align:center;margin:44px 0 10px}
@@ -2418,11 +2422,10 @@ main project's full scope for faster rounds while the loop searches for
 an architecture worth generalizing back out.</p>
 
 <div class="stats">
-  <div class="stat"><b>{usable_s2}</b><span>of camera frames give a <b>usable fix</b> —
-    confident <i>and</i> within {TARGET_M:.0f} m</span></div>
+  <div class="stat"><b>{usable_s2}</b><span>frames with a usable fix</span></div>
   <div class="stat"><b>{med_s}</b><span>typical miss when it answers</span></div>
-  <div class="stat"><b>{false_s}</b><span>confident <i>and wrong</i> — the dangerous case</span></div>
-  <div class="stat stat-score"><b>{best_s}</b><span>mission score{scale_svg}</span></div>
+  <div class="stat"><b>{false_s}</b><span>confident but wrong</span></div>
+  <div class="stat stat-score"><b>{best_s}</b><span>mission score</span>{scale_svg}</div>
 </div>
 
 {challenge_block(exps)}
