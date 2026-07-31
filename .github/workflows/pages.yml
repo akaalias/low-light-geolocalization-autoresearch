@@ -33,29 +33,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ubuntu-latest ships ~30GB of preinstalled toolchains this job never
-      # touches (dotnet, Android SDK, GHC); the LFS-heavy checkout below
-      # has run the runner out of disk before (run 29933088894), so reclaim
-      # headroom before touching any repo data.
+      # touches (dotnet, Android SDK, GHC); a checkout has run the runner out
+      # of disk before (run 29933088894), so reclaim headroom first.
       - name: Free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo docker image prune --all --force || true
           df -h /
+      # NO Git LFS. This job used to `git lfs pull` ~1.8 GB of experiment
+      # binaries to build a site whose entire image payload is ~9 MB, and on
+      # 2026-07-31 the account's LFS budget ran out and every deploy failed at
+      # that step (run 30632545136) with nothing wrong with the site itself.
+      #
+      # The images the pages actually reference are now frozen into
+      # site_assets/ as ordinary git objects by infra/freeze_site_assets.py,
+      # so publishing no longer depends on a binary quota at all. LFS pointers
+      # for everything else stay unhydrated here, which is fine: build_site.sh
+      # never opens them.
       - uses: actions/checkout@v4
-      # LFS objects via cache: only each iteration's new ~30 MB is fetched
-      # from LFS bandwidth quota; the rest restores from the Actions cache.
-      - name: LFS cache key
-        id: lfs
-        run: |
-          git lfs install --skip-smudge
-          echo "key=$(git lfs ls-files -l | cut -d' ' -f1 | sort | sha256sum | cut -c-16)" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
         with:
-          path: .git/lfs
-          key: lfs-${{ steps.lfs.outputs.key }}
-          restore-keys: lfs-
-      - name: Fetch LFS artifacts
-        run: git lfs pull
+          lfs: false
+      - name: Verify the site's images are present without LFS
+        run: |
+          test -f site_assets/manifest.json || {
+            echo "site_assets/manifest.json missing — run infra/freeze_site_assets.py"
+            echo "on a checkout with LFS hydrated and commit the result."; exit 1; }
+          python3 - <<'EOF'
+          import json, pathlib
+          m = json.loads(pathlib.Path("site_assets/manifest.json").read_text())
+          missing = [n for n in set(m.values())
+                     if not (pathlib.Path("site_assets") / n).exists()]
+          assert not missing, f"site_assets missing {len(missing)} file(s): {missing[:5]}"
+          print(f"{len(m)} references -> {len(set(m.values()))} files, all present")
+          EOF
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

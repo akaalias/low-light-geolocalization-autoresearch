@@ -106,6 +106,33 @@ break by accident:
 (it becomes a footer line) and the pulsing in-progress table row. Set it back
 to `live` before restarting the loop.
 
+### Publishing does NOT use Git LFS — keep it that way
+
+On 2026-07-31 the account's LFS budget ran out and every Pages deploy died at
+`git lfs pull`, with nothing wrong with the site. The build was hydrating
+~1.8 GB of experiment binaries to publish a page whose entire image payload is
+about 9 MB, because the pages reference **20 images** and the build rsynced
+everything.
+
+So the images the pages reference are frozen into `site_assets/` as ordinary
+git objects (`.gitattributes` only routes `runs/**`, so nothing there is LFS),
+and `infra/build_site.sh` prefers them. CI checks out with `lfs: false`.
+
+**After any change that alters which images the pages link** — a new
+experiment, a new heatmap on the overview, a layout change that adds a figure
+— re-run it and commit the result, or the site will publish stale or missing
+images:
+
+```bash
+.venv/bin/python -m autoresearch.gallery      # render first: it reads the HTML
+.venv/bin/python infra/freeze_site_assets.py  # needs LFS hydrated locally
+```
+
+It refuses rather than publishing a broken image if any referenced file is
+missing or is still an unhydrated pointer. The full-resolution originals in
+`runs/` remain the research record and are untouched; `site_assets/` is a
+derived artifact, reproducible byte-for-byte by re-running the script.
+
 ---
 
 ## BRANCH OVERRIDE — `berlin-slim` (2026-07-31)

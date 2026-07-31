@@ -18,11 +18,33 @@ $PY -m autoresearch.gallery
 
 rm -rf "$OUT"; mkdir -p "$OUT"
 cp -R gallery "$OUT/gallery"
-# Ship only what the pages reference: figures + the small JSON records
-# (browsable provenance). Model binaries stay out of the site.
-rsync -a --prune-empty-dirs \
-  --include '*/' --include '*.png' --include '*.json' --include '*.md' \
-  --exclude '*' runs/ "$OUT/runs/"
+
+# --- images -------------------------------------------------------------
+# Preferred path: site_assets/, the ~20 slimmed images the pages actually
+# reference, frozen into plain git by infra/freeze_site_assets.py. Using them
+# means the build needs NO Git LFS at all — which is the point: on 2026-07-31
+# the account's LFS budget ran out and every deploy failed at `git lfs pull`,
+# even though the site's whole image payload is a few MB.
+#
+# Fallback (no manifest committed): hydrate from runs/ the old way. That still
+# works locally, and keeps this script honest if the assets are ever deleted.
+ASSETS_MANIFEST="site_assets/manifest.json"
+USED_ASSETS=0
+if [ -f "$ASSETS_MANIFEST" ]; then
+  USED_ASSETS=1
+  mkdir -p "$OUT/shared"
+  cp site_assets/*.png site_assets/*.jpg "$OUT/shared/" 2>/dev/null || true
+  # JSON/MD records stay: they are small, plain-git, and are the browsable
+  # provenance the pages link to. Only the binaries came from LFS.
+  rsync -a --prune-empty-dirs \
+    --include '*/' --include '*.json' --include '*.md' \
+    --exclude '*' runs/ "$OUT/runs/"
+else
+  echo "site_assets/manifest.json absent — hydrating images from runs/ (needs LFS)"
+  rsync -a --prune-empty-dirs \
+    --include '*/' --include '*.png' --include '*.json' --include '*.md' \
+    --exclude '*' runs/ "$OUT/runs/"
+fi
 cp experiments.sqlite "$OUT/experiments.sqlite" 2>/dev/null || true
 # The site's front door is the rendered project overview (gallery.py writes
 # it to the repo root alongside the gallery pages).
@@ -33,14 +55,44 @@ cp index.html "$OUT/index.html"
 # shared/ (per-run samples are near-identical copies of the same renders);
 # HTML refs rewritten. Keeps the Pages artifact ~50 MB so uploads+deploys
 # take about a minute, not a GPU-experiment's runtime.
-$PY - "$OUT" <<'PYSLIM'
+$PY - "$OUT" "$USED_ASSETS" <<'PYSLIM'
 import hashlib
+import json
 import sys
 from pathlib import Path
 from PIL import Image
 
 out = Path(sys.argv[1])
+used_assets = sys.argv[2] == "1"
 renames = {}
+
+if used_assets:
+    # The frozen assets are already slimmed and deduped; all that is left is
+    # to point the HTML at them. Rewriting from the manifest (rather than
+    # re-deriving) means the published pixels are exactly what was verified
+    # locally when the assets were frozen.
+    manifest = json.loads(Path("site_assets/manifest.json").read_text())
+    for src, name in manifest.items():
+        renames[src] = f"shared/{name}"
+    for html in out.glob("**/*.html"):
+        t = html.read_text()
+        for old, new in renames.items():
+            # Pages sit one directory down (gallery/) or at the root, so both
+            # spellings of the same reference have to resolve.
+            depth_prefix = "../" if html.parent != out else ""
+            t = t.replace(f"../{old}", f"../{new}").replace(
+                f'"{old}', f'"{depth_prefix}{new}').replace(
+                f"'{old}", f"'{depth_prefix}{new}")
+        html.write_text(t)
+    for d in sorted((p for p in out.glob("runs/**") if p.is_dir()), reverse=True):
+        try:
+            d.rmdir()
+        except OSError:
+            pass
+    total = sum(f.stat().st_size for f in out.glob("**/*") if f.is_file())
+    print(f"site artifact: {total/1e6:,.0f} MB "
+          f"({len(set(renames.values()))} images from site_assets/, no LFS needed)")
+    raise SystemExit(0)
 
 for f in sorted(out.glob("runs/*/**/heatmap_*.png")):
     try:
