@@ -2411,7 +2411,7 @@ def render_overview(exps):
 <div class="paths-wrap">
 <div class="eyebrow" style="text-align:center">Alexis Rondeau · an autonomous research project</div>
 <h1 class="home-h1">&ldquo;Not all who wander are lost&rdquo; &mdash; a 5-inch drone learns
-to find itself in the dark, with no GPS, no maps on board, and a $4 flight
+to recognise a city from above, with no GPS, no maps on board, and a $4 flight
 computer</h1>
 <p class="psub lead">Where other aircraft ask satellites, this one would
 have to <i>remember</i>. <span style="color:var(--ink)">The open
@@ -2472,7 +2472,7 @@ as git commits; everything else is reverted but stays in the record.</p>
 
 <div class="contract-fig static">{contract_svg()}
 <p class="contract-cap">What the loop is actually allowed to search over.
-The gray endpoints are fixed by the harness — one low-light camera crop in,
+The gray endpoints are fixed by the harness — one camera crop in,
 one <i>(lat,&nbsp;lon,&nbsp;confidence)</i> answer out — and the dashed box
 is the entire search space: every experiment in the
 <a href="gallery/inference-paths.html">model designs</a> gallery is one way
@@ -2487,7 +2487,7 @@ anything flies.</p>
 <span>Every experiment ever run, failures included: pre-registered
 hypotheses, results, per-area × lighting scoreboards, the exact prompts
 the agents received, and one real worked example per experiment — the same
-night crop through each model's actual deployed weights.</span></a>
+held-out viewpoint through each model's actual deployed weights.</span></a>
 <a class="card" href="gallery/research-lineage.html"><b>Experiment
 lineage</b>
 <span>The family tree of the search: every experiment as one node in
@@ -2694,7 +2694,7 @@ drawn before training ran.)</p>
 </div>
 <div class="contract-fig" data-ovfig data-title="The frozen contract — where the experiments happen">{contract_svg()}
 <p class="contract-cap">The shape every figure on this page shares. The gray
-endpoints are the harness's frozen contract — one low-light camera crop in,
+endpoints are the harness's frozen contract — one camera crop in,
 one <i>(lat,&nbsp;lon,&nbsp;confidence)</i> answer out — and the dashed box
 is the entire search space: each experiment below is one way of filling it.
 The ochre lane underneath holds the training signals: the losses, targets
@@ -2754,33 +2754,99 @@ ERAS = [{'d': '20 Jul', 't': '17:05', 'kind': 'start', 'title': 'Bootstrap — a
 
 KIND = {'start': ('#4a473e', 'bootstrap'), 'infra': ('#8a6a1e', 'infrastructure'), 'science': ('#2f5d7c', 'research direction'), 'scope': ('#5b6e4a', 'scope'), 'silence': ('#9b998c', 'silence'), 'measure': ('#8c2f1f', 'measurement bug'), 'result': ('#3c9c3c', 'result')}
 
+TRUNK = [(20.73, 'Bootstrap', 'Spec, empty repo, MacBook Air. Frozen pipeline + naive baseline in one session.'), (20.8, '1 m/px orthophotos', 'Sentinel-2 at 10 m/px rejected within 20 minutes; fetch stage re-frozen 50x finer before any experiment ran.'), (20.86, 'Relighting rebuilt', 'Five of six lighting buckets were effectively identical — auto-exposure was re-brightening them. Caught by eye, not by a test.'), (21.33, 'Rented GPU', '20-50 min/experiment on a laptop. $200 on RunPod eleven minutes after the question; the whole loop moved, agents included.'), (21.51, 'Goes public', 'GitHub Pages, the research trail published as it runs. North star set: anyone draws a box, gets their own model, freely.'), (22.85, 'Pivot enforced in code', 'Four prompt-level fixes failed to stop the loop rebuilding on the same backbone. backbonecheck.py fingerprints the post-implementation source instead.'), (23.6, 'Local + Modal', 'One git writer, always. The remote becomes a stateless trainer that never touches git, so the divergence cannot recur.'), (30.77, 'Restart', 'Six days after the loop silently died, work resumes — and turns on the premises rather than the parameters.'), (30.87, 'PNG decode fix', 'Each ~120 MB render was re-decoded every epoch: 78% of training wall-clock, against 14.5% for the actual maths.'), (31.38, 'berlin-slim', 'Deliberate narrowing: one locale, daytime only, figures off. What if overfitting is the feature?'), (31.47, 'Viewpoint evaluation', 'Hold out VIEWPOINTS, not regions. Train on all of Berlin; test 11-17 m off the nearest training vantage.'), (31.55, 'Mission score', 'The metric becomes the product requirement: usable fixes minus dangerous ones. Not a statistic about errors.'), (31.6, '0.183 · 84% usable', 'The same architecture the old metric discarded as a failure. Median miss 48 m, inside target.')]
+DEAD = [(20.73, 20.8, 1, 'Sentinel-2 10 m/px', "The bootstrap's imagery source. Too coarse for a 100 m-altitude camera footprint; abandoned inside 20 minutes."), (22.5, 22.85, 1, 'Prompt-only pivot rules', "Four attempts to make 'pivot' mean something by instruction. Experiments 37, 38 and 40 all came back on the same backbone."), (30.9, 30.94, 1, 'Retrieval-index probe', "Shipping a few MB of reference index was briefly on the table — the project's most-defended constraint. Three rounds, ~2,700 m against the champion's 743 m. Parked, not disproven."), (30.88, 30.91, 2, '3D shadow relighting', 'Simulate real sun angles from 3D terrain instead of flat imagery. Raised and parked the same evening; still open.')]
+SUPER = [(20.75, 31.47, 1, 'Region-holdout evaluation', 'Held out one map block in five. For ten days this meant 28.2% of Berlin was in NO training crop and 100% of test questions stood on ground the model had never seen — unanswerable for a memorisation system. Every result measured against it is void.'), (20.75, 31.55, 2, 'Median error as the score', 'Rewards a model that guesses the map centre over one that genuinely memorises. It was caught reverting the only experiment that had begun to work.'), (31.52, 31.55, 3, 'Geometric mean', "Fixed the median's symptom, but still a proxy chosen to make progress visible rather than to state what the aircraft needs. Lasted two hours."), (21.33, 23.6, 3, 'RunPod as the platform', 'Three days of stuck commits and merge conflicts. The root cause was never the GPU — it was two git writers on one branch.'), (23.6, 23.85, 4, 'Berlin-only scope cut', "Narrowed to survive on an M1. state/best.json didn't follow, so the loop briefly scored four-area results against a Berlin-only yardstick. Reverted six hours later.")]
+
 EVOLUTION_CSS = """
-.evo{max-width:860px;margin:0 auto;padding:0 16px 90px}
-.evo-key{display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:center;
-  margin:14px 0 34px;font-size:12px;color:var(--muted)}
-.evo-key .k{display:inline-flex;align-items:center;gap:7px}
-.evo-key .kd{width:9px;height:9px;border-radius:50%;display:inline-block}
-.evo-line{position:relative;padding-left:34px}
-.evo-line:before{content:'';position:absolute;left:9px;top:6px;bottom:6px;
-  width:1px;background:var(--rule)}
-.evo-item{position:relative;margin:0 0 38px}
-.evo-dot{position:absolute;left:-30px;top:5px;width:13px;height:13px;
-  border-radius:50%;border:2.5px solid var(--paper);box-shadow:0 0 0 1px var(--rule)}
-.evo-when{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
-  text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
-  display:flex;gap:10px;align-items:baseline}
-.evo-when .kind{color:var(--faint)}
-.evo-h{font-size:19px;line-height:1.3;color:var(--ink);margin:5px 0 3px}
-.evo-trig{font-size:12.5px;font-style:italic;color:var(--muted);margin:0 0 9px}
-.evo-b{font-size:14.5px;line-height:1.72;color:#4a473e;margin:0}
-.evo-b b{color:var(--ink)}
-.evo-q{border-left:2px solid var(--accent);padding:2px 0 2px 15px;margin:13px 0 0;
-  font-size:15px;line-height:1.6;color:var(--ink);font-style:italic}
-.evo-q + .evo-q{margin-top:7px}
-.evo-state{margin-top:11px;font:600 10.5px var(--serif);
-  font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.06em;
-  color:var(--faint);border-top:1px dotted var(--rule);padding-top:8px}
-@media(max-width:620px){.evo-line{padding-left:26px}.evo-dot{left:-24px}}
+.evo{margin:0;padding:0 0 80px}
+.evo-prose{max-width:980px;margin:0 auto;padding:0 16px}
+/* unlimited horizontal space, scrolled — same idiom as the lineage diagram */
+.evo-figure{overflow-x:auto;overflow-y:hidden;padding:8px 0 14px;
+  scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
+.evo-figure::-webkit-scrollbar{height:8px}
+.evo-figure::-webkit-scrollbar-thumb{background:var(--rule);border-radius:4px}
+.evo-scrollhint{text-align:center;font:600 10px var(--serif);
+  text-transform:uppercase;letter-spacing:.09em;color:var(--faint);margin:0 0 14px}
+.evo-tick{stroke:var(--rule);stroke-width:1}
+#evo-svg{display:block;height:auto}
+.evo-grid{stroke:var(--rule-soft);stroke-width:1}
+.evo-day{fill:var(--faint);font:600 9.5px var(--serif);letter-spacing:.08em;
+  text-transform:uppercase;text-anchor:middle}
+.evo-trunk{stroke:#111111;stroke-width:2.5;stroke-linecap:round}
+.evo-node{fill:#111111;stroke:var(--paper);stroke-width:2;cursor:pointer}
+.evo-tlab{fill:var(--ink);font:600 10.5px var(--serif);text-anchor:middle;cursor:pointer}
+.evo-dead{fill:none;stroke:#9b998c;stroke-width:2;stroke-dasharray:5 4}
+.evo-end line{stroke:#9b998c;stroke-width:2;stroke-linecap:round}
+.evo-super{fill:none;stroke:#8c2f1f;stroke-width:2}
+.evo-endr{fill:var(--paper);stroke:#8c2f1f;stroke-width:2}
+.evo-rejoin{fill:none;stroke:#8c2f1f;stroke-width:1.2;stroke-dasharray:2 3;opacity:.6}
+.evo-lab{font:600 10.5px var(--serif);cursor:pointer}
+.evo-lab.d{fill:#6b6a60}
+.evo-lab.s{fill:#8c2f1f}
+.evo-pin{stroke:#8c2f1f;stroke-width:1;stroke-dasharray:2 2}
+.evo-pindot{fill:#8c2f1f;cursor:pointer}
+.evo-pinlab{fill:#8c2f1f;font:600 9px var(--serif);cursor:pointer;
+  text-transform:uppercase;letter-spacing:.05em}
+.evo-merge{fill:none;stroke:#111111;stroke-width:2}
+.evo-arrow{fill:#111111}
+.evo-mstart{fill:var(--paper);stroke:#111111;stroke-width:2}
+.evo-mlab{fill:var(--ink);font:600 10.5px var(--serif);cursor:pointer;font-style:italic}
+.evo-gap{fill:var(--paper);stroke:var(--rule);stroke-width:1;stroke-dasharray:3 3}
+.evo-gaplab{fill:var(--faint);font:600 10px var(--serif);text-anchor:middle;
+  letter-spacing:.07em;text-transform:uppercase}
+.evo-svg-dim [data-k]:not(.on){opacity:.22}
+.evo-key{display:flex;flex-wrap:wrap;gap:10px 26px;justify-content:center;
+  margin:8px 0 22px;font-size:12px;color:var(--muted)}
+.evo-key .k{display:inline-flex;align-items:center;gap:8px}
+.evo-read{max-width:780px;margin:0 auto 26px;font-size:14px;line-height:1.7;
+  color:#4a473e;text-align:center}
+.evo-read b{color:var(--ink)}
+#evo-tip{position:fixed;z-index:60;max-width:390px;background:var(--paper);
+  border:1px solid var(--rule);box-shadow:0 6px 22px rgba(0,0,0,.13);
+  padding:12px 15px;font-size:13px;line-height:1.6;color:#4a473e;
+  opacity:0;pointer-events:none;transition:opacity .12s}
+#evo-tip .tt{font:600 13.5px var(--serif);color:var(--ink);display:block;margin-bottom:5px}
+#evo-tip .tk{font:600 9.5px var(--serif);text-transform:uppercase;
+  letter-spacing:.09em;display:block;margin-bottom:7px}
+#evo-tip .tk.kept{color:#111111}
+#evo-tip .tk.abandoned{color:#6b6a60}
+#evo-tip .tk.superseded{color:#8c2f1f}
+#evo-tip .tk.silence{color:var(--faint)}
+"""
+
+EVOLUTION_SVG = """<svg id='evo-svg' viewBox='0 0 4709 608' width='4709' height='608' role='img' aria-label='research process as a branching graph'><line class='evo-grid' x1='306.5' y1='30' x2='306.5' y2='574'/><text class='evo-day' x='312.5' y='22'>21 Jul</text><line class='evo-grid' x1='610.5' y1='30' x2='610.5' y2='574'/><text class='evo-day' x='616.5' y='22'>22 Jul</text><line class='evo-grid' x1='1538.5' y1='30' x2='1538.5' y2='574'/><text class='evo-day' x='1544.5' y='22'>23 Jul</text><line class='evo-grid' x1='2362.5' y1='30' x2='2362.5' y2='574'/><text class='evo-day' x='2368.5' y='22'>24 Jul</text><line class='evo-grid' x1='2562.5' y1='30' x2='2562.5' y2='574'/><text class='evo-day' x='2568.5' y='22'>25 Jul</text><line class='evo-grid' x1='2658.5' y1='30' x2='2658.5' y2='574'/><text class='evo-day' x='2664.5' y='22'>26 Jul</text><line class='evo-grid' x1='2754.5' y1='30' x2='2754.5' y2='574'/><text class='evo-day' x='2760.5' y='22'>27 Jul</text><line class='evo-grid' x1='2850.5' y1='30' x2='2850.5' y2='574'/><text class='evo-day' x='2856.5' y='22'>28 Jul</text><line class='evo-grid' x1='2946.5' y1='30' x2='2946.5' y2='574'/><text class='evo-day' x='2952.5' y='22'>29 Jul</text><line class='evo-grid' x1='3042.5' y1='30' x2='3042.5' y2='574'/><text class='evo-day' x='3048.5' y='22'>30 Jul</text><line class='evo-grid' x1='3970.5' y1='30' x2='3970.5' y2='574'/><text class='evo-day' x='3976.5' y='22'>31 Jul</text><rect class='evo-gap' x='2366.5' y='242' width='1390.6' height='28'/><text class='evo-gaplab' x='3061.8' y='235'>six days of silence</text><line class='evo-trunk' x1='52.0' y1='256' x2='4629.7' y2='256'/><path class='evo-dead' data-k='d0' d='M84.0,256 C99.0,256 84.0,128.0 108.0,128.0 L141.7,128.0'/><g class='evo-end' data-k='d0'><line x1='137.2' y1='123.5' x2='146.2' y2='132.5'/><line x1='137.2' y1='132.5' x2='146.2' y2='123.5'/></g><text class='evo-lab d' data-k='d0' x='116.0' y='118.0' text-anchor='start'>Sentinel-2 10 m/px</text><path class='evo-dead' data-k='d1' d='M1074.5,256 C1089.5,256 1074.5,128.0 1098.5,128.0 L1399.3,128.0'/><g class='evo-end' data-k='d1'><line x1='1394.8' y1='123.5' x2='1403.8' y2='132.5'/><line x1='1394.8' y1='132.5' x2='1403.8' y2='123.5'/></g><text class='evo-lab d' data-k='d1' x='1106.5' y='118.0' text-anchor='start'>Prompt-only pivot rules</text><path class='evo-dead' data-k='d2' d='M3859.1,256 C3868.4,256 3859.1,64.0 3874.0,64.0 L3887.0,64.0'/><g class='evo-end' data-k='d2'><line x1='3882.5' y1='59.5' x2='3891.5' y2='68.5'/><line x1='3882.5' y1='68.5' x2='3891.5' y2='59.5'/></g><text class='evo-lab d' data-k='d2' x='3882.0' y='54.0' text-anchor='start'>3D shadow relighting</text><path class='evo-dead' data-k='d3' d='M3877.7,256 C3890.1,256 3877.7,128.0 3897.5,128.0 L3914.8,128.0'/><g class='evo-end' data-k='d3'><line x1='3910.3' y1='123.5' x2='3919.3' y2='132.5'/><line x1='3910.3' y1='132.5' x2='3919.3' y2='123.5'/></g><text class='evo-lab d' data-k='d3' x='3905.5' y='118.0' text-anchor='start'>Retrieval-index probe</text><path class='evo-super' data-k='s0' d='M100.5,256 C115.5,256 100.5,320.0 124.5,320.0 L4455.5,320.0'/><circle class='evo-endr' data-k='s0' cx='4455.5' cy='320.0' r='5'/><text class='evo-lab s' data-k='s0' x='132.5' y='310.0' text-anchor='start'>Region-holdout evaluation</text><path class='evo-super' data-k='s1' d='M100.5,256 C115.5,256 100.5,384.0 124.5,384.0 L4507.1,384.0'/><circle class='evo-endr' data-k='s1' cx='4507.1' cy='384.0' r='5'/><text class='evo-lab s' data-k='s1' x='132.5' y='374.0' text-anchor='start'>Median error as the score</text><path class='evo-super' data-k='s2' d='M406.8,256 C421.8,256 406.8,448.0 430.8,448.0 L2032.9,448.0'/><circle class='evo-endr' data-k='s2' cx='2032.9' cy='448.0' r='5'/><text class='evo-lab s' data-k='s2' x='438.8' y='438.0' text-anchor='start'>RunPod - rented 4090 pod</text><path class='evo-super' data-k='s3' d='M2032.9,256 C2047.9,256 2032.9,448.0 2056.9,448.0 L3933.4,448.0'/><circle class='evo-endr' data-k='s3' cx='3933.4' cy='448.0' r='5'/><text class='evo-lab s' data-k='s3' x='2064.9' y='438.0' text-anchor='start'>Modal A100 - serverless</text><path class='evo-super' data-k='s4' d='M1999.9,256 C2014.9,256 1999.9,512.0 2023.9,512.0 L2238.9,512.0'/><circle class='evo-endr' data-k='s4' cx='2238.9' cy='512.0' r='5'/><text class='evo-lab s' data-k='s4' x='2031.9' y='502.0' text-anchor='start'>Berlin-only scope cut</text><path class='evo-super' data-k='s5' d='M4507.1,256 C4517.4,256 4507.1,512.0 4523.6,512.0 L4538.1,512.0'/><circle class='evo-endr' data-k='s5' cx='4538.1' cy='512.0' r='5'/><text class='evo-lab s' data-k='s5' x='4531.6' y='502.0' text-anchor='start'>Geometric mean</text><path class='evo-pindot' data-k='i0' d='M638.3,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i0' x1='638.3' y1='455.0' x2='638.3' y2='468.0'/><text class='evo-pinlab' data-k='i0' x='638.3' y='479.0' text-anchor='middle'>pod disk full</text><path class='evo-pindot' data-k='i1' d='M1009.5,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i1' x1='1009.5' y1='455.0' x2='1009.5' y2='468.0'/><text class='evo-pinlab' data-k='i1' x='1009.5' y='479.0' text-anchor='middle'>Fable hits its cap</text><path class='evo-pindot' data-k='i2' d='M1213.7,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i2' x1='1213.7' y1='455.0' x2='1213.7' y2='468.0'/><text class='evo-pinlab' data-k='i2' x='1213.7' y='479.0' text-anchor='middle'>CI out of disk</text><path class='evo-pindot' data-k='i3' d='M1352.9,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i3' x1='1352.9' y1='455.0' x2='1352.9' y2='468.0'/><text class='evo-pinlab' data-k='i3' x='1352.9' y='479.0' text-anchor='middle'>two writers on main</text><path class='evo-pindot' data-k='i4' d='M2016.4,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i4' x1='2016.4' y1='455.0' x2='2016.4' y2='468.0'/><text class='evo-pinlab' data-k='i4' x='2016.4' y='479.0' text-anchor='middle'>pod won&#39;t resume</text><path class='evo-pindot' data-k='i5' d='M2366.5,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i5' x1='2366.5' y1='455.0' x2='2366.5' y2='468.0'/><text class='evo-pinlab' data-k='i5' x='2366.5' y='479.0' text-anchor='middle'>loop dies unnoticed</text><path class='evo-pindot' data-k='i6' d='M3933.4,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i6' x1='3933.4' y1='455.0' x2='3933.4' y2='468.0'/><text class='evo-pinlab' data-k='i6' x='3933.4' y='479.0' text-anchor='middle'>credits exhausted</text><path class='evo-merge' data-k='m0' d='M1143.3,192.0 L1377.3,192.0 C1392.3,192.0 1399.3,208.0 1399.3,247.0'/><path class='evo-arrow' data-k='m0' d='M1394.8,245.0 L1399.3,254.0 L1403.8,245.0 z'/><circle class='evo-mstart' data-k='m0' cx='1143.3' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m0' x='1373.3' y='183.0' text-anchor='end'>enforce it in the source, not the prompt</text><path class='evo-merge' data-k='m1' d='M1754.9,192.0 L2010.9,192.0 C2025.9,192.0 2032.9,208.0 2032.9,247.0'/><path class='evo-arrow' data-k='m1' d='M2028.4,245.0 L2032.9,254.0 L2037.4,245.0 z'/><circle class='evo-mstart' data-k='m1' cx='1754.9' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m1' x='2006.9' y='183.0' text-anchor='end'>the problem is two writers, not the platform</text><path class='evo-merge' data-k='m2' d='M3676.3,192.0 L3827.8,192.0 C3842.8,192.0 3849.8,208.0 3849.8,247.0'/><path class='evo-arrow' data-k='m2' d='M3845.3,245.0 L3849.8,254.0 L3854.3,245.0 z'/><circle class='evo-mstart' data-k='m2' cx='3676.3' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m2' x='3823.8' y='183.0' text-anchor='end'>stop guessing, profile it</text><path class='evo-merge' data-k='m3' d='M4177.5,192.0 L4433.5,192.0 C4448.5,192.0 4455.5,208.0 4455.5,247.0'/><path class='evo-arrow' data-k='m3' d='M4451.0,245.0 L4455.5,254.0 L4460.0,245.0 z'/><circle class='evo-mstart' data-k='m3' cx='4177.5' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m3' x='4429.5' y='183.0' text-anchor='end'>it is never shown the places it is tested on</text><path class='evo-merge' data-k='m4' d='M4276.6,128.0 L4516.1,128.0 C4531.1,128.0 4538.1,144.0 4538.1,247.0'/><path class='evo-arrow' data-k='m4' d='M4533.6,245.0 L4538.1,254.0 L4542.6,245.0 z'/><circle class='evo-mstart' data-k='m4' cx='4276.6' cy='128.0' r='3.5'/><text class='evo-mlab' data-k='m4' x='4512.1' y='119.0' text-anchor='end'>the score must BE the product requirement</text><path class='evo-merge' data-k='m5' d='M4405.2,64.0 L4567.7,64.0 C4582.7,64.0 4589.7,80.0 4589.7,247.0'/><path class='evo-arrow' data-k='m5' d='M4585.2,245.0 L4589.7,254.0 L4594.2,245.0 z'/><circle class='evo-mstart' data-k='m5' cx='4405.2' cy='64.0' r='3.5'/><text class='evo-mlab' data-k='m5' x='4563.7' y='55.0' text-anchor='end'>it was starved, not refuted</text><line class='evo-tick' x1='84.0' y1='256' x2='84.0' y2='271.0'/><circle class='evo-node' data-k='t0' cx='84.0' cy='256' r='6'/><text class='evo-tlab' data-k='t0' x='84.0' y='280'>Bootstrap</text><line class='evo-tick' x1='141.7' y1='256' x2='141.7' y2='244.0'/><circle class='evo-node' data-k='t1' cx='141.7' cy='256' r='6'/><text class='evo-tlab' data-k='t1' x='141.7' y='232'>1 m/px orthophotos</text><line class='evo-tick' x1='191.1' y1='256' x2='191.1' y2='271.0'/><circle class='evo-node' data-k='t2' cx='191.1' cy='256' r='6'/><text class='evo-tlab' data-k='t2' x='191.1' y='280'>Relighting rebuilt</text><line class='evo-tick' x1='461.5' y1='256' x2='461.5' y2='244.0'/><circle class='evo-node' data-k='t3' cx='461.5' cy='256' r='6'/><text class='evo-tlab' data-k='t3' x='461.5' y='232'>Goes public</text><line class='evo-tick' x1='1399.3' y1='256' x2='1399.3' y2='271.0'/><circle class='evo-node' data-k='t4' cx='1399.3' cy='256' r='6'/><text class='evo-tlab' data-k='t4' x='1399.3' y='280'>Pivot enforced in code</text><line class='evo-tick' x1='2032.9' y1='256' x2='2032.9' y2='271.0'/><circle class='evo-node' data-k='t5' cx='2032.9' cy='256' r='6'/><text class='evo-tlab' data-k='t5' x='2032.9' y='280'>One git writer</text><line class='evo-tick' x1='3849.8' y1='256' x2='3849.8' y2='271.0'/><circle class='evo-node' data-k='t6' cx='3849.8' cy='256' r='6'/><text class='evo-tlab' data-k='t6' x='3849.8' y='280'>PNG decode fix</text><line class='evo-tick' x1='4362.6' y1='256' x2='4362.6' y2='244.0'/><circle class='evo-node' data-k='t7' cx='4362.6' cy='256' r='6'/><text class='evo-tlab' data-k='t7' x='4362.6' y='232'>berlin-slim branch</text><line class='evo-tick' x1='4589.7' y1='256' x2='4589.7' y2='271.0'/><circle class='evo-node' data-k='t8' cx='4589.7' cy='256' r='6'/><text class='evo-tlab' data-k='t8' x='4589.7' y='280'>0.183 - 84% usable</text></svg>"""
+
+EVOLUTION_TIPS = r"""{"gap": {"t": "six days of silence", "d": "The loop had died at 00:25 on the 24th and nobody was watching. Git shows a quiet week; the transcripts show an abandonment. The only interaction in the whole window is a single /compact on the 29th.", "k": "silence"}, "d0": {"t": "Sentinel-2 10 m/px", "d": "The bootstrap's imagery source - too coarse for a 100 m-altitude camera footprint. Abandoned inside 20 minutes.", "k": "abandoned"}, "d1": {"t": "Prompt-only pivot rules", "d": "Four attempts to make 'pivot' mean something by instruction alone. Experiments 37, 38 and 40 all came back on the same backbone.", "k": "abandoned"}, "d2": {"t": "3D shadow relighting", "d": "Simulate real sun angles from 3D terrain instead of flat imagery. Raised and parked the same evening; still open.", "k": "abandoned"}, "d3": {"t": "Retrieval-index probe", "d": "Shipping a few MB of reference index - the project's most-defended constraint - was briefly on the table. Three rounds, ~2,700 m against the champion's 743 m. Parked, not disproven.", "k": "abandoned"}, "s0": {"t": "Region-holdout evaluation", "d": "In force for TEN of the project's eleven days. It left 28.2% of Berlin in no training crop and put 100% of test questions on ground the model had never seen - unanswerable for a memorisation system. Every result measured against it is void.", "k": "superseded"}, "s1": {"t": "Median error as the score", "d": "Rewards a model that guesses the map centre over one that genuinely memorises. It was caught reverting the only experiment that had begun to work.", "k": "superseded"}, "s2": {"t": "RunPod - rented 4090 pod", "d": "$200 committed eleven minutes after the question was asked; the entire loop moved onto the pod, headless agents included. Abandoned three days later - not for the GPU, for the process friction around it.", "k": "superseded"}, "s3": {"t": "Modal A100 - serverless", "d": "Chosen because a STATELESS trainer that never touches git makes the two-writer problem impossible by construction. $30 of credits, four areas fanned out in parallel, ~26 min/experiment after the decode fix. Ran until the credits ran out.", "k": "superseded"}, "s4": {"t": "Berlin-only scope cut", "d": "Narrowed for six hours to survive on an M1 - but state/best.json didn't follow, so the loop briefly scored four-area results against a Berlin-only yardstick.", "k": "superseded"}, "s5": {"t": "Geometric mean", "d": "Fixed the median's symptom but was still a research proxy, chosen to make progress visible rather than to state what the aircraft needs. Lasted two hours.", "k": "superseded"}, "i0": {"t": "pod disk full", "d": "A 5.7 GB-per-iteration render cache was being committed to Git LFS; the pod's 50 GB volume filled at 23:34. Two experiments recorded as 'gated fail' had not failed on their merits - they were disk crashes written into the research record as results.", "k": "incident"}, "i1": {"t": "Fable hits its cap", "d": "The design model hit 100% of its weekly quota. Three iterations burned 30-minute retry sleeps against a wall before anyone noticed; the design step was switched to Sonnet.", "k": "incident"}, "i2": {"t": "CI out of disk", "d": "GitHub Actions died on 1.45 GB of leftover debug PNGs - over half the repo's live LFS payload, a forgotten dump from early holdout work.", "k": "incident"}, "i3": {"t": "two writers on main", "d": "The pod and the laptop both committing to main all day: repeated rebase dances, and at least one merge that silently reverted the morning's pivot-enforcement work.", "k": "incident"}, "i4": {"t": "pod won't resume", "d": "RunPod's last act: a stopped pod could not restart because the host had no free GPU. Stopped pods don't reserve one. This is what turned a compromise into a full switch.", "k": "incident"}, "i5": {"t": "loop dies unnoticed", "d": "All four Modal calls returned 'cancelled by user or a failure' 27 minutes in, at 00:25. Nobody noticed for six days.", "k": "incident"}, "i6": {"t": "credits exhausted", "d": "$30 of Modal credits gone; the loop stopped two experiments short of its target and compute returned to the laptop.", "k": "incident"}, "m0": {"t": "enforce it in the source, not the prompt", "d": "Four rounds of instructing the loop to pivot had failed. The insight was that a prompt is not a guarantee: the check had to read the code that actually resulted. backbonecheck.py fingerprints the post-implementation source and rejects before training.", "k": "insight"}, "m1": {"t": "the problem is two writers, not the platform", "d": "Three days were spent blaming RunPod. The actual cause was the pod and the laptop both committing to main. Once that was named, the fix was a rule rather than a provider: one git writer, and a remote that only trains.", "k": "insight"}, "m2": {"t": "stop guessing, profile it", "d": "Two theories about the training bottleneck - batch transfer and GPU compute - were both wrong by an order of magnitude. Instrumenting it found a 120 MB PNG being re-decoded every epoch, 78% of wall-clock.", "k": "insight"}, "m3": {"t": "it is never shown the places it is tested on", "d": "One question about one roundabout: zero training crops contained the Grosser Stern, twelve eval questions did. Measured across the city, 100% of test questions stood on ground the model had never seen. The split was rebuilt around held-out viewpoints.", "k": "insight"}, "m4": {"t": "the score must BE the product requirement", "d": "A map full of green hits had been discarded while one with a single hit was kept. Median rewarded guessing the map centre; the geometric mean that replaced it was still a proxy. The score became what the aircraft actually needs: usable fixes minus dangerous ones.", "k": "insight"}, "m5": {"t": "it was starved, not refuted", "d": "The map-cell architecture had gate-failed at 84 seconds of training, seeing a fraction of the city. Given full-lattice coverage - the same architecture, nothing else changed - it took the mission score from 2.001 to 0.183.", "k": "insight"}, "t0": {"t": "Bootstrap", "d": "Spec, empty repo, MacBook Air. Frozen pipeline, naive baseline and the whole harness in one session.", "k": "kept"}, "t1": {"t": "1 m/px orthophotos", "d": "Sentinel-2 at 10 m/px rejected within 20 minutes; the fetch stage re-frozen 50x finer before any experiment ran.", "k": "kept"}, "t2": {"t": "Relighting rebuilt", "d": "Five of six lighting buckets were effectively identical - auto-exposure was re-brightening them all. Caught by eye, not by a test.", "k": "kept"}, "t3": {"t": "Goes public", "d": "GitHub Pages, the research trail published as it runs. North star set: anyone draws a box and gets their own model, freely.", "k": "kept"}, "t4": {"t": "Pivot enforced in code", "d": "Four prompt-level attempts failed to stop the loop rebuilding on the same backbone. backbonecheck.py fingerprints the post-implementation source instead.", "k": "kept"}, "t5": {"t": "One git writer", "d": "The rule that ended three days of chaos: the laptop commits, the remote only trains. Divergence becomes impossible by construction.", "k": "kept"}, "t6": {"t": "PNG decode fix", "d": "Each ~120 MB render was re-decoded every epoch: 78% of training wall-clock against 14.5% for the actual maths.", "k": "kept"}, "t7": {"t": "berlin-slim branch", "d": "Deliberate narrowing to buy iteration speed. What if overfitting is the feature?", "k": "kept"}, "t8": {"t": "0.183 - 84% usable", "d": "The same architecture the old metric had discarded as a failure. Median miss 48 m, inside target.", "k": "kept"}}"""
+
+EVOLUTION_JS = r"""
+(function(){
+  var tips={}; try{tips=JSON.parse(document.getElementById('evo-tips').textContent||'{}')}catch(e){}
+  var svg=document.getElementById('evo-svg'), tip=document.getElementById('evo-tip');
+  if(!svg||!tip) return;
+  var KIND={kept:'on the trunk \u2014 this survived',abandoned:'tried and abandoned',
+            superseded:'ran as the mainline, then replaced',silence:'nothing happened'};
+  function show(k,ev){
+    var d=tips[k]; if(!d) return;
+    tip.innerHTML="<span class='tk "+d.k+"'>"+(KIND[d.k]||d.k)+"</span>"+
+                  "<span class='tt'>"+d.t+"</span>"+d.d;
+    tip.style.opacity=1;
+    var x=Math.min(ev.clientX+16,window.innerWidth-tip.offsetWidth-10);
+    var y=Math.min(ev.clientY+14,window.innerHeight-tip.offsetHeight-10);
+    tip.style.left=x+'px'; tip.style.top=Math.max(8,y)+'px';
+    svg.classList.add('evo-svg-dim');
+    svg.querySelectorAll("[data-k='"+k+"']").forEach(function(n){n.classList.add('on')});
+  }
+  function hide(){
+    tip.style.opacity=0; svg.classList.remove('evo-svg-dim');
+    svg.querySelectorAll('.on').forEach(function(n){n.classList.remove('on')});
+  }
+  svg.querySelectorAll('[data-k]').forEach(function(n){
+    n.addEventListener('mousemove',function(ev){show(n.getAttribute('data-k'),ev)});
+    n.addEventListener('mouseleave',hide);
+  });
+  svg.addEventListener('mouseleave',hide);
+})();
 """
 
 
@@ -2788,50 +2854,68 @@ EVOLUTION_OUT = REPO_ROOT / "gallery" / "research-evolution.html"
 
 
 def render_evolution(exps):
-    """gallery/research-evolution.html — how the research process itself
-    changed, reconstructed from the project's conversation transcripts and git
-    history. This is NOT derived from experiments.sqlite: the interesting
-    turns (why compute moved twice, why the evaluation was wrong for ten days)
-    never appear as experiment rows."""
-    items = []
-    for e in ERAS:
-        col, label = KIND.get(e["kind"], ("#4a473e", ""))
-        when = f"{e['d']}" + (f" &middot; {e['t']}" if e.get("t") else "")
-        qs = ""
-        for key in ("q", "q2"):
-            if e.get(key):
-                qs += f"<p class='evo-q'>&ldquo;{e[key]}&rdquo;</p>"
-        items.append(
-            f"<div class='evo-item'><span class='evo-dot' style='background:{col}'></span>"
-            f"<div class='evo-when'><span>{when}</span>"
-            f"<span class='kind'>{label}</span></div>"
-            f"<div class='evo-h'>{e['title']}</div>"
-            f"<p class='evo-trig'>{e['trig']}</p>"
-            f"<p class='evo-b'>{e['body']}</p>{qs}"
-            f"<div class='evo-state'>{e['state']}</div></div>")
-    key = "".join(
-        f"<span class='k'><span class='kd' style='background:{c}'></span>{l}</span>"
-        for c, l in KIND.values())
+    """gallery/research-evolution.html — the research PROCESS as a graph, in
+    the same idiom as the experiment lineage: a trunk of what survived, spurs
+    ABOVE for directions tried and abandoned, spurs BELOW for approaches that
+    ran AS the mainline before being replaced. x is real time.
+
+    Deliberately not derived from experiments.sqlite — the turns that matter
+    (why compute moved twice, why the evaluation was wrong for ten days) never
+    appear as experiment rows. Reconstructed from the project's own
+    conversation transcripts and git history.
+
+    Colour is validated for CVD separation (#111111/#8c2f1f/#9b998c: worst
+    all-pairs deltaE 20.6 protan, 27.1 normal), and every branch also carries a
+    text label and a distinct end marker, so identity is never colour-alone.
+    """
+    key = (
+      "<span class='k'><svg width='36' height='12'><line x1='0' y1='6' x2='36' y2='6' "
+      "stroke='#111111' stroke-width='2.5'/><circle cx='18' cy='6' r='4.5' fill='#111111'/>"
+      "</svg><b>the trunk</b> &mdash; what the project still does today</span>"
+      "<span class='k'><svg width='36' height='12'><line x1='0' y1='6' x2='24' y2='6' "
+      "stroke='#9b998c' stroke-width='2' stroke-dasharray='5 4'/>"
+      "<line x1='27' y1='2' x2='34' y2='10' stroke='#9b998c' stroke-width='2'/>"
+      "<line x1='27' y1='10' x2='34' y2='2' stroke='#9b998c' stroke-width='2'/>"
+      "</svg><b>tried, then abandoned</b> &mdash; the &times; is where it stopped</span>"
+      "<span class='k'><svg width='36' height='12'><line x1='0' y1='6' x2='27' y2='6' "
+      "stroke='#8c2f1f' stroke-width='2'/><circle cx='30' cy='6' r='5' fill='#fffff8' "
+      "stroke='#8c2f1f' stroke-width='2'/></svg><b>ran as the mainline, then replaced</b> "
+      "&mdash; the &#9711; is the moment it was retired</span>"
+      "<span class='k'><svg width='36' height='12'><line x1='0' y1='3' x2='24' y2='3' "
+      "stroke='#111111' stroke-width='2'/><path d='M24,3 C30,3 32,7 32,10' stroke='#111111' "
+      "stroke-width='2' fill='none'/><path d='M28.5,8 L32,12 L35.5,8 z' fill='#111111'/>"
+      "</svg><b>an insight that merged in</b> &mdash; the arrow is where it changed the project</span>"
+      "<span class='k'><svg width='22' height='12'><path d='M11,1 l5.5,5.5 l-5.5,5.5 "
+      "l-5.5,-5.5 z' fill='#8c2f1f'/></svg><b>incident</b> &mdash; something broke</span>")
     body = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
 <title>Research Evolution — Low-Light Geolocalization</title>
 <style>{CSS}{EVOLUTION_CSS}</style></head><body>
 {topnav('evolution')}
 {compute_banner()}
-{page_header("Research evolution: how the process changed",
-  "The experiment lineage shows what the loop tried. This shows what happened to "
-  "the <i>research itself</i> — where compute moved and why, which constraints were "
-  "challenged, and the three days it took to discover the measurements had been "
-  "wrong. Reconstructed from the project's own conversation transcripts and git "
-  "history; quotes are verbatim.")}
+{page_header("Research evolution: the shape of the search",
+  "The <a href='research-lineage.html'>experiment lineage</a> shows what the loop "
+  "tried. This shows what happened to the <i>research itself</i>. Time runs left to "
+  "right. The dark line is the path that survived; everything <b>above</b> it was "
+  "tried and abandoned; everything <b>below</b> ran as the mainline for a while "
+  "before being replaced &mdash; including which machine the work ran on. "
+  "<b>Hover anything</b> for what happened and why.")}
 <div class="evo">
-<div class="evo-key">{key}</div>
-<div class="evo-line">{''.join(items)}</div>
+<div class="evo-prose"><div class="evo-key">{key}</div></div>
+<p class="evo-scrollhint">scroll sideways &rarr; eleven days, 20&ndash;31 July</p>\n<div class="evo-figure">{EVOLUTION_SVG}</div>
+<div class="evo-prose"><p class="evo-read">The two long red lines are the story: for <b>ten of the
+project&rsquo;s eleven days</b> the evaluation was asking a question the model could
+not answer, and the score preferred guessing to learning. Every result measured
+against them had to be thrown away.</p></div>
 </div>
+<div id="evo-tip"></div>
+<script type="application/json" id="evo-tips">{EVOLUTION_TIPS}</script>
+<script>{EVOLUTION_JS}</script>
 {CREDITS}</body></html>"""
     EVOLUTION_OUT.parent.mkdir(exist_ok=True)
     EVOLUTION_OUT.write_text(body)
-    print(f"wrote {EVOLUTION_OUT} ({len(ERAS)} eras)")
+    print(f"wrote {EVOLUTION_OUT} (graph: {len(TRUNK)} trunk nodes, "
+          f"{len(DEAD)} abandoned, {len(SUPER)} superseded)")
 
 
 LINEAGE_OUT = REPO_ROOT / "gallery" / "research-lineage.html"
