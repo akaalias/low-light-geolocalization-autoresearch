@@ -47,6 +47,20 @@ POD_ERA_START = "2026-07-21"
 POD_ERA_END = "2026-07-23T12:00:00"   # loop moved back to a local machine
 
 
+def frame_caption():
+    """What one camera frame IS, per the branch's lighting buckets.
+
+    berlin-slim collapses LIGHTING_BUCKETS to a single raw-daytime
+    pass-through; the main branch renders six, of which night is the hard one
+    the project is named for."""
+    try:
+        from pipeline.common import LIGHTING_BUCKETS
+        return ("one daytime frame" if list(LIGHTING_BUCKETS) == ["asis"]
+                else "one night exposure")
+    except Exception:
+        return "one camera frame"
+
+
 def cost_str(e):
     ts = e["ts"]
     if (e["kind"] == "holdout_check" or not e.get("duration_s")
@@ -1001,7 +1015,6 @@ def live_row(next_id):
         pre = {}
     pre_title = esc(pre.get("title") or f"experiment #{next_id} in progress…")
     pre_cat = esc(pre.get("category") or "—")
-    pre_init = esc(pre.get("init_strategy") or "—")
     pre_blocks = ""
     for key, cls, label in (("eli5", "eb-eli", "In plain words"),
                             ("hypothesis", "eb-hyp", "Hypothesis"),
@@ -1019,12 +1032,11 @@ def live_row(next_id):
 <td><span class="caret">▸</span></td><td class="num">{next_id}</td>
 <td class="title-cell"><b id="live-title">{pre_title}</b></td>
 <td><span class="cat" id="live-cat">{pre_cat}</span></td>
-<td class="mono" id="live-init">{pre_init}</td>
-<td class="num">…</td><td class="num">…</td><td class="num">…</td>
+<td class="num">…</td>
 <td class="num" id="live-time">…</td>
 <td class="num">—</td>
 <td><span class="status-badge live"><span class="dot"></span>live</span></td></tr>
-<tr class="detail" id="d{next_id}" style="display:none"><td colspan="9">
+<tr class="detail" id="d{next_id}" style="display:none"><td colspan="8">
 <div class="detail-inner"><div class="detail-grid">
 <div class="explain" id="live-explain">{pre_blocks}</div>
 <div><div class="score-head">Scoreboard — mission score per area × lighting</div>
@@ -1773,7 +1785,6 @@ def history_rows_html(hist_rows, eras):
   <div class="row-why why-{cls}">{esc(why)}</div></td>
 <td><span class="cat">{esc(r['category'] or '—')}</span></td>
 <td class="num">{fmt_score(v) if v is not None else '—'}</td>
-<td class="num">—</td>
 <td class="num">{fmt_dur(r['duration_s'])}</td>
 <td class="num">{cost_cell(r)}</td>
 <td><span class="st st-{cls}">{stat}</span></td></tr>""")
@@ -1823,7 +1834,7 @@ def history_rows_html(hist_rows, eras):
         # tried, so they lead the row exactly as the current era's do.
         fig = arch_block({"kind": r["kind"], "arch_svg": r["arch_svg"],
                           "id": uid, "title": r["title"] or ""})
-        out.append(f"""<tr class="detail" id="d{uid}" style="display:none"><td colspan="9">
+        out.append(f"""<tr class="detail" id="d{uid}" style="display:none"><td colspan="8">
 <div class="detail-inner">{fig}<div class="detail-grid">
 <div class="explain">{''.join(blocks)}</div>
 <div>{cells}
@@ -2389,11 +2400,13 @@ rented-GPU window; the bootstrap and later local eras run at ~$0 marginal
 compute and show —.</dd>
 <dt>Category</dt><dd>Which lever the experiment pulls: architecture, loss,
 augmentation, relighting, training procedure, or quantization.</dd>
-<dt>Model</dt><dd>Largest per-area exported model. Hard limit 4 MiB, the
-ESP32-P4's envelope. (Weight initialization and single-frame latency used to
-have columns of their own; they were dropped because nearly every row read
-the same, and both still appear in the expanded record and, for init, on the
-<a href="inference-paths.html">model designs</a> page.)</dd>
+<dt>Where the deployment numbers went</dt><dd>Exported model size, weight
+initialization and single-frame latency each used to have a column. All three
+were dropped: nearly every row read the same, and the size and latency gates
+are already folded into the mission score — a model that misses either scores
+as a gated fail, so the column was restating the Status column. All three
+remain in the expanded record, and init also on the
+<a href="inference-paths.html">model designs</a> page.</dd>
 <dt>Training set</dt><dd>Each area offers ~45,000 distinct training
 positions (1 m/px, 128 m crops, times random rotation); how many crops an
 experiment actually samples per lighting condition is its own choice and is
@@ -3200,7 +3213,11 @@ def contract_svg():
         f"<circle cx='31' cy='{Y+42}' r='.7' fill='{MUT}' opacity='.5'/></g>")
     b.append(txt(64, IC - 44, "128²×3", 9, FAINT))
     b.append(txt(64, IC + 50, "camera frame", 10.5, MUT, 600))
-    b.append(txt(64, IC + 62, "one night exposure", 9.5, FAINT))
+    # What the camera frame actually is depends on the branch's lighting
+    # buckets, so read them rather than hardcode: berlin-slim collapses them to
+    # a single raw-daytime pass-through, and every figure on this page already
+    # says "one daytime frame". Hardcoding "night" here contradicted all 59.
+    b.append(txt(64, IC + 62, frame_caption(), 9.5, FAINT))
     b.append(txt(64, IC + 75, "frozen contract", 8.5, FAINT,
                  style="font-style='italic'"))
     b.append(harrow(108, 176, IC))
@@ -3304,6 +3321,21 @@ def render_paths(exps):
     n_eras_with_figs = len({e["era"] for e in figs})
     figs = list(reversed(figs))          # newest first
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    # One dense subtitle, in the lineage page's register — the facts a reader
+    # needs before the first figure, and nothing else. This page used to carry
+    # three further paragraphs restating them at length.
+    paths_sub = (
+        f"{len(figs)} model designs, one figure per experiment &mdash; a "
+        f"technical drawing of what one camera frame goes through, from pixels "
+        f"to <i>(lat,&nbsp;lon,&nbsp;confidence)</i>. Every figure was drawn and "
+        f"locked <b>before</b> that experiment trained, alongside a falsifiable "
+        f"hypothesis, so what you compare is the design as <i>proposed</i>, not "
+        f"redrawn to match a result already known. <b>Newest first</b>, grouped "
+        f"by evaluation era: the lineage was wiped at each era boundary, so no "
+        f"design descends from one in an earlier band &mdash; several late "
+        f"figures are early ideas tried again once the measurement could "
+        f"recognise them. Kept and reverted alike; click any figure to enlarge, "
+        f"or open its full record in the <a href='index.html'>research log</a>.")
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
@@ -3311,34 +3343,9 @@ def render_paths(exps):
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('paths')}
 {compute_banner()}
-{page_header("Everything we tried: Experiment model designs", "Every model design the research loop has proposed, one figure per experiment — a proper technical drawing of the computation one camera frame takes through the network, from pixels to <i>(lat,&nbsp;lon,&nbsp;confidence)</i>. Kept and reverted alike, so you can see exactly what each experiment tried and compare designs side by side.")}
+{page_header("Everything we tried: Experiment model designs", paths_sub)}
 <div class="paths-wrap">
-<div class="pnote">
-<p>This is where you can actually follow the search: read one figure and you
-understand that experiment's design; read a run of them and you watch the
-architecture evolve, one focused change at a time. Every figure is drawn
-and locked in <i>before</i> training runs, alongside a falsifiable
-hypothesis and a predicted outcome — so what you're comparing across
-experiments is the design as proposed, not a diagram redrawn after the fact
-to match a result already known. One shared visual contract across every
-proposal (tensors drawn as tensors, operations as operations, no labeled
-boxes) is what makes them directly comparable, figure to figure.</p>
-<p><b>Newest first.</b> The most recent design is at the top and the oldest at
-the bottom, so reading down is reading backwards through the search. A
-<b>kept</b> proposal (ink rule, left) is the trunk the <i>next</i> experiment
-branched from; a <b>discarded</b> one — trained, scored, reverted — stays on
-the record at the same standard, dead branches included. Each caption is the
-experiment's own pre-registered plain-words explanation; click through for
-the full hypothesis, method, and scoreboard in the
-<a href="index.html">research log</a>.</p>
-<p>The figures are grouped by <b>evaluation era</b>. Each time the eval set
-or the metric was corrected the lineage was wiped and the search restarted
-from a fresh baseline, so designs either side of an era heading were judged
-by different instruments and no design in one era descends from one in
-another. That is worth knowing before you read a late figure as an
-improvement on an early one — several late designs are early designs, tried
-again once the measurement was capable of recognising them.</p>
-</div>
+
 <div class="contract-fig" data-ovfig data-title="The frozen contract — where the experiments happen">{contract_svg()}
 <p class="contract-cap">The shape every figure on this page shares. The gray
 endpoints are the harness's frozen contract — one camera crop in,
@@ -4331,7 +4338,6 @@ def render():
 <thead><tr><th></th><th>#</th><th>Experiment</th>
 <th title="Which lever the experiment pulls: architecture, loss, augmentation, relighting, training, quantization.">Category</th>
 <th title="Mission score on held-out Berlin daytime viewpoints: (1 - usable-fix rate) + false-fix rate. A frame is a usable fix only if the model is confident AND within 100 m; abstaining is safe; confident-but-wrong is a false fix, worse than silence for a drone. 0 = every frame usable, 1 = abstains everywhere, 2 = confidently wrong everywhere. The one number the loop optimizes -- deliberately the product requirement, not an error statistic.">Mission score</th>
-<th title="Largest per-area exported model. Hard limit: 4 MiB (ESP32-P4 flight computer).">Model</th>
 <th title="Wall time of the whole experiment: agent design + training all areas + scoring.">Time</th>
 <th title="Everything one experiment cost: the equivalent API cost of the tokens its design, implementation, figure and summary agents consumed - recorded by the harness at the time, not estimated from a price list - plus rented-GPU wall time during the pod window at $0.69/hr. The research ran on a claude.ai Max subscription, so the agent part is what it WOULD have cost billed per token, not money that left the account. An em dash means no accounting survives (the run directory was deleted), which is not the same as free.">Cost</th>
 <th>Status</th></tr></thead><tbody>"""]
@@ -4365,7 +4371,6 @@ def render():
   <div class="row-why why-{sr_kind}">{esc(sr_short)}</div></td>
 <td><span class="cat">{esc(e['category'] or '—')}</span>{pivot_tag}</td>
 <td class="num">{fmt_score(e['primary_metric'])}</td>
-<td class="num">{size}</td>
 <td class="num">{fmt_dur(e.get('duration_s'))}</td>
 <td class="num">{cost_cell(hist_by_id.get(e['id']))}</td>
 <td>{status_of(e)}</td></tr>""")
@@ -4389,7 +4394,7 @@ def render():
                 blocks.append(f"<div class='eb {cls}'><div class='eb-h'>{label}</div>"
                               f"<p>{esc(e[key])}</p></div>")
         metrics = json.loads(e["metrics_json"] or "{}")
-        body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="9">
+        body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="8">
 <div class="detail-inner">
 {arch_block(e, chain_of(e, exps))}
 <div class="detail-grid">
