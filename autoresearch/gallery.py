@@ -371,20 +371,23 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 .arch-h{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
 .arch-h .chg{color:var(--accent)}
-.wex-row{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:flex-start}
-.wex-row figure{margin:0;flex:none}
+.wex-row{display:flex;flex-direction:column;gap:12px}
+/* the two images must always hold ONE row inside the scoreboard column
+   (minmax(420px,1fr)) — fluid flex:1 1 0 + min-width:0 makes them shrink to
+   the available width instead of the old fixed 230px/340px, which wrapped */
+.wex-imgs{display:flex;flex-wrap:nowrap;gap:10px;align-items:flex-start}
+.wex-row figure{margin:0;flex:1 1 0;min-width:0}
 .wex-row a{border-bottom:none}
-.wex-frame img{width:230px;height:230px;display:block;border:1px solid var(--rule)}
-.wex-map img{width:340px;height:auto;display:block;border:1px solid var(--rule)}
+.wex-frame img{width:100%;aspect-ratio:1;height:auto;display:block;
+  border:1px solid var(--rule)}
+.wex-map img{width:100%;height:auto;display:block;border:1px solid var(--rule)}
 .wex-row figcaption{font-size:11.5px;color:var(--muted);line-height:1.5;
-  margin-top:6px}
-.wex-frame figcaption{max-width:230px}
-.wex-map figcaption{max-width:340px}
+  margin-top:6px;max-width:100%}
 .wex-row figcaption b{color:var(--ink);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.05em}
-.wex-arr{color:var(--faint);font-size:18px;height:230px;display:flex;
-  align-items:center;flex:none}
-.wex-stats{display:flex;flex-direction:column;gap:16px;padding:14px 0 0 10px}
+.wex-arr{color:var(--faint);font-size:18px;flex:none;align-self:center;
+  padding-bottom:34px}
+.wex-stats{display:flex;flex-direction:row;gap:28px;padding:2px 0 0}
 .wex-num{font-size:27px;line-height:1.1;color:var(--ink)}
 .wex-lab{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:2px}
@@ -1321,15 +1324,21 @@ def worked_example_block(e):
     else:
         fstat = ("this design points at a coordinate directly — it has no "
                  "internal probability field to show")
+    # "asis" is the internal bucket name for this branch's unmodified daytime
+    # imagery — meaningless to a reader, where "at night" used to read fine.
+    light = ("daytime reference imagery, unmodified" if info["bucket"] == "asis"
+             else f"simulated {str(info['bucket']).replace('_', ' ')}")
     fig = f"""<div class='wex-row'>
+<div class='wex-imgs'>
 <figure class='wex-frame'><a href='{fr}'><img src='{fr}' loading='lazy'></a>
-<figcaption><b>what the camera saw</b> — a real held-out 128 m crop,
-{esc(info['area'])} at {esc(info['bucket'])}; its true spot is the ○ on the map.
+<figcaption><b>what the camera saw</b> — a real held-out 128 m crop of
+{esc(info['area'])} ({light}); its true spot is the ○ on the map.
 Every experiment is shown this same crop.</figcaption></figure>
 <div class='wex-arr'>→</div>
 <figure class='wex-map'><a href='{mp}'><img src='{mp}' loading='lazy'></a>
 <figcaption><b>what this model actually computed</b> — {fstat}.
 ○ true location · × its answer.</figcaption></figure>
+</div>
 <div class='wex-stats'>
 <div><div class='wex-num num'>{fmt_m(info['miss_m'])}</div>
 <div class='wex-lab'>miss, this crop</div></div>
