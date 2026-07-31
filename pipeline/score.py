@@ -111,6 +111,34 @@ def score_area(area: str, model_dir: Path, data_dir: Path, heatmap_dir: Path | N
         cell["score"] = FAIL_SCORE if coverage < MIN_COVERAGE else cell["median_error_m"]
         result["buckets"][bucket] = cell
 
+    # Region-holdout diagnostic (dataset.py v2): a small 1-in-32-block region
+    # genuinely excluded from training. LOGGED ONLY — deliberately not folded
+    # into any bucket "score", so it can never drive keep/revert. Its job is to
+    # reveal whether the model has spatial structure or is a pure lookup table
+    # over memorized vantages. Expect it to be much worse than the primary
+    # metric; that is not a failure, it is the point of the measurement.
+    hold = list_crops(area, meta["width"], meta["height"], "holdout_region")
+    if hold:
+        if len(hold) > MAX_EVAL_CROPS_PER_BUCKET:
+            idx = np.linspace(0, len(hold) - 1, MAX_EVAL_CROPS_PER_BUCKET).astype(int)
+            hold = [hold[i] for i in idx]
+        bucket0 = next(iter(LIGHTING_BUCKETS))
+        img = np.asarray(Image.open(area_dir(area, data_dir) / "relight" / f"{bucket0}.png"))
+        errs, n_conf = [], 0
+        for c in hold:
+            u, v, conf = predict(sess, extract_crop(img, c["cx"], c["cy"], c["angle"]))
+            if conf >= CONF_THRESHOLD:
+                n_conf += 1
+                errs.append(error_meters(meta, u, v, c["cx"], c["cy"]))
+        result["region_holdout"] = {
+            "n_eval": len(hold),
+            "bucket": bucket0,
+            "coverage": round(n_conf / max(len(hold), 1), 4),
+            "median_error_m": round(float(np.median(errs)), 2) if errs else None,
+            "mean_error_m": round(float(np.mean(errs)), 2) if errs else None,
+            "note": "unseen-region diagnostic; logged only, never scored",
+        }
+
     if heatmap_dir:
         render_heatmap(area, data_dir, heat_points, heatmap_dir / f"heatmap_{area}.png")
     return result
