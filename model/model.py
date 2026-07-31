@@ -8,17 +8,31 @@ per CLAUDE.md §3/§9) as long as:
     u, v normalized map coords and conf in [0,1];
   - the export passes pipeline/score.py's frozen deployment gates.
 
-Baseline: deliberately naive tiny CNN direct-coordinate regressor, from-scratch
-init. It exists to prove the harness, not to be good.
+Current: the map is a GRID x GRID checkerboard and the trunk classifies which
+cell the frame came from. Coordinates are a soft-argmax over the posterior;
+confidence is the mass in the best CONF_POOL x CONF_POOL neighborhood.
 """
 
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
+GRID = 64          # map is diced into GRID x GRID cells
+LABEL_SIGMA = 1.0  # Gaussian soft-label width, in cells
+CONF_POOL = 5      # confidence = posterior mass in the best 5x5 neighborhood
+
+
+def _cell_centers(device=None):
+    """Normalized (u, v) centers of the GRID*GRID cells, row-major."""
+    k = torch.arange(GRID * GRID, device=device)
+    cell_u = ((k % GRID).float() + 0.5) / GRID
+    cell_v = ((k // GRID).float() + 0.5) / GRID
+    return cell_u, cell_v
 
 
 class TinyLocNet(nn.Module):
-    """~300k-param CNN: strided conv stack -> GAP -> (u, v, conf)."""
+    """~630k-param CNN: strided conv stack -> GAP -> GRID^2 cell logits."""
 
     def __init__(self):
         super().__init__()
@@ -28,34 +42,64 @@ class TinyLocNet(nn.Module):
             layers += [nn.Conv2d(cin, cout, 3, stride=2, padding=1),
                        nn.BatchNorm2d(cout), nn.ReLU(inplace=True)]
         self.features = nn.Sequential(*layers)
-        self.head = nn.Linear(chans[-1], 3)
+        self.head = nn.Linear(chans[-1], GRID * GRID)
+        cell_u, cell_v = _cell_centers()
+        self.register_buffer("cell_u", cell_u)
+        self.register_buffer("cell_v", cell_v)
+
+    def forward_logits(self, x):
+        """Raw per-cell logits, (B, GRID*GRID). The training-time graph."""
+        f = self.features(x).mean(dim=(2, 3))
+        return self.head(f)
 
     def forward(self, x):
-        f = self.features(x).mean(dim=(2, 3))
-        out = self.head(f)
-        uv = torch.sigmoid(out[:, :2])
-        conf = torch.sigmoid(out[:, 2:3])
-        return torch.cat([uv, conf], dim=1)
+        logits = self.forward_logits(x)
+        p = torch.softmax(logits, dim=1)
+        u = (p * self.cell_u).sum(dim=1, keepdim=True)
+        v = (p * self.cell_v).sum(dim=1, keepdim=True)
+        # Mass in the best CONF_POOL-wide neighborhood: a peaked posterior is
+        # confident, a diffuse one abstains.
+        pm = p.reshape(-1, 1, GRID, GRID)
+        neigh = F.avg_pool2d(pm, CONF_POOL, stride=1,
+                             padding=CONF_POOL // 2) * (CONF_POOL ** 2)
+        conf = neigh.amax(dim=(1, 2, 3)).unsqueeze(1).clamp(0.0, 1.0)
+        return torch.cat([u, v, conf], dim=1)
 
 
 def build_model() -> nn.Module:
     return TinyLocNet()
 
 
-def loss_fn(pred: torch.Tensor, target_uv: torch.Tensor) -> torch.Tensor:
-    """MSE on coords + BCE training the conf head to predict 'error is small'."""
-    coord_err = ((pred[:, :2] - target_uv) ** 2).sum(dim=1)
-    coord_loss = coord_err.mean()
+_CELL_CACHE = {}
+
+
+def _cached_cell_centers(device):
+    key = str(device)
+    if key not in _CELL_CACHE:
+        _CELL_CACHE[key] = _cell_centers(device)
+    return _CELL_CACHE[key]
+
+
+def loss_fn(logits: torch.Tensor, target_uv: torch.Tensor) -> torch.Tensor:
+    """Gaussian-soft-label cross-entropy over cells + soft-argmax aux MSE.
+
+    logits: (B, GRID*GRID) from TinyLocNet.forward_logits; target_uv: (B, 2).
+    """
+    cell_u, cell_v = _cached_cell_centers(logits.device)
+    gu = target_uv[:, 0] * GRID - 0.5
+    gv = target_uv[:, 1] * GRID - 0.5
     with torch.no_grad():
-        # Baseline conf target is deliberately loose (abstain only on
-        # catastrophic misses > half the map extent) so the naive model
-        # stays scoreable instead of abstaining its way into the §6
-        # coverage FAIL; calibrating confidence properly is an obvious
-        # loop research target.
-        good = (coord_err.sqrt() < 0.5).float()
-    conf_loss = nn.functional.binary_cross_entropy(
-        pred[:, 2].clamp(1e-6, 1 - 1e-6), good)
-    return coord_loss + 0.1 * conf_loss
+        axis = torch.arange(GRID, device=logits.device, dtype=logits.dtype)
+        # (B, GRID, GRID): v/rows on dim 1, u/cols on dim 2 — same row-major
+        # layout as forward()'s reshape.
+        d2 = ((axis - gu[:, None, None]) ** 2
+              + (axis[:, None] - gv[:, None, None]) ** 2)
+        q = torch.softmax(-d2.flatten(1) / (2 * LABEL_SIGMA ** 2), dim=1)
+    ce = -(q * torch.log_softmax(logits, dim=1)).sum(dim=1).mean()
+    p = torch.softmax(logits, dim=1)
+    uv_hat = torch.stack([(p * cell_u).sum(dim=1), (p * cell_v).sum(dim=1)], dim=1)
+    aux = ((uv_hat - target_uv) ** 2).sum(dim=1).mean()
+    return ce + 10.0 * aux
 
 
 def export_onnx(model: nn.Module, path: str):

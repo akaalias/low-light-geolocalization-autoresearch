@@ -1,7 +1,9 @@
 """AGENT-EDITABLE — training procedure. One model per area (CLAUDE.md §1).
 
-Baseline: sample train-split crops from all six relight buckets with random
-rotation augmentation, train TinyLocNet briefly, export ONNX.
+Sample train-split crops from every relight bucket, then train TinyLocNet to
+convergence: crop SELECTION is fixed once, but crop EXTRACTION is re-run every
+epoch with fresh random rotations so a long budget buys generalization instead
+of memorizing one frozen view per crop.
 
 Usage: python -m model.train --area berlin --out-dir runs/<id> [--epochs 2]
 """
@@ -20,22 +22,50 @@ from pipeline.common import DATA_DIR, LIGHTING_BUCKETS, area_dir, load_meta
 from pipeline.dataset import crop_center_norm, extract_crop, list_crops
 
 
-def load_training_tensors(area: str, data_dir: Path, max_crops_per_bucket: int, rng):
+# The harness passes --epochs 8 (loop.sh EPOCHS, sized for the harness-proving
+# baseline); 12x gives the 96 effective epochs this design needs to converge.
+EPOCH_MULT = 12
+ROT_POOL = 8          # fallback: pre-rotated variants per crop
+EXTRACT_BUDGET_S = 15.0  # per-epoch extraction cost above which we fall back
+
+
+def load_training_plan(area: str, data_dir: Path, max_crops_per_bucket: int, rng):
+    """Pick the training crops once. Targets are rotation-invariant (extract_crop
+    rotates about the crop center), so only x has to be rebuilt per epoch."""
     meta = load_meta(area, data_dir)
     crops = list_crops(area, meta["width"], meta["height"], "train")
-    xs, ys = [], []
+    plan, ys = [], []
     for bucket in LIGHTING_BUCKETS:
         img = np.asarray(Image.open(area_dir(area, data_dir) / "relight" / f"{bucket}.png"))
         picks = rng.choice(len(crops), size=min(max_crops_per_bucket, len(crops)),
                            replace=False)
         for i in picks:
             c = crops[i]
-            angle = float(rng.uniform(0, 360))  # heading augmentation
-            xs.append(extract_crop(img, c["cx"], c["cy"], angle))
+            plan.append((img, c["cx"], c["cy"]))
             ys.append(crop_center_norm(meta, c["cx"], c["cy"]))
-    x = torch.from_numpy(np.stack(xs)).permute(0, 3, 1, 2).contiguous().float() / 255.0
     y = torch.tensor(ys, dtype=torch.float32)
-    return x, y
+    return plan, y
+
+
+def _to_tensor(xs) -> torch.Tensor:
+    return torch.from_numpy(np.stack(xs)).permute(0, 3, 1, 2).contiguous().float() / 255.0
+
+
+def epoch_tensor(plan, rng) -> torch.Tensor:
+    """This epoch's crops, each at a fresh random heading."""
+    return _to_tensor([extract_crop(img, cx, cy, float(rng.uniform(0, 360)))
+                       for img, cx, cy in plan])
+
+
+def build_rot_pool(plan, rng) -> list:
+    """Fallback when per-epoch extraction is too slow: ROT_POOL rotated uint8
+    variants per crop, sampled from thereafter."""
+    return [np.stack([extract_crop(img, cx, cy, float(rng.uniform(0, 360)))
+                      for _ in range(ROT_POOL)]) for img, cx, cy in plan]
+
+
+def epoch_tensor_from_pool(pool, rng) -> torch.Tensor:
+    return _to_tensor([variants[rng.integers(ROT_POOL)] for variants in pool])
 
 
 def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
@@ -45,21 +75,37 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
     device = "mps" if torch.backends.mps.is_available() else \
              "cuda" if torch.cuda.is_available() else "cpu"
     t0 = time.time()
-    x, y = load_training_tensors(area, data_dir, max_crops_per_bucket, rng)
+    total_epochs = epochs * EPOCH_MULT
+    plan, y = load_training_plan(area, data_dir, max_crops_per_bucket, rng)
     model = build_model().to(device)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
-    n = len(x)
-    print(f"[{area}] {n} crops, device={device}")
-    for epoch in range(epochs):
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        opt, T_max=total_epochs, eta_min=1e-5)
+    n = len(plan)
+    print(f"[{area}] {n} crops, device={device}, epochs={total_epochs}")
+    pool = None
+    for epoch in range(total_epochs):
+        te = time.time()
+        x = epoch_tensor_from_pool(pool, rng) if pool is not None \
+            else epoch_tensor(plan, rng)
+        extract_s = time.time() - te
         perm = torch.randperm(n)
         losses = []
         for i in range(0, n, 64):
             idx = perm[i:i + 64]
             xb, yb = x[idx].to(device), y[idx].to(device)
-            loss = loss_fn(model(xb), yb)
+            loss = loss_fn(model.forward_logits(xb), yb)
             opt.zero_grad(); loss.backward(); opt.step()
             losses.append(loss.item())
-        print(f"[{area}] epoch {epoch + 1}/{epochs} loss={np.mean(losses):.4f}")
+        scheduler.step()
+        print(f"[{area}] epoch {epoch + 1}/{total_epochs} "
+              f"loss={np.mean(losses):.4f} extract={extract_s:.1f}s")
+        if pool is None and extract_s > EXTRACT_BUDGET_S:
+            # Too slow to re-rotate every epoch: amortize into a sampled pool
+            # rather than dropping fresh rotations altogether.
+            print(f"[{area}] extraction {extract_s:.1f}s > {EXTRACT_BUDGET_S}s, "
+                  f"switching to a {ROT_POOL}-variant rotation pool")
+            pool = build_rot_pool(plan, rng)
 
     models_dir = out_dir / "models"
     models_dir.mkdir(parents=True, exist_ok=True)
@@ -68,7 +114,9 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
     return {
         "area": area,
         "n_train_crops": n,
-        "epochs": epochs,
+        "epochs": total_epochs,
+        "harness_epochs": epochs,
+        "epoch_mult": EPOCH_MULT,
         "device": device,
         "train_seconds": round(time.time() - t0, 1),
         "onnx_bytes": onnx_path.stat().st_size,
