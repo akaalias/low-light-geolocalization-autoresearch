@@ -8,17 +8,30 @@ per CLAUDE.md §3/§9) as long as:
     u, v normalized map coords and conf in [0,1];
   - the export passes pipeline/score.py's frozen deployment gates.
 
-Baseline: deliberately naive tiny CNN direct-coordinate regressor, from-scratch
-init. It exists to prove the harness, not to be good.
+Classify-then-refine: the same tiny conv trunk, but the output is
+reparameterized as a softmax over a GRID x GRID lattice of map cells plus a
+within-cell offset, instead of a direct (u, v) regression. Direct MSE
+regression over a multimodal answer space collapses to the map centroid under
+ambiguity; discrete cell classification does not average competing modes.
+From-scratch init.
 """
 
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
+# Cells per axis of the map-cell classification grid, in NORMALIZED [0, 1]
+# map coordinates — no area-specific constants (CLAUDE.md §0).
+GRID = 32
 
 
 class TinyLocNet(nn.Module):
-    """~300k-param CNN: strided conv stack -> GAP -> (u, v, conf)."""
+    """~0.5M-param CNN: strided conv stack -> GAP -> (cell logits, offsets, conf).
+
+    forward_train() returns the raw head outputs for loss_fn(); forward() is the
+    exported graph and decodes them to the frozen [u, v, conf] contract.
+    """
 
     def __init__(self):
         super().__init__()
@@ -28,34 +41,74 @@ class TinyLocNet(nn.Module):
             layers += [nn.Conv2d(cin, cout, 3, stride=2, padding=1),
                        nn.BatchNorm2d(cout), nn.ReLU(inplace=True)]
         self.features = nn.Sequential(*layers)
-        self.head = nn.Linear(chans[-1], 3)
+        self.cell_logits = nn.Linear(chans[-1], GRID * GRID)
+        self.cell_offset = nn.Linear(chans[-1], GRID * GRID * 2)
+        self.conf_head = nn.Linear(chans[-1], 1)
+
+    def _embed(self, x):
+        return self.features(x).mean(dim=(2, 3))
+
+    def forward_train(self, x):
+        """Raw heads: (logits [B,G*G], offsets [B,G*G,2], conf_logit [B,1])."""
+        f = self._embed(x)
+        logits = self.cell_logits(f)
+        # Each cell's offset is bounded to half a cell in normalized units.
+        offsets = torch.tanh(self.cell_offset(f)).view(-1, GRID * GRID, 2) * (0.5 / GRID)
+        conf_logit = self.conf_head(f)
+        return logits, offsets, conf_logit
 
     def forward(self, x):
-        f = self.features(x).mean(dim=(2, 3))
-        out = self.head(f)
-        uv = torch.sigmoid(out[:, :2])
-        conf = torch.sigmoid(out[:, 2:3])
-        return torch.cat([uv, conf], dim=1)
+        logits, offsets, conf_logit = self.forward_train(x)
+        idx = torch.argmax(logits, dim=1)
+        iy = idx // GRID
+        ix = idx - iy * GRID  # subtraction, not %, for safe ONNX tracing
+        cu = (ix.float() + 0.5) / GRID
+        cv = (iy.float() + 0.5) / GRID
+        off = torch.gather(offsets, 1, idx.view(-1, 1, 1).expand(-1, 1, 2)).squeeze(1)
+        u = (cu + off[:, 0]).clamp(0, 1)
+        v = (cv + off[:, 1]).clamp(0, 1)
+        conf = torch.sigmoid(conf_logit)[:, 0]
+        return torch.stack([u, v, conf], dim=1)
 
 
 def build_model() -> nn.Module:
     return TinyLocNet()
 
 
-def loss_fn(pred: torch.Tensor, target_uv: torch.Tensor) -> torch.Tensor:
-    """MSE on coords + BCE training the conf head to predict 'error is small'."""
-    coord_err = ((pred[:, :2] - target_uv) ** 2).sum(dim=1)
-    coord_loss = coord_err.mean()
+def loss_fn(raw, target_uv: torch.Tensor) -> torch.Tensor:
+    """Cell cross-entropy + teacher-forced offset MSE + conf BCE.
+
+    `raw` is forward_train()'s (logits, offsets, conf_logit) tuple. Cell ids
+    follow iy * GRID + ix, with ix indexing the u axis and iy the v axis.
+    """
+    logits, offsets, conf_logit = raw
+    tx = target_uv[:, 0].mul(GRID).floor().long().clamp(0, GRID - 1)
+    ty = target_uv[:, 1].mul(GRID).floor().long().clamp(0, GRID - 1)
+    cell = ty * GRID + tx
+    ce = F.cross_entropy(logits, cell)
+
+    # Teacher-forced: only the true cell's offset is supervised.
+    pred_off = torch.gather(offsets, 1, cell.view(-1, 1, 1).expand(-1, 1, 2)).squeeze(1)
+    targ_off = target_uv - torch.stack(
+        [(tx.float() + 0.5) / GRID, (ty.float() + 0.5) / GRID], dim=1)
+    off_loss = (((pred_off - targ_off) * GRID) ** 2).sum(dim=1).mean()
+
     with torch.no_grad():
-        # Baseline conf target is deliberately loose (abstain only on
-        # catastrophic misses > half the map extent) so the naive model
-        # stays scoreable instead of abstaining its way into the §6
-        # coverage FAIL; calibrating confidence properly is an obvious
-        # loop research target.
-        good = (coord_err.sqrt() < 0.5).float()
-    conf_loss = nn.functional.binary_cross_entropy(
-        pred[:, 2].clamp(1e-6, 1 - 1e-6), good)
-    return coord_loss + 0.1 * conf_loss
+        # Conf target is deliberately loose (abstain only on catastrophic
+        # misses > half the map extent) so the model stays scoreable instead
+        # of abstaining its way into the §6 coverage FAIL; calibrating
+        # confidence properly is an obvious loop research target.
+        idx = torch.argmax(logits, dim=1)
+        iy = idx // GRID
+        ix = idx - iy * GRID
+        dec_off = torch.gather(offsets, 1, idx.view(-1, 1, 1).expand(-1, 1, 2)).squeeze(1)
+        dec_u = ((ix.float() + 0.5) / GRID + dec_off[:, 0]).clamp(0, 1)
+        dec_v = ((iy.float() + 0.5) / GRID + dec_off[:, 1]).clamp(0, 1)
+        coord_err = (torch.stack([dec_u, dec_v], dim=1) - target_uv).pow(2).sum(dim=1).sqrt()
+        good = (coord_err < 0.5).float()
+    conf_bce = F.binary_cross_entropy(
+        torch.sigmoid(conf_logit)[:, 0].clamp(1e-6, 1 - 1e-6), good)
+    return ce + off_loss + 0.1 * conf_bce
 
 
 def export_onnx(model: nn.Module, path: str):
