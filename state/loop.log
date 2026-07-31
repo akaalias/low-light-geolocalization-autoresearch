@@ -1,3 +1,1 @@
 Working tree dirty — committing pending changes as a pre-loop checkpoint.
-=== Experiment 1 (0/10 recorded)  run=20260731_080333_experiment1  parent=86d132301417383c9fd1b6bdf855ddd0cfda9832 ===
-./autoresearch/loop.sh: line 373: FROZEN_STAGES: unbound variable
