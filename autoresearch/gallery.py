@@ -1024,7 +1024,7 @@ def live_row(next_id):
 <td class="num" id="live-time">…</td>
 <td class="num">—</td>
 <td><span class="status-badge live"><span class="dot"></span>live</span></td></tr>
-<tr class="detail" id="d{next_id}" style="display:none"><td colspan="11">
+<tr class="detail" id="d{next_id}" style="display:none"><td colspan="9">
 <div class="detail-inner"><div class="detail-grid">
 <div class="explain" id="live-explain">{pre_blocks}</div>
 <div><div class="score-head">Scoreboard — mission score per area × lighting</div>
@@ -1772,9 +1772,8 @@ def history_rows_html(hist_rows, eras):
   <span class="mono" style="color:var(--faint)"> {esc((r['git_commit'] or '')[:8])}</span>
   <div class="row-why why-{cls}">{esc(why)}</div></td>
 <td><span class="cat">{esc(r['category'] or '—')}</span></td>
-<td class="mono">—</td>
 <td class="num">{fmt_score(v) if v is not None else '—'}</td>
-<td class="num">—</td><td class="num">—</td>
+<td class="num">—</td>
 <td class="num">{fmt_dur(r['duration_s'])}</td>
 <td class="num">{cost_cell(r)}</td>
 <td><span class="st st-{cls}">{stat}</span></td></tr>""")
@@ -1824,7 +1823,7 @@ def history_rows_html(hist_rows, eras):
         # tried, so they lead the row exactly as the current era's do.
         fig = arch_block({"kind": r["kind"], "arch_svg": r["arch_svg"],
                           "id": uid, "title": r["title"] or ""})
-        out.append(f"""<tr class="detail" id="d{uid}" style="display:none"><td colspan="11">
+        out.append(f"""<tr class="detail" id="d{uid}" style="display:none"><td colspan="9">
 <div class="detail-inner">{fig}<div class="detail-grid">
 <div class="explain">{''.join(blocks)}</div>
 <div>{cells}
@@ -2390,11 +2389,11 @@ rented-GPU window; the bootstrap and later local eras run at ~$0 marginal
 compute and show —.</dd>
 <dt>Category</dt><dd>Which lever the experiment pulls: architecture, loss,
 augmentation, relighting, training procedure, or quantization.</dd>
-<dt>Init</dt><dd>Weight initialization: trained from scratch, or started
-from a permissively-licensed pretrained backbone.</dd>
-<dt>Model / Latency</dt><dd>Largest per-area exported model, and
-single-frame inference time on one CPU thread (a documented proxy for the
-flight computer, not a measurement of it).</dd>
+<dt>Model</dt><dd>Largest per-area exported model. Hard limit 4 MiB, the
+ESP32-P4's envelope. (Weight initialization and single-frame latency used to
+have columns of their own; they were dropped because nearly every row read
+the same, and both still appear in the expanded record and, for init, on the
+<a href="inference-paths.html">model designs</a> page.)</dd>
 <dt>Training set</dt><dd>Each area offers ~45,000 distinct training
 positions (1 m/px, 128 m crops, times random rotation); how many crops an
 experiment actually samples per lighting condition is its own choice and is
@@ -4331,10 +4330,8 @@ def render():
 <div class="tbl-card"><table class="main">
 <thead><tr><th></th><th>#</th><th>Experiment</th>
 <th title="Which lever the experiment pulls: architecture, loss, augmentation, relighting, training, quantization.">Category</th>
-<th title="Weight initialization: from scratch, or a permissively-licensed pretrained backbone.">Init</th>
 <th title="Mission score on held-out Berlin daytime viewpoints: (1 - usable-fix rate) + false-fix rate. A frame is a usable fix only if the model is confident AND within 100 m; abstaining is safe; confident-but-wrong is a false fix, worse than silence for a drone. 0 = every frame usable, 1 = abstains everywhere, 2 = confidently wrong everywhere. The one number the loop optimizes -- deliberately the product requirement, not an error statistic.">Mission score</th>
 <th title="Largest per-area exported model. Hard limit: 4 MiB (ESP32-P4 flight computer).">Model</th>
-<th title="Single-frame inference on one CPU thread - a documented proxy for the flight computer, budget 250 ms.">Latency</th>
 <th title="Wall time of the whole experiment: agent design + training all areas + scoring.">Time</th>
 <th title="Everything one experiment cost: the equivalent API cost of the tokens its design, implementation, figure and summary agents consumed - recorded by the harness at the time, not estimated from a price list - plus rented-GPU wall time during the pod window at $0.69/hr. The research ran on a claude.ai Max subscription, so the agent part is what it WOULD have cost billed per token, not money that left the account. An em dash means no accounting survives (the run directory was deleted), which is not the same as free.">Cost</th>
 <th>Status</th></tr></thead><tbody>"""]
@@ -4367,9 +4364,8 @@ def render():
   <span class="mono" style="color:var(--faint)"> {esc(e['git_commit'][:8])}</span>
   <div class="row-why why-{sr_kind}">{esc(sr_short)}</div></td>
 <td><span class="cat">{esc(e['category'] or '—')}</span>{pivot_tag}</td>
-<td class="mono">{esc(e['init_strategy'] or '—')}</td>
 <td class="num">{fmt_score(e['primary_metric'])}</td>
-<td class="num">{size}</td><td class="num">{lat}</td>
+<td class="num">{size}</td>
 <td class="num">{fmt_dur(e.get('duration_s'))}</td>
 <td class="num">{cost_cell(hist_by_id.get(e['id']))}</td>
 <td>{status_of(e)}</td></tr>""")
@@ -4393,7 +4389,7 @@ def render():
                 blocks.append(f"<div class='eb {cls}'><div class='eb-h'>{label}</div>"
                               f"<p>{esc(e[key])}</p></div>")
         metrics = json.loads(e["metrics_json"] or "{}")
-        body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="11">
+        body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="9">
 <div class="detail-inner">
 {arch_block(e, chain_of(e, exps))}
 <div class="detail-grid">
