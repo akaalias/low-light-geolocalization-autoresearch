@@ -1,0 +1,28 @@
+=== Experiment 1 (0/1 recorded)  run=20260731_204159_experiment1  parent=7a3ec7aaade52de4d682ca28e0dd15e608fc7e78 ===
+--- train prignitz:
+[prignitz] epoch 8/8 loss=2.5434 top1=0.6957 mean_max_softmax=0.3728 views=73920 lr=1.00e-04
+{"area": "prignitz", "n_train_crops": 591360, "epochs": 8, "device": "mps", "train_seconds": 971.4, "onnx_bytes": 3115393, "init": "from-scratch", "n_cells": 3025, "distinct_vantages_seen": 591360, "full_lattice_epochs": true, "final_train_top1": 0.6957, "chunk_size": 4096, "max_crops_per_bucket_arg": 6000}
+PRIMARY worst-case mission score: 0.1127 (0=every frame a usable fix, 1=abstains everywhere, 2=confidently wrong everywhere)
+samples -> runs/20260731_204159_experiment1/samples
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   state/phase.json
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	runs/20260731_204159_experiment1/
+	state/seed_run.log
+
+no changes added to commit (use "git add" and/or "git commit -a")
+KEPT: mission score 0.112653 (improved from 1e18)
+1
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/index.html (1 experiments)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/inference-paths.html (59 figures)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (83 nodes)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-evolution.html (graph: 9 trunk nodes, 4 abandoned, 6 superseded, 2 on the prignitz fork)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html

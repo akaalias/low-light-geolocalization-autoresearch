@@ -1,0 +1,17 @@
+[
+  {
+    "area": "prignitz",
+    "n_train_crops": 591360,
+    "epochs": 8,
+    "device": "mps",
+    "train_seconds": 971.4,
+    "onnx_bytes": 3115393,
+    "init": "from-scratch",
+    "n_cells": 3025,
+    "distinct_vantages_seen": 591360,
+    "full_lattice_epochs": true,
+    "final_train_top1": 0.6957,
+    "chunk_size": 4096,
+    "max_crops_per_bucket_arg": 6000
+  }
+]
