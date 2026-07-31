@@ -8,18 +8,25 @@ per CLAUDE.md §3/§9) as long as:
     u, v normalized map coords and conf in [0,1];
   - the export passes pipeline/score.py's frozen deployment gates.
 
-Current: localization as MAP-CELL CLASSIFICATION, from-scratch init. The map
-is cut into CELL_PX-square cells (Berlin: 55x54 = 2970); a conv trunk feeds a
-C-way softmax over cells plus a within-cell offset head. The deployed fix is
-the winning cell's centre nudged by the offset, and confidence is the softmax
-mass on that winning cell — so belief spread across many cells reads as low
-confidence and the frame becomes a safe abstention rather than a false fix.
-Cell size is chosen so the parameterization alone suffices: a 128 m cell's
+Current: localization as MAP-CELL CLASSIFICATION, from-scratch init, decoded by
+LOCAL BELIEF POOLING. The map is cut into CELL_PX-square cells (Berlin:
+55x54 = 2970); a conv trunk feeds a C-way softmax over cells plus a within-cell
+offset head. The deployed decode pools belief over the 3x3 block of cells
+centred on the argmax cell: confidence is the softmax mass on that whole
+neighborhood, and the fix is the mass-weighted centroid of those cell centres,
+nudged by the offset. Eval views stand 11-17 m off-lattice, so a view near a
+cell border honestly splits its mass between adjacent cells — that is label
+ambiguity, not place ambiguity, and pooling makes confidence measure "does the
+model know WHERE it is" rather than "which arbitrary tile label applies".
+Belief scattered across DISTANT cells still falls below threshold, so genuine
+far-field ambiguity remains a safe abstention rather than a false fix. Cell
+size is chosen so the parameterization alone suffices: a 128 m cell's
 half-diagonal is 90.5 m, inside the 100 m usable radius, so naming the right
 cell is already a usable fix.
 
-The whole decode (argmax -> cell-centre table lookup -> offset -> conf) lives
-INSIDE the exported graph, because the scorer runs the ONNX directly.
+The whole decode (softmax -> argmax -> neighborhood mask -> pooled centroid ->
+offset -> conf) lives INSIDE the exported graph, because the scorer runs the
+ONNX directly.
 """
 
 import math
@@ -76,11 +83,27 @@ class CellLocNet(nn.Module):
         return self.cls_head(f), torch.tanh(self.off_head(f)) * 0.5
 
     def forward(self, x):
+        # Local belief pooling: confidence is the softmax mass on the 3x3 block
+        # of cells centred on the argmax cell, and the fix is that block's
+        # mass-weighted centroid (plus the within-cell offset). A border view
+        # splitting mass between adjacent cells still names one place, so it
+        # stays a fix; mass scattered across distant cells stays an abstention.
         logits, offset = self.training_outputs(x)
         p = F.softmax(logits, dim=1)
-        conf, idx = p.max(dim=1)
-        u = self.cell_u.index_select(0, idx) + offset[:, 0] * self.scale_u
-        v = self.cell_v.index_select(0, idx) + offset[:, 1] * self.scale_v
+        idx = p.argmax(dim=1)
+        win_u = self.cell_u.index_select(0, idx)
+        win_v = self.cell_v.index_select(0, idx)
+        # 1.6 cell-pitches per axis (Chebyshev) selects exactly the 3x3 block
+        # with float-safety margin — the next ring sits at 2.0 pitches. Edge
+        # cells simply have fewer neighbours in range; nothing is counted twice.
+        du = (self.cell_u.unsqueeze(0) - win_u.unsqueeze(1)).abs()
+        dv = (self.cell_v.unsqueeze(0) - win_v.unsqueeze(1)).abs()
+        mask = ((du <= 1.6 * self.scale_u) & (dv <= 1.6 * self.scale_v)).float()
+        q = p * mask
+        conf = q.sum(dim=1)  # sub-sum of a softmax: in [0,1], >= single-cell max
+        w = q / conf.unsqueeze(1).clamp_min(1e-9)
+        u = (w * self.cell_u.unsqueeze(0)).sum(dim=1) + offset[:, 0] * self.scale_u
+        v = (w * self.cell_v.unsqueeze(0)).sum(dim=1) + offset[:, 1] * self.scale_v
         return torch.stack([u.clamp(0.0, 1.0), v.clamp(0.0, 1.0), conf], dim=1)
 
 
