@@ -27,3 +27,19 @@ wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/galle
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (3 nodes)
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
+=== Experiment 4 (3/10 recorded)  run=20260731_083851_experiment4  parent=ef76422a96f47c9a24a4bcb38157306d0bcee08a ===
+agents finished (design: claude-fable-5, claude-haiku-4-5-20251001 342s, impl: claude-haiku-4-5-20251001, claude-opus-5 116s)
+WARNING: agent touched frozen files, reverting:
+autoresearch/loop.sh
+--- train berlin:
+[berlin] epoch 96/96 loss=2.7362 extract=3.1s
+{"area": "berlin", "n_train_crops": 6000, "epochs": 96, "harness_epochs": 8, "epoch_mult": 12, "device": "mps", "train_seconds": 575.6, "onnx_bytes": 1989771, "init": "from-scratch"}
+PRIMARY worst-case median error: 920.52 m (target <= 100 m)
+samples -> runs/20260731_083851_experiment4/samples
+REVERTED: 920.52 m (best remains 810.02)
+4
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/index.html (4 experiments)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/inference-paths.html (0 figures)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (4 nodes)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
