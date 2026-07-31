@@ -14,26 +14,37 @@
 #          that many development experiments, then stops. So on a database
 #          that already has 48 experiments, `loop.sh 100` runs 52 more;
 #          `loop.sh 100` again later runs nothing. Default target: 100.
-# Env:     AREAS          (default "berlin prignitz munich frankfurt")
+# Env:     AREAS          (default "berlin" on this branch — see CLAUDE.md
+#                          "BRANCH OVERRIDE"; main-branch default is
+#                          "berlin prignitz munich frankfurt")
 #          PATIENCE       (default 4: consecutive non-kept experiments before
-#                          the design prompt demands a pivot)
+#                          the design prompt demands a pivot — pivot
+#                          enforcement itself is force-disabled on this
+#                          branch regardless of PATIENCE, see below)
 #          EPOCHS         (default 8)
 #          HOLDOUT_EVERY  (default 5)
+#          HOLDOUT_ENABLED (default 0 on this branch; main-branch default 1 —
+#                          §5 Hamburg holdout dropped for berlin-slim)
+#          DRAW_FIGURES   (default 0 on this branch; main-branch default 1 —
+#                          agent-drawn architecture SVG cut, ~15-20 min/iter)
 #          CLAUDE_BIN     (default "claude")
 #          SKIP_AGENT=1   (run train/score/log only — no code change; smoke test)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 TARGET="${1:-100}"
-AREAS="${AREAS:-berlin prignitz munich frankfurt}"
+AREAS="${AREAS:-berlin}"
 EPOCHS="${EPOCHS:-8}"
 # Training budget knobs (env-overridable, champion code untouched). Crops per
-# lighting bucket × 6 buckets = crops/epoch; total epochs = EPOCHS × EPOCH_MULT
-# (3, in train.py). Defaults reproduce the heavy recipe (6000 → 36k crops,
-# 8 → 24 epochs). Lower both for fast local exploration, e.g.
-# TRAIN_CROPS=1500 EPOCHS=3.
+# lighting bucket × bucket count = crops/epoch; total epochs = EPOCHS ×
+# EPOCH_MULT (3, in train.py). berlin-slim branch runs 1 bucket (LIGHTING_
+# BUCKETS collapsed, see CLAUDE.md "BRANCH OVERRIDE"), so defaults now give
+# 6000 crops/epoch, not the main branch's 36k. Lower both for fast local
+# exploration, e.g. TRAIN_CROPS=1500 EPOCHS=3.
 TRAIN_CROPS="${TRAIN_CROPS:-6000}"
 HOLDOUT_EVERY="${HOLDOUT_EVERY:-5}"
+HOLDOUT_ENABLED="${HOLDOUT_ENABLED:-0}"  # berlin-slim branch: off by default (§5 dropped)
+DRAW_FIGURES="${DRAW_FIGURES:-0}"  # berlin-slim branch: off by default (cuts ~15-20 min/iteration; gallery/heatmaps stay on)
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 PY=".venv/bin/python"
 STATE="state"; mkdir -p "$STATE" runs
@@ -269,7 +280,10 @@ while :; do
   PLATEAU=$(sqlite3 experiments.sqlite "SELECT COUNT(*) FROM experiments \
     WHERE kind='development' AND id > $LAST_KEPT_ID;" 2>/dev/null || echo 0)
   PIVOT_DEMANDED=0
-  if [ "${PLATEAU:-0}" -ge "${PATIENCE:-4}" ]; then
+  # berlin-slim branch override (see CLAUDE.md "BRANCH OVERRIDE"): pivot
+  # enforcement forced off — reintroduce by deleting this line once a
+  # plateau shows up worth forcing a rethink over.
+  if false && [ "${PLATEAU:-0}" -ge "${PATIENCE:-4}" ]; then
     PIVOT_DEMANDED=1
     echo "PIVOT: $PLATEAU consecutive experiments without a new best — pivot directive injected"
     # Which stages have actually gone unquestioned across the streak (by
@@ -327,7 +341,7 @@ PIVOTNOTE
     rm -f runs/pending_experiment.json
     T0=$(date +%s)
     "$CLAUDE_BIN" -p "$(cat "$RUN_DIR/prompt.md")" \
-      --model "${DESIGN_MODEL:-claude-sonnet-5}" \
+      --model "${DESIGN_MODEL:-claude-fable-5}" \
       --permission-mode acceptEdits \
       --allowedTools "Read,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
       --output-format json </dev/null >"$RUN_DIR/agent_design.json" \
@@ -355,7 +369,7 @@ ${AGENT_RETRY_SLEEP:-1800}s before next experiment"
     # needs a real code diff to exist — this half of the gate doesn't, so
     # checking it here saves ~2-3 min plus a whole extra Claude invocation
     # whenever the design alone already fails to be a complete rethink.
-    AGENT_MODEL_DESIGN="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_design.json" 2>/dev/null || echo "${DESIGN_MODEL:-claude-sonnet-5}")"
+    AGENT_MODEL_DESIGN="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_design.json" 2>/dev/null || echo "${DESIGN_MODEL:-claude-fable-5}")"
     if [ -n "$FROZEN_STAGES" ]; then
       UNCHANGED_STAGES="$($PY - runs/pending_experiment.json <<'PYCHECK'
 import json, sys
@@ -374,7 +388,7 @@ PYCHECK
       if [ -n "$UNCHANGED_STAGES" ]; then
         echo "REJECTED (before implementation): a complete architecture rethink was required, but the design's own self-report leaves these stages unchanged: $UNCHANGED_STAGES — skipping implementation and training."
         mv runs/pending_experiment.json "$RUN_DIR/experiment.json"
-        echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
+        echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
         $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
           --experiment-file "$RUN_DIR/experiment.json" \
           --result "rejected before implementation: a complete architecture rethink was required, but these stages were already self-reported unchanged in the design: $UNCHANGED_STAGES" \
@@ -390,14 +404,14 @@ PYCHECK
     report_phase implement
     T0=$(date +%s)
     "$CLAUDE_BIN" -p "$(cat "$RUN_DIR/prompt_impl.md")" \
-      --model "${IMPL_MODEL:-claude-sonnet-5}" \
+      --model "${IMPL_MODEL:-claude-opus-5}" \
       --permission-mode acceptEdits \
       --allowedTools "Read,Edit,Write,Grep,Glob,Bash(.venv/bin/python:*),Bash(sqlite3:*)" \
       --output-format json </dev/null >"$RUN_DIR/agent_impl.json" \
       || { echo "impl agent failed; skipping experiment"
            git checkout -- model/ 2>/dev/null || true; continue; }
     T_IMPL=$(( $(date +%s) - T0 ))
-    AGENT_MODEL_IMPL="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_impl.json" 2>/dev/null || echo "${IMPL_MODEL:-claude-sonnet-5}")"
+    AGENT_MODEL_IMPL="$($PY -m autoresearch.agentmeta "$RUN_DIR/agent_impl.json" 2>/dev/null || echo "${IMPL_MODEL:-claude-opus-5}")"
     echo "agents finished (design: $AGENT_MODEL_DESIGN ${T_DESIGN}s, impl: $AGENT_MODEL_IMPL ${T_IMPL}s)"
   fi
   [ -f runs/pending_experiment.json ] && mv runs/pending_experiment.json "$RUN_DIR/experiment.json"
@@ -440,7 +454,7 @@ PYCHECK
   if [ -n "$CARRIED_BACKBONE" ]; then
     REJECT_REASON="a pivot was demanded but the implementation still carries the champion's backbone ($CARRIED_BACKBONE) — checked against the post-implementation source; a pivot must replace the trunk outright, not re-tune, truncate, wrap, or ensemble it"
     echo "REJECTED: $REJECT_REASON — skipping training."
-    echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
+    echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
     git checkout -- model/ 2>/dev/null || true
     $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
       --experiment-file "$RUN_DIR/experiment.json" \
@@ -510,12 +524,12 @@ PYMERGE
   report_phase score
   T0=$(date +%s)
   if [ "$FAILED" = "1" ]; then
-    echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
+    echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
   else
     $PY -m pipeline.score --areas "$(echo $AREAS | tr ' ' ',')" \
       --model-dir "$RUN_DIR/models" --out "$RUN_DIR/metrics.json" \
       --heatmap-dir "$RUN_DIR/heatmaps" || \
-      echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":20.0}' > "$RUN_DIR/metrics.json"
+      echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
   fi
   T_SCORE=$(( $(date +%s) - T0 ))
   T0=$(date +%s)
@@ -556,7 +570,7 @@ $(cat "$RUN_DIR/experiment.json")" || true
   # 5. Periodic read-only holdout check (§5) — logged, never drives keep/revert.
   T_HOLDOUT=0; T0=$(date +%s)
   KEPT_COUNT="$(cat "$STATE/kept_count" 2>/dev/null || echo 0)"
-  if [ "$KEEP" = "1" ] && [ $(( KEPT_COUNT % HOLDOUT_EVERY )) -eq 0 ]; then
+  if [ "${HOLDOUT_ENABLED:-0}" = "1" ] && [ "$KEEP" = "1" ] && [ $(( KEPT_COUNT % HOLDOUT_EVERY )) -eq 0 ]; then
     echo "--- holdout check (hamburg) ---"
     HODIR="$RUN_DIR/holdout"
     $PY -m model.train --area hamburg --out-dir "$HODIR" --epochs "$EPOCHS" --max-crops-per-bucket "$TRAIN_CROPS" && \

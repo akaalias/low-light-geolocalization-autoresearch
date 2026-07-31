@@ -1,5 +1,61 @@
 # UAV Low-Light Geolocalization — Autoresearch Bootstrap Spec
 
+## BRANCH OVERRIDE — `berlin-slim` (2026-07-31)
+
+This branch is a deliberate, scoped fork of the spec below, traded for much
+faster iteration. It supersedes specific sections; everything else in this
+file still holds. **Do not treat this section as evidence the main-branch
+spec was wrong** — it's a scoped experiment, not a reversal of the project's
+direction (see memory: `berlin-slim-branch-pivot`).
+
+- **§0/§1 (general-purpose, one-model-per-bbox, four independent runs):**
+  superseded. This branch optimizes for **one locale only — Berlin.** The
+  loop is explicitly free to find a technique that only works for Berlin;
+  it does not need to generalize to Prignitz/Munich/Frankfurt/Hamburg on
+  this branch. "Overfitting" to Berlin's texture and lighting is not a
+  failure mode here — it's the point.
+- **§4 (six-bucket synthetic relighting):** disabled. Training and eval use
+  the raw daytime reference imagery as fetched, unmodified — no ambient
+  dimming, no artificial-light simulation, no sensor noise curve.
+  `pipeline/common.py`'s `LIGHTING_BUCKETS` collapses to one pass-through
+  entry. Low-light is out of scope for this branch entirely.
+- **§5 (four dev areas + Hamburg holdout):** not run. `AREAS=berlin` only;
+  the periodic Hamburg holdout check is disabled (gated off, not deleted —
+  see `HOLDOUT_ENABLED` in `loop.sh`).
+- **§6 (target ≤ 20 m):** the operative milestone on this branch is
+  **≤ 100 m** worst-case median error, Berlin daytime-only. This was
+  derived from data, not chosen arbitrarily: the main-branch champion
+  (exp 35, 743 m across 4 areas × 6 buckets) scores roughly 650-720 m on
+  Berlin's own daytime buckets alone, so 20 m was a ~35× gap — not a useful
+  near-term gate. 100 m is a ~6-7× gap: ambitious, reachable. 20 m remains
+  the real deployment-relevant number and stays logged, not deleted — same
+  "milestone, not a stop condition" philosophy as the main branch: hitting
+  100 m does not end the loop, it just marks a report-worthy checkpoint.
+- **§7 (pivot-gate enforcement, `PIVOT_DEMANDED`/`backbonecheck.py`):**
+  disabled on this branch (forced to `PIVOT_DEMANDED=0` in `loop.sh`).
+  Reintroduce once a plateau shows up worth forcing a rethink over — this
+  is a "not needed yet," not a "this was broken."
+- **§7 (self-refreshing HTML gallery):** kept — the gallery, per-area
+  heatmap, and sample-crop rendering all stay on. Only the agent-drawn,
+  `figcheck`-validated architecture SVG (`draw_figure()` in `loop.sh`) is
+  cut — it was the single most expensive non-training phase per iteration
+  (~15-20 min) and isn't load-bearing for the actual research question.
+- **§9 (from-scratch vs. pretrained, unified vs. dispatcher):** still the
+  loop's call, unchanged.
+- **Model assignment:** design runs on **Fable**, implementation on
+  **Opus 5** — a deliberate, branch-scoped reversal of the main branch's
+  "Haiku 4.5 + Sonnet 5, never Opus" policy (see memory:
+  `model-selection-policy`). Flagged, not silently applied — both models
+  were previously pulled from rotation for real problems (Fable hit its
+  weekly cap and stalled the loop; Opus was banned after prior issues).
+  Watch for a repeat of either on this branch specifically.
+
+Everything not listed above — §2 deployment constraints, §3 modeling
+approach, §7's lineage-tracking (git commit + SQLite row + gallery)
+requirement, §8-10 — still applies as written.
+
+---
+
 You are Claude Code Instance #1. Your job in this session is to **bootstrap**
 this repository — scaffold the pipeline, prove the harness works end-to-end on
 one small baseline run, and set up the autoresearch loop as a standalone bash

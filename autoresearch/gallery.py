@@ -791,7 +791,7 @@ def live_row(next_id):
         ("starting up", 90),
         ("designing the experiment", med.get("agent_design_s", 900)),
         ("implementing the design", med.get("agent_impl_s", 120)),
-        ("training 4 areas in parallel", med.get("train_wall_s", 600)),
+        ("training Berlin", med.get("train_wall_s", 600)),
         ("scoring against the frozen ruler", med.get("score_s", 240)),
         ("logging + publishing", med.get("samples_s", 60) + med.get("gallery_s", 60)),
     ]
@@ -805,7 +805,7 @@ def live_row(next_id):
   var built={built_ms}, phases={phases_js}, st=null;
   var NAMES={{design:'designing the experiment',
     implement:'implementing the design',
-    train:'training all 4 areas in parallel',
+    train:'training Berlin',
     score:'scoring against the frozen ruler',
     publish:'logging + publishing the result'}};
   var el=document.getElementById('live-text'); if(!el) return;
@@ -1175,9 +1175,14 @@ def timings_block(e):
         return ""
     design_m = short_model(e.get("agent_model_design"))
     impl_m = short_model(e.get("agent_model_impl"))
+    try:
+        n_areas = len(json.loads(e.get("metrics_json") or "null").get("areas") or [])
+    except (json.JSONDecodeError, AttributeError):
+        n_areas = 0
+    train_label = f"train {n_areas} area{'s' if n_areas != 1 else ''}" if n_areas else "train"
     parts = [(f"design ({design_m})" if design_m else "design", t.get("agent_design_s")),
              (f"implement ({impl_m})" if impl_m else "implement", t.get("agent_impl_s")),
-             ("train 4 areas", t.get("train_wall_s")),
+             (train_label, t.get("train_wall_s")),
              ("score", t.get("score_s")),
              ("samples", t.get("samples_s")),
              ("holdout", t.get("holdout_s")),
@@ -2492,7 +2497,7 @@ def render():
 <thead><tr><th></th><th>#</th><th>Experiment</th>
 <th title="Which lever the experiment pulls: architecture, loss, augmentation, relighting, training, quantization.">Category</th>
 <th title="Weight initialization: from scratch, or a permissively-licensed pretrained backbone.">Init</th>
-<th title="Worst median position error across 6 lighting conditions x 4 areas, on held-out crops. The one number the loop optimizes. Target: at or below 20 m.">Worst-case error</th>
+<th title="Worst median position error on held-out Berlin daytime crops. The one number the loop optimizes. Milestone: at or below 100 m (branch override — main-branch target is 20 m across 6 lighting conditions x 4 areas).">Worst-case error</th>
 <th title="Largest per-area exported model. Hard limit: 4 MiB (ESP32-P4 flight computer).">Model</th>
 <th title="Single-frame inference on one CPU thread - a documented proxy for the flight computer, budget 250 ms.">Latency</th>
 <th title="Wall time of the whole experiment: agent design + training all areas + scoring.">Time</th>

@@ -1,9 +1,14 @@
 # Autoresearch experiment — the design stage
 
-You are one experiment of an autonomous research loop for UAV low-light
-geolocalization. Read `CLAUDE.md` (§1, §3, §6 especially) for full context.
-The harness (loop.sh) will train, score, log, and keep/revert AFTER you exit —
-you only design the experiment and edit the code.
+You are one experiment of an autonomous research loop for UAV geolocalization.
+Read `CLAUDE.md`'s "BRANCH OVERRIDE" section first, then §3 and §6, for full
+context. **This branch (berlin-slim) targets ONE locale (Berlin), ONE lighting
+condition (raw daytime imagery, no synthetic relighting), and a 100 m
+worst-case median error milestone — not the main branch's 4-area/6-bucket/20 m
+setup.** Design accordingly: there is no cross-lighting robustness to reason
+about and no other area's texture to generalize to. The harness (loop.sh)
+will train, score, log, and keep/revert AFTER you exit — you only design the
+experiment and edit the code.
 
 ## Your job, in order
 
@@ -18,23 +23,20 @@ you only design the experiment and edit the code.
    Note which hypotheses were supported/refuted. Do not repeat a refuted
    experiment without a materially new angle.
 
-   **Plateau rule:** if three or more consecutive experiments were reverted,
-   do not attempt another variation of the last refuted mechanism. Either
-   pick a design family absent from the history (dispatcher + lighting
-   specialists, pretrained init, learned relighting, training-scale, …) or
-   attack the bottleneck the refuted hypotheses jointly point at —
-   **but check which stages that "design family" actually touches before
-   you commit to it.** Query the last several kept experiments'
-   `arch_json` (`SELECT arch_json FROM experiments WHERE kind='development'
-   ORDER BY id DESC LIMIT 10;`) and look at which stage names never carry
-   `"changed": true`. A losing streak is not just "we haven't tried a
-   dispatcher yet" — it is usually "the trunk / descriptor / decode has
-   gone unquestioned for N rounds while satellite modules (gates, heads,
-   auxiliary losses, samplers) keep churning around it." Picking a name
-   off the suggested list while leaving that frozen core untouched is
-   incremental tuning wearing a pivot's clothes, and the harness's own
-   patience check (below, once it fires) will call this out explicitly by
-   naming the frozen stages.
+   **Plateau rule (advisory only on this branch):** the harness's automatic
+   pivot enforcement (mandatory-pivot preamble, backbone-carry rejection) is
+   disabled on berlin-slim — see CLAUDE.md "BRANCH OVERRIDE". Nothing will
+   force or reject a pivot below. That said, the underlying discipline still
+   applies by judgment: if three or more consecutive experiments were
+   reverted, don't attempt another variation of the last refuted mechanism.
+   Either pick a design family absent from the history (pretrained init,
+   learned relighting-for-training, training-scale, a different coordinate
+   parameterization, …) or attack the bottleneck the refuted hypotheses
+   jointly point at — checking, via `arch_json`
+   (`SELECT arch_json FROM experiments WHERE kind='development' ORDER BY id
+   DESC LIMIT 10;`), which stage names never carry `"changed": true`, since a
+   losing streak is usually one unquestioned stage (trunk / descriptor /
+   decode) with everything else churning around it, not a missing family.
 
 2. **Design ONE focused experiment** — proper experiment design, pre-registered
    before you touch code. Write it to `runs/pending_experiment.json`:
@@ -48,7 +50,7 @@ you only design the experiment and edit the code.
      "init_strategy": "from-scratch | pretrained:<name>",
      "eli5": "2-4 sentences for a smart non-ML reader: what you changed and why it might help, in everyday language — analogies welcome, zero jargon",
      "architecture": {"stages": [
-       {"name": "Camera frame", "detail": "128×128 px crop, one of 6 lighting renders", "changed": false},
+       {"name": "Camera frame", "detail": "128×128 px daytime crop, Berlin only, no synthetic lighting variants", "changed": false},
        {"name": "Feature extractor", "detail": "plain-language description", "changed": false},
        {"name": "…", "detail": "…", "changed": true}
      ]}
@@ -72,14 +74,6 @@ you only design the experiment and edit the code.
    A change that only affects training (loss, augmentation, schedule) keeps
    the inference stages unchanged and adds one final stage with
    `"train_only": true` describing the training signal.
-
-   **If a pivot was demanded above:** every non-frozen stage must be marked
-   `"changed": true` this round — checked against your ACTUAL code diff
-   once implementation happens, not just this self-report. A design that
-   leaves most stages unchanged gets rejected before implementation ever
-   starts, so there is no reason to under-commit here: if you're not
-   genuinely rethinking a stage, don't mark it changed, and don't propose
-   a pivot that stops short of the bar.
 
 3. **Write the implementation brief.** You do NOT edit `model/` yourself —
    a separate implementation agent applies your design, seeing only the
@@ -109,9 +103,8 @@ you only design the experiment and edit the code.
 - Do not run training yourself; the harness does that.
 - Stay within the deployment gates: exported ONNX ≤ 4 MiB per area, host
   latency proxy ≤ 250 ms (see pipeline/score.py).
-- Keep one experiment tractable to train. Each area trains on a single GPU
-  and the loop trains all four; an inherently expensive per-sample mechanism
-  (e.g. many-round iterative solves over thousands of votes per crop) can
-  push a single area into hours. Budget the per-crop cost so a full four-area
-  round still finishes in a sensible wall-time — an idea that can't be
-  evaluated in a round can't be kept.
+- Keep one experiment tractable to train. This branch trains Berlin only, on
+  a single GPU; an inherently expensive per-sample mechanism (e.g. many-round
+  iterative solves over thousands of votes per crop) can still push a round
+  into hours. Budget the per-crop cost so a round finishes in a sensible
+  wall-time — an idea that can't be evaluated in a round can't be kept.

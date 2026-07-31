@@ -12,16 +12,12 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "data"
 
-# The six lighting buckets of §4, with their synthetic ambient level
-# (1.0 = full daylight, 0 = no natural light). Artificial lights stay on
-# regardless of ambient — that separation happens in relight.py.
+# berlin-slim branch override (see CLAUDE.md "BRANCH OVERRIDE"): the six
+# lighting buckets of §4 collapse to one pass-through entry — raw daytime
+# imagery as fetched, no synthetic ambient/gain/noise simulation. relight.py
+# treats this bucket as an identity crop, not a relighting transform.
 LIGHTING_BUCKETS = {
-    "morning": 0.55,
-    "midday": 1.00,
-    "afternoon": 0.75,
-    "early_evening": 0.22,
-    "evening": 0.07,
-    "night": 0.012,
+    "asis": 1.00,
 }
 
 # Ground sample distance is per-area (meta.json "gsd_m") — set by the imagery

@@ -123,8 +123,14 @@ def relight_area(area: str, data_dir: Path | None = None):
     out_dir = d / "relight"
     out_dir.mkdir(exist_ok=True)
     for bucket, ambient in LIGHTING_BUCKETS.items():
-        seed = stable_hash(f"{area}:{bucket}")
-        img = relight(ref, ambient, meta["gsd_m"], seed)
+        if bucket == "asis":
+            # berlin-slim branch override (see CLAUDE.md "BRANCH OVERRIDE"):
+            # pass the daytime reference through unmodified — no ambient
+            # dimming, no artificial-light sim, no sensor noise curve.
+            img = ref.astype(np.uint8)
+        else:
+            seed = stable_hash(f"{area}:{bucket}")
+            img = relight(ref, ambient, meta["gsd_m"], seed)
         Image.fromarray(img).save(out_dir / f"{bucket}.png")
         print(f"  {bucket} (ambient={ambient}) -> {out_dir / (bucket + '.png')}", flush=True)
 

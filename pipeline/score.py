@@ -173,13 +173,13 @@ def main():
         "kind": "holdout_check" if args.holdout else "development",
         "areas": per_area,
         "primary_worst_median_error_m": primary,
-        "target_m": 20.0,
+        "target_m": 100.0,  # berlin-slim branch milestone (main-branch target is 20 m)
     }
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w") as f:
         json.dump(out, f, indent=2)
     label = "HOLDOUT" if args.holdout else "PRIMARY"
-    print(f"{label} worst-case median error: {primary:.2f} m (target <= 20 m)")
+    print(f"{label} worst-case median error: {primary:.2f} m (target <= 100 m)")
 
 
 if __name__ == "__main__":

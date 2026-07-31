@@ -138,8 +138,15 @@ def prepare_realizations(area: str, data_dir: Path, out_dir: Path) -> Path:
     with rasterio.open(area_dir(area, data_dir) / "reference.tif") as src:
         ref = src.read().transpose(1, 2, 0)  # HxWx3 uint8
     for bucket, r in todo:
-        img = relight(ref, LIGHTING_BUCKETS[bucket], meta["gsd_m"],
-                     stable_hash(f"{area}:{bucket}:trainreal:{r}"))
+        if bucket == "asis":
+            # berlin-slim branch override (see CLAUDE.md "BRANCH OVERRIDE"):
+            # no relighting sim at all — every realization is the same
+            # unmodified daytime crop, so exp 17's realization-diversity
+            # augmentation is a no-op here (nothing to be robust to).
+            img = ref.astype(np.uint8)
+        else:
+            img = relight(ref, LIGHTING_BUCKETS[bucket], meta["gsd_m"],
+                         stable_hash(f"{area}:{bucket}:trainreal:{r}"))
         tmp = renders_dir / f".{bucket}_r{r}.png.tmp"
         Image.fromarray(img).save(tmp, format="PNG")  # ext is .tmp, so be explicit
         tmp.rename(renders_dir / f"{bucket}_r{r}.png")

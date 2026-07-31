@@ -24,8 +24,8 @@ from autoresearch.db import REPO_ROOT
 from pipeline.common import area_dir, load_meta, px_to_lonlat
 from pipeline.dataset import crop_center_norm, extract_crop, list_crops
 
-AREA = "berlin"          # primary reference area (CLAUDE.md §5)
-BUCKET = "night"         # the project's raison d'être
+AREA = "berlin"          # the only area on this branch (CLAUDE.md "BRANCH OVERRIDE")
+BUCKET = "asis"          # the only bucket on this branch — no relighting sim
 MAP_PX = 640
 ACCENT = (140, 47, 31)   # --accent #8c2f1f
 
