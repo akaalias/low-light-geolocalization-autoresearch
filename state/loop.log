@@ -1,1 +1,16 @@
 Working tree dirty — committing pending changes as a pre-loop checkpoint.
+=== Experiment 2 (1/5 recorded)  run=20260731_210827_experiment2  parent=c8fda0e1483584c9053d09a3534dbeeae615c68d ===
+agents finished (design: claude-fable-5, claude-haiku-4-5-20251001 190s, impl: claude-haiku-4-5-20251001, claude-opus-5 107s)
+--- train prignitz:
+[prignitz] epoch 8/8 loss=2.5434 top1=0.6957 mean_max_softmax=0.3728 views=73920 lr=1.00e-04
+{"area": "prignitz", "n_train_crops": 591360, "epochs": 8, "device": "mps", "train_seconds": 973.8, "onnx_bytes": 3117915, "init": "from-scratch", "n_cells": 3025, "distinct_vantages_seen": 591360, "full_lattice_epochs": true, "final_train_top1": 0.6957, "chunk_size": 4096, "max_crops_per_bucket_arg": 6000}
+PRIMARY worst-case mission score: 0.1227 (0=every frame a usable fix, 1=abstains everywhere, 2=confidently wrong everywhere)
+samples -> runs/20260731_210827_experiment2/samples
+REVERTED: mission score 0.122653 (best remains 0.112653)
+2
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/index.html (2 experiments)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/inference-paths.html (59 figures)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (83 nodes)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-evolution.html (graph: 9 trunk nodes, 4 abandoned, 6 superseded, 2 on the prignitz fork)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
