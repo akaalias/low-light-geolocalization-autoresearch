@@ -322,9 +322,25 @@ rect.era:hover{filter:brightness(.985)}
 .era-sw{width:9px;height:11px;display:inline-block;vertical-align:-1px;
   margin-right:1px;background:rgba(107,106,96,.09);
   outline:1px solid var(--rule-soft)}
-.chart-note{max-width:74ch;margin:10px 0 2px;font:14px/1.5 var(--serif);
+.chart-note{max-width:74ch;margin:0;font:14px/1.55 var(--serif);
   color:var(--muted)}
 .chart-note b{color:var(--ink);font-weight:600}
+.chart-foot{border-top:1px solid var(--rule);margin-top:26px;padding-top:16px}
+/* Era headings on the model-designs page — a hard visual break, because the
+   designs either side of one were judged by different instruments. */
+.era-head{background:var(--era-tint);border-top:2px solid var(--rule);
+  margin:56px 0 26px;padding:14px 18px 15px;display:flex;flex-wrap:wrap;
+  align-items:baseline;gap:6px 14px}
+.era-head:first-of-type{margin-top:18px}
+.era-head-n{font:700 11px var(--serif);font-feature-settings:"smcp" 1;
+  letter-spacing:.09em;text-transform:uppercase}
+.era-head-t{font:600 19px var(--serif);color:var(--ink)}
+.era-head-s{font:italic 13px var(--serif);color:var(--muted);flex-basis:100%}
+/* Every table row is washed with its era's band tint, so a row and its dot
+   in the chart above are identifiable as the same era without a lookup. */
+tr.row-main{background:var(--era-tint,transparent)}
+tr.hist-row td{color:var(--muted)}
+tr.hist-row .title-cell b{font-weight:600;color:var(--ink)}
 .pt{cursor:pointer}
 circle.pt.big{r:7px}
 text.pt.big{font-size:17px}
@@ -399,7 +415,9 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 .row-why.why-hold{color:var(--ochre)}
 .eb-eli p{font-size:14.5px}
 
-.arch{margin:0 0 20px}
+/* The figure leads an expanded row; the two-column grid below needs real
+   air under it rather than butting straight up against the drawing. */
+.arch{margin:6px 0 34px;padding-bottom:26px;border-bottom:1px solid var(--rule-soft)}
 .arch-h{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 10px}
 .arch-h .chg{color:var(--accent)}
@@ -1531,6 +1549,156 @@ def history_chart_svg(rows, eras):
     return "\n".join(p)
 
 
+def history_rows_html(hist_rows, eras):
+    """Table rows for the FOUR EARLIER eras.
+
+    Deliberately not run through the current-era renderer. Those rows can
+    show a heatmap, a worked example, a training log and an architecture
+    figure because their artifacts sit in runs/ next to a metrics.json that
+    the current scorer wrote. An old experiment's artifacts were written by a
+    different scorer against a different eval set — rendering them in the same
+    frame would present a picture of one measurement under the label of
+    another. So these rows carry what genuinely survives: the design record
+    the agent pre-registered, the verdict the loop reached at the time in its
+    own units, and the re-measurement on today's ruler, each labelled as what
+    it is."""
+    if not hist_rows:
+        return ""
+    by_era = {e["era_index"]: e for e in eras}
+    out = []
+    for r in reversed(hist_rows):
+        if r["era"] == "mission":       # the current era renders in full above
+            continue
+        era = by_era.get(r["era_index"], {})
+        uid = f"{r['era']}-{r['src_id']}"
+        num = f"{r['era_index'] + 1}.{r['src_id']}"
+        v = r["mission_score"]
+        prov = r["provenance"]
+        if prov == "holdout":
+            stat, cls = "HOLDOUT", "hold"
+        elif prov == "gated":
+            stat, cls = "GATED FAIL", "fail"
+        elif prov in ("incomparable", "unrecoverable"):
+            stat, cls = "NO SCORE", "disc"
+        elif r["kept"]:
+            stat, cls = "KEPT", "kept"
+        else:
+            stat, cls = "DISCARDED", "disc"
+        # The verdict line says what the loop concluded AND, where they
+        # disagree, that today's ruler disagrees. That disagreement is the
+        # substance of the whole exercise, so it is stated on every row it
+        # applies to rather than left to the reader to infer from the chart.
+        why = {
+            "kept": "The loop kept this — it beat the running best under the "
+                    "metric then in force.",
+            "disc": "The loop discarded this — no improvement under the metric "
+                    "then in force.",
+            "fail": "Failed a deployment gate: too large, too slow, or it "
+                    "abstained on too many frames to be scoreable.",
+            "hold": "Blind Hamburg holdout check. Logged for honesty, never "
+                    "allowed to drive keep/revert.",
+        }.get(cls, "")
+        if v is not None and v >= 1.0 and cls == "kept":
+            why += f" On today's ruler it scores {v:.3f} — worse than silence."
+        era_metric_txt = "—"
+        if r["era_metric"] is not None and r["era_metric"] < FAIL:
+            em = r["era_metric"]
+            era_metric_txt = (f"{em/1000:,.2f} km" if em >= 1000 else
+                              f"{em:,.1f} m" if em >= 10 else f"{em:.3f}")
+        tint = ERA_TINT.get(r["era"], "")
+        out.append(f"""<tr class="row-main hist-row{' kept-row' if cls == 'kept' else ''}" id="r{uid}"
+ style="--era-tint:{tint}" onclick="toggle('{uid}')">
+<td><span class="caret">▸</span></td>
+<td class="num" title="{esc(era.get('label', ''))} — experiment {r['src_id']} of that era">{num}</td>
+<td class="title-cell"><b>{esc(r['title'] or '(untitled)')}</b>
+  <span class="mono" style="color:var(--faint)"> {esc((r['git_commit'] or '')[:8])}</span>
+  <div class="row-why why-{cls}">{esc(why)}</div></td>
+<td><span class="cat">{esc(r['category'] or '—')}</span></td>
+<td class="mono">—</td>
+<td class="num">{fmt_score(v) if v is not None else '—'}</td>
+<td class="num">—</td><td class="num">—</td>
+<td class="num">{fmt_dur(r['duration_s'])}</td>
+<td class="num">—</td>
+<td><span class="st st-{cls}">{stat}</span></td></tr>""")
+
+        blocks = []
+        if r["eli5"]:
+            blocks.append(f"<div class='eb eb-eli'><div class='eb-h'>In plain "
+                          f"words</div><p>{esc(r['eli5'])}</p></div>")
+        for key, cls_, label in (("hypothesis", "eb-hyp", "Hypothesis"),
+                                 ("method", "eb-met", "Method"),
+                                 ("conclusion", "eb-con", "Conclusion at the time")):
+            if r[key]:
+                blocks.append(f"<div class='eb {cls_}'><div class='eb-h'>{label}</div>"
+                              f"<p>{esc(r[key])}</p></div>")
+        if v is not None:
+            measured = (
+                f"<div class='eb eb-res'><div class='eb-h'>Re-measured on "
+                f"today's ruler</div><p>Mission score <b>{v:.3f}</b> &mdash; "
+                f"<b>{(r['usable_fix_rate'] or 0)*100:.1f}%</b> of held-out "
+                f"frames give a usable fix, <b>{(r['false_fix_rate'] or 0)*100:.1f}%</b> "
+                f"are confident and wrong, {(r['abstain_rate'] or 0)*100:.1f}% "
+                f"abstain. Median miss {fmt_m(r['median_error_m'])}. "
+                f"{HIST_PROV[prov]}</p></div>")
+        else:
+            measured = (f"<div class='eb eb-res'><div class='eb-h'>Not on "
+                        f"today's ruler</div><p>{HIST_PROV[prov]}</p></div>")
+        blocks.append(measured)
+        blocks.append(
+            f"<div class='eb eb-exp'><div class='eb-h'>What it was measured "
+            f"against then</div><p>Optimised: {esc(era.get('ruler', '—'))}, "
+            f"scoring <b>{era_metric_txt}</b>. Asked over: "
+            f"{esc(era.get('eval_set', '—'))}. {esc(era.get('note', ''))}</p></div>")
+
+        metrics = json.loads(r["rescored_json"] or "{}")
+        cells = ""
+        if metrics.get("areas"):
+            cells = (f"<div class='score-head'>Scoreboard &mdash; re-scored "
+                     f"today</div><div class='score-sub'>Produced by running "
+                     f"this experiment's exported model through the current "
+                     f"frozen scorer on the current eval set. It is not what "
+                     f"this experiment was told at the time.</div>"
+                     f"{cells_table(metrics)}")
+        # 45 of the earlier eras' experiments were drawn by the figure agent
+        # before figures were switched off for iteration speed. Those drawings
+        # are the clearest thing in the whole record about what was actually
+        # tried, so they lead the row exactly as the current era's do.
+        fig = arch_block({"kind": r["kind"], "arch_svg": r["arch_svg"],
+                          "id": uid, "title": r["title"] or ""})
+        out.append(f"""<tr class="detail" id="d{uid}" style="display:none"><td colspan="11">
+<div class="detail-inner">{fig}<div class="detail-grid">
+<div class="explain">{''.join(blocks)}</div>
+<div>{cells}
+<div class="provenance">era {esc(era.get('label', ''))} &middot; ts {esc((r['ts'] or '')[:19])} &middot;
+commit {esc((r['git_commit'] or '')[:12]) or '—'} &middot; artifacts {esc(r['artifacts_dir'] or '—')} &middot;
+took {fmt_dur(r['duration_s'])}</div>
+</div></div></div></td></tr>""")
+    return "".join(out)
+
+
+HIST_PROV = {
+    "rescored": "Measured, not converted: its exported model was re-run "
+                "through the current scorer for this page.",
+    "native": "Measured on this era's own ruler, which is the current one.",
+    "derived": "Its run artifacts were deleted, so the usable- and false-fix "
+               "rates were recovered arithmetically from the coverage and "
+               "hit-rate this era's scorer logged at the time. The eval set "
+               "and target were already identical to today's, so this is a "
+               "derivation rather than an estimate.",
+    "gated": "It failed a deployment gate, so there was no working model to "
+             "score then and none to re-score now.",
+    "incomparable": "It ran on 10 m/px imagery, before the switch to 1 m/px "
+                    "orthophotos. Feeding it today's crops would not be asking "
+                    "it the same question, so it is left unscored rather than "
+                    "given a number that means nothing.",
+    "unrecoverable": "Its run directory was deleted and its logged record does "
+                     "not carry enough to reconstruct the rates. This one is "
+                     "simply lost.",
+    "holdout": "A blind Hamburg holdout check (§5). It measures a different "
+               "area, so no Berlin mission score exists for it.",
+}
+
+
 def cells_table(metrics):
     areas = metrics.get("areas", [])
     if not areas:
@@ -1749,10 +1917,13 @@ def chain_of(e, exps):
 
 
 def arch_block(e, chain_str=""):
-    """The hand-drawn architecture diagram, when one exists (main-branch
-    figure generation — off on this branch, see CLAUDE.md "BRANCH OVERRIDE",
-    so this returns "" here). The text-only pipeline-stage fallback and the
-    worked-example figure that used to live here have moved to
+    """The agent-drawn architecture diagram, when one exists.
+
+    The loop runs with DRAW_FIGURES=0 on this branch (it cost ~15-20 min an
+    iteration), so the current era's five figures were drawn as a backfill and
+    45 more survive from the four-area era. Anything without one renders
+    nothing rather than a placeholder. The text-only pipeline-stage fallback
+    and the worked-example figure that used to live here have moved to
     worked_example_block() / the right column, since without a diagram the
     fallback sentence added nothing worth its own section."""
     if e["kind"] == "holdout_check":
@@ -2911,25 +3082,60 @@ def contract_svg():
 
 
 def paths_status(e, is_current):
+    """The one-line verdict under a figure's title.
+
+    Historical rows carry `mission_score` (measured today) where current-era
+    rows carry `primary_metric` (measured at the time). Both are the same
+    number on the same ruler, but only one of them is what the loop was told,
+    so the wording distinguishes them: an old design was kept on ITS metric
+    and merely re-scores at this value now."""
+    scored_now = "mission_score" in e
+    v = e.get("mission_score") if scored_now else e.get("primary_metric")
     if is_rejected(e):
         return "<span class='fail'>rejected</span> — never trained"
-    if e["primary_metric"] is not None and e["primary_metric"] >= FAIL:
+    if e.get("provenance") == "gated" or (v is not None and v >= FAIL):
         return "<span class='fail'>gated fail</span> — reverted"
+    if v is None:
+        return "no score on today's ruler"
+    if scored_now:
+        verdict = ("<b>kept</b> at the time" if e["kept"]
+                   else "discarded at the time")
+        return (f"{verdict} — re-scored today: mission score "
+                f"<span class='num'>{fmt_score(v)}</span>")
     if e["kept"]:
         cur = " <span class='chip-cur'>current design</span>" if is_current else ""
-        return f"<b>kept</b> — new best, mission score <b class='num'>{fmt_score(e['primary_metric'])}</b>{cur}"
-    return f"discarded — mission score <span class='num'>{fmt_score(e['primary_metric'])}</span>, reverted"
+        return f"<b>kept</b> — new best, mission score <b class='num'>{fmt_score(v)}</b>{cur}"
+    return f"discarded — mission score <span class='num'>{fmt_score(v)}</span>, reverted"
 
 
 def render_paths(exps):
     """gallery/inference-paths.html — every experiment's pre-registered
     architecture figure (the `architecture_svg` each agent must draw before
-    training), presented chronologically as one evolving design record."""
-    figs = [e for e in exps
-            if e["kind"] != "holdout_check"
-            and (e.get("arch_svg") or "").lstrip().startswith("<svg")]
+    training), across every era, as one design record.
+
+    Ordered NEWEST FIRST. Chronological order was right when the page covered
+    one era of a dozen figures; across five eras and fifty it buries the
+    design that actually works under everything that didn't."""
+    hist, eras = load_history()
+    era_by_key = {e["key"]: e for e in eras}
+    if hist:
+        figs = [dict(r, uid=f"{r['era']}-{r['src_id']}",
+                     no=f"{r['era_index'] + 1}.{r['src_id']}",
+                     anchor=(str(r["src_id"]) if r["era"] == "mission"
+                             else f"{r['era']}-{r['src_id']}"))
+                for r in hist
+                if r["kind"] != "holdout_check"
+                and (r["arch_svg"] or "").lstrip().startswith("<svg")]
+    else:
+        figs = [dict(e, uid=str(e["id"]), no=str(e["id"]), era="", era_index=0,
+                     era_label="", anchor=str(e["id"]))
+                for e in exps
+                if e["kind"] != "holdout_check"
+                and (e.get("arch_svg") or "").lstrip().startswith("<svg")]
     n_kept = sum(1 for e in figs if e["kept"])
-    current_id = next((e["id"] for e in reversed(figs) if e["kept"]), None)
+    current_id = next((e["uid"] for e in reversed(figs) if e["kept"]), None)
+    n_eras_with_figs = len({e["era"] for e in figs})
+    figs = list(reversed(figs))          # newest first
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -2950,16 +3156,21 @@ experiments is the design as proposed, not a diagram redrawn after the fact
 to match a result already known. One shared visual contract across every
 proposal (tensors drawn as tensors, operations as operations, no labeled
 boxes) is what makes them directly comparable, figure to figure.</p>
-<p>Read top to bottom to watch the design evolve: a <b>kept</b> proposal
-(ink rule, left) becomes the trunk the next experiment branches from; a
-<b>discarded</b> one — trained, scored, reverted — stays on the record at
-the same standard, dead branches included. Each caption is the experiment's
-own pre-registered plain-words explanation; click through for the full
-hypothesis, method, and scoreboard in the
-<a href="index.html">research log</a>. (Figures 1–6 predate the loop —
-bootstrap-era designs pre-registered as text, drawn to this standard after
-the fact; from experiment 7 on, every figure is the headless agent's own,
-drawn before training ran.)</p>
+<p><b>Newest first.</b> The most recent design is at the top and the oldest at
+the bottom, so reading down is reading backwards through the search. A
+<b>kept</b> proposal (ink rule, left) is the trunk the <i>next</i> experiment
+branched from; a <b>discarded</b> one — trained, scored, reverted — stays on
+the record at the same standard, dead branches included. Each caption is the
+experiment's own pre-registered plain-words explanation; click through for
+the full hypothesis, method, and scoreboard in the
+<a href="index.html">research log</a>.</p>
+<p>The figures are grouped by <b>evaluation era</b>. Each time the eval set
+or the metric was corrected the lineage was wiped and the search restarted
+from a fresh baseline, so designs either side of an era heading were judged
+by different instruments and no design in one era descends from one in
+another. That is worth knowing before you read a late figure as an
+improvement on an early one — several late designs are early designs, tried
+again once the measurement was capable of recognising them.</p>
 </div>
 <div class="contract-fig" data-ovfig data-title="The frozen contract — where the experiments happen">{contract_svg()}
 <p class="contract-cap">The shape every figure on this page shares. The gray
@@ -2977,9 +3188,27 @@ flight — they never board the aircraft.</p>
   <span class="k"><span class="sw" style="border-top-color:var(--ochre)"></span>training-only — never flies</span>
 </div>
 <p class="psub num">{len(figs)} proposals · {n_kept} kept ·
+{n_eras_with_figs} of {len(eras) or 1} eras drawn · newest first ·
 updated {now}</p>"""]
 
+    prev_era = None
     for e in figs:
+        # Newest first, so an era heading is emitted when the era CHANGES on
+        # the way back through time. Without it, fifty figures from five
+        # incompatible eras read as one continuous design lineage, which is
+        # the misreading this whole page exists to avoid.
+        if e["era"] != prev_era and era_by_key.get(e["era"]):
+            era = era_by_key[e["era"]]
+            prev_era = e["era"]
+            body.append(
+                f"<div class='era-head' style='--era-tint:"
+                f"{ERA_TINT.get(e['era'], '')}'>"
+                f"<span class='era-head-n' style='color:"
+                f"{ERA_INK.get(e['era'], '#6b6a60')}'>"
+                f"Era {e['era_index'] + 1}</span>"
+                f"<span class='era-head-t'>{esc(era['label'])}</span>"
+                f"<span class='era-head-s'>optimised {esc(era['ruler'])} · "
+                f"asked over {esc(era['eval_set'])}</span></div>")
         try:
             arch = json.loads(e.get("arch_json") or "null")
         except (TypeError, json.JSONDecodeError):
@@ -2991,24 +3220,25 @@ updated {now}</p>"""]
         kept_cls = " kept" if e["kept"] else ""
         eli5 = (f"<p><span class='fig-lead'>In plain words.</span> "
                 f"{esc(e['eli5'])}</p>" if e.get("eli5") else "")
-        chain = [str(k["id"]) for k in figs
-                 if k["kept"] and k["id"] < e["id"]] + [str(e["id"])]
-        pivot_tag = (" <span class='pivot-tag' title=\"Ran after 4+ consecutive "
-                     "misses — the harness required a new design family this "
-                     "round\">pivot</span>" if e.get("is_pivot") else "")
-        body.append(f"""<section class="fig-entry{kept_cls}" id="e{e['id']}" data-id="{e['id']}" data-chain="{','.join(chain)}">
+        # Ancestry runs within an era only — the lineage was wiped between
+        # them, so a chain across a boundary would be a fiction.
+        chain = [k["uid"] for k in figs
+                 if k["kept"] and k["era"] == e["era"]
+                 and k["no"] != e["no"]
+                 and (k.get("seq") or 0) < (e.get("seq") or 0)] + [e["uid"]]
+        body.append(f"""<section class="fig-entry{kept_cls}" id="e{e['uid']}" data-id="{e['uid']}" data-chain="{','.join(chain)}">
 <div class="fig-head">
-  <span class="fig-no num">Fig. {e['id']}</span>
-  <span class="fig-title">{esc(e['title'])}</span>{pivot_tag}
-  <span class="fig-status">{paths_status(e, e['id'] == current_id)}</span>
+  <span class="fig-no num">Fig. {e['no']}</span>
+  <span class="fig-title">{esc(e['title'])}</span>
+  <span class="fig-status">{paths_status(e, e['uid'] == current_id)}</span>
 </div>
-<div class="fig-svg" data-ovfig data-id="{e['id']}" data-chain="{','.join(chain)}" data-no="Fig. {e['id']}" data-title="{esc(e['title'])}">{e['arch_svg']}</div>
+<div class="fig-svg" data-ovfig data-id="{e['uid']}" data-chain="{','.join(chain)}" data-no="Fig. {e['no']}" data-title="{esc(e['title'])}">{e['arch_svg']}</div>
 <div class="fig-cap">
 {eli5}
 <p class="fig-meta">{esc(e['category'] or '—')} · {esc(e['init_strategy'] or '—')}
-· {chg}{esc(e['ts'][:10])} · commit
-<span class="mono">{esc(e['git_commit'][:8])}</span> ·
-<a href="index.html#r{e['id']}">full experiment record →</a></p>
+· {chg}{esc((e['ts'] or '')[:10])} · commit
+<span class="mono">{esc((e['git_commit'] or '')[:8])}</span> ·
+<a href="index.html#r{e['anchor']}">full experiment record →</a></p>
 </div>
 </section>""")
 
@@ -3039,6 +3269,10 @@ EVOLUTION_CSS = """
   text-transform:uppercase;letter-spacing:.09em;color:var(--faint);margin:0 0 14px}
 .evo-tick{stroke:var(--rule);stroke-width:1}
 #evo-svg{display:block;height:auto}
+.evo-era{pointer-events:none}
+.evo-erabound{stroke:var(--rule);stroke-width:1}
+.evo-eralab{font:600 11px var(--serif);font-feature-settings:"smcp" 1;
+  letter-spacing:.06em;stroke:none;pointer-events:none}
 .evo-grid{stroke:var(--rule-soft);stroke-width:1}
 .evo-day{fill:var(--faint);font:600 9.5px var(--serif);letter-spacing:.08em;
   text-transform:uppercase;text-anchor:middle}
@@ -3148,6 +3382,105 @@ EVOLUTION_JS = r"""
 EVOLUTION_OUT = REPO_ROOT / "gallery" / "research-evolution.html"
 
 
+def evolution_era_bands(eras):
+    """Era band rects for the hand-authored evolution SVG.
+
+    That figure is a literal, generated once, with time on x — and the x scale
+    is deliberately NON-linear: idle days are compressed so the busy ones get
+    room. Rather than reproduce that scale (and drift from it the first time
+    the figure is regenerated), read it back out of the figure itself: every
+    day gridline in the SVG carries its own x and its own label, which is a
+    complete description of the mapping. Each calendar day then gets its own
+    linear scale between its neighbouring gridlines, and 20 July — which has
+    no gridline because it starts off-canvas — is extrapolated from 21 July's.
+
+    Returns an SVG fragment to splice in immediately after the opening <svg>
+    tag, so the bands sit behind every mark in the figure."""
+    grid = re.findall(r"<line class='evo-grid' x1='([\d.]+)'.*?"
+                      r"<text class='evo-day' x='[\d.]+' y='\d+'>(\d+) Jul</text>",
+                      EVOLUTION_SVG)
+    if not grid or not eras:
+        return ""
+    day_x = {int(d): float(x) for x, d in grid}
+    days = sorted(day_x)
+    # viewBox width, so bands can be clamped to the canvas.
+    m = re.search(r"viewBox='0 0 ([\d.]+) ([\d.]+)'", EVOLUTION_SVG)
+    if not m:
+        return ""
+    VW, VH = float(m.group(1)), float(m.group(2))
+
+    def x_of(day_float):
+        """Day-of-July (fractional) -> x, piecewise-linear between gridlines."""
+        lo = max([d for d in days if d <= day_float], default=days[0])
+        hi = min([d for d in days if d > day_float], default=None)
+        if hi is None:                      # past the last gridline
+            lo2 = days[-2] if len(days) > 1 else days[-1] - 1
+            per = (day_x[days[-1]] - day_x[lo2]) / max(days[-1] - lo2, 1)
+            return day_x[days[-1]] + (day_float - days[-1]) * per
+        if day_float < days[0]:             # 20 July, off the left edge
+            per = day_x[days[1]] - day_x[days[0]] if len(days) > 1 else 300.0
+            return day_x[days[0]] - (days[0] - day_float) * per
+        span = hi - lo
+        return day_x[lo] + (day_float - lo) * (day_x[hi] - day_x[lo]) / span
+
+    def to_day(ts):
+        # ISO timestamps, all inside July 2026 — day + fraction of day.
+        try:
+            t = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            return None
+        return t.day + (t.hour * 3600 + t.minute * 60 + t.second) / 86400.0
+
+    # The canvas is wider than the drawing (the figure leaves scroll room past
+    # the last node). Ending the final band at the viewBox edge would paint a
+    # long stretch of empty canvas as though work happened there, so it stops
+    # where the trunk does.
+    trunk = re.search(r"<line class='evo-trunk'[^>]*x2='([\d.]+)'", EVOLUTION_SVG)
+    content_end = min(VW, float(trunk.group(1)) + 60) if trunk else VW
+
+    parts, prev_row = [], 1
+    for i, era in enumerate(eras):
+        d0, d1 = to_day(era["ts_start"]), to_day(era["ts_end"])
+        if d0 is None or d1 is None:
+            continue
+        # An era runs until the next one starts, so its band should too —
+        # otherwise the gaps between eras read as unaccounted-for time.
+        if i + 1 < len(eras):
+            nxt = to_day(eras[i + 1]["ts_start"])
+            if nxt is not None:
+                d1 = nxt
+        lo = max(0.0, x_of(d0) if i else 0.0)
+        hi = min(content_end, x_of(d1) if i + 1 < len(eras) else content_end)
+        if hi - lo < 1:
+            continue
+        key = era["key"]
+        ink = ERA_INK.get(key, "#6b6a60")
+        label = ERA_SHORT.get(key, era["label"])
+        parts.append(f"<rect class='evo-era' x='{lo:.1f}' y='0' "
+                     f"width='{hi-lo:.1f}' height='{VH:.0f}' "
+                     f"fill='{ERA_TINT.get(key, 'rgba(107,106,96,.06)')}'/>")
+        if i:
+            parts.append(f"<line class='evo-erabound' x1='{lo:.1f}' y1='0' "
+                         f"x2='{lo:.1f}' y2='{VH:.0f}'/>")
+        # Captions sit low, under the trunk labels, where the figure is empty —
+        # the top strip already carries the day gridline labels. The last three
+        # eras are hours wide against the first two's days, so their bands are
+        # far narrower than their names: those get staggered onto two rows with
+        # a leader down to the band, rather than overprinting each other.
+        cx, wid = (lo + hi) / 2, hi - lo
+        if wid >= len(label) * 6.4:
+            parts.append(f"<text class='evo-eralab' x='{cx:.1f}' y='{VH-10:.0f}' "
+                         f"text-anchor='middle' fill='{ink}'>{esc(label)}</text>")
+        else:
+            prev_row = 0 if prev_row else 1
+            ly = VH - 10 - 16 * prev_row
+            parts.append(f"<line class='evo-erabound' x1='{cx:.1f}' y1='{ly+4:.0f}' "
+                         f"x2='{cx:.1f}' y2='{VH-6:.0f}' stroke='{ink}'/>")
+            parts.append(f"<text class='evo-eralab' x='{cx:.1f}' y='{ly:.0f}' "
+                         f"text-anchor='middle' fill='{ink}'>{esc(label)}</text>")
+    return "".join(parts)
+
+
 def render_evolution(exps):
     """gallery/research-evolution.html — the research PROCESS as a graph, in
     the same idiom as the experiment lineage: a trunk of what survived, spurs
@@ -3182,6 +3515,18 @@ def render_evolution(exps):
       "</svg><b>an insight that merged in</b> &mdash; the arrow is where it changed the project</span>"
       "<span class='k'><svg width='22' height='12'><path d='M11,1 l5.5,5.5 l-5.5,5.5 "
       "l-5.5,-5.5 z' fill='#8c2f1f'/></svg><b>incident</b> &mdash; something broke</span>")
+    _, eras = load_history()
+    bands = evolution_era_bands(eras)
+    # Splice the bands in right after the opening <svg …> so they sit behind
+    # every mark, and extend the key with one swatch per era.
+    evo_svg = (re.sub(r"(<svg\b[^>]*>)", lambda m: m.group(1) + bands,
+                      EVOLUTION_SVG, count=1) if bands else EVOLUTION_SVG)
+    if bands:
+        key += "".join(
+            f"<span class='k'><span class='era-sw' "
+            f"style='background:{ERA_TINT.get(e['key'], '')}'></span>"
+            f"<b>{esc(ERA_SHORT.get(e['key'], e['label']))}</b></span>"
+            for e in eras)
     body = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
 <title>Research Evolution — Low-Light Geolocalization</title>
@@ -3197,7 +3542,7 @@ def render_evolution(exps):
   "<b>Hover anything</b> for what happened and why.")}
 <div class="evo">
 <div class="evo-prose"><div class="evo-key">{key}</div></div>
-<p class="evo-scrollhint">scroll sideways &rarr; eleven days, 20&ndash;31 July</p>\n<div class="evo-figure">{EVOLUTION_SVG}</div>
+<p class="evo-scrollhint">scroll sideways &rarr; eleven days, 20&ndash;31 July</p>\n<div class="evo-figure">{evo_svg}</div>
 <div class="evo-prose"><p class="evo-read">The two long red lines are the story: for <b>ten of the
 project&rsquo;s eleven days</b> the evaluation was asking a question the model could
 not answer, and the score preferred guessing to learning. Every result measured
@@ -3719,7 +4064,7 @@ def render():
 <div class="dash-wrap">
 <div class="chart-card">
 <div class="chart-title">{chart_heading}</div>
-{chart_block}{chart_caption}</div>
+{chart_block}</div>
 <div class="tbl-card"><table class="main">
 <thead><tr><th></th><th>#</th><th>Experiment</th>
 <th title="Which lever the experiment pulls: architecture, loss, augmentation, relighting, training, quantization.">Category</th>
@@ -3732,6 +4077,13 @@ def render():
 <th>Status</th></tr></thead><tbody>"""]
     body.append(live_row((max((e["id"] for e in exps), default=0) or 0) + 1))
 
+    # Numbering restarted at 1 with each era, so a bare "#3" is ambiguous
+    # across a table that now spans all of them. Rows carry <era>.<n>.
+    cur_era = next((e for e in hist_eras if e["key"] == "mission"), None)
+    cur_prefix = f"{cur_era['era_index'] + 1}." if cur_era else ""
+    cur_era_label = esc(cur_era["label"]) if cur_era else ""
+    cur_tint = ERA_TINT.get("mission", "") if cur_era else ""
+
     for e in reversed(exps):
         kept_cls = " kept-row" if (e["kept"] and e["kind"] != "holdout_check") else ""
         size = f"{e['model_bytes_max']/1024:,.0f} KB" if e["model_bytes_max"] else "—"
@@ -3740,9 +4092,10 @@ def render():
                      "misses — the harness required a new design family this "
                      "round'>pivot</span>" if e.get("is_pivot") else "")
         sr_kind, sr_short, sr_long = status_reason(e)
-        body.append(f"""<tr class="row-main{kept_cls}" id="r{e['id']}" onclick="toggle({e['id']})">
+        body.append(f"""<tr class="row-main{kept_cls}" id="r{e['id']}"
+ style="--era-tint:{cur_tint}" onclick="toggle('{e['id']}')">
 <td><span class="caret">▸</span></td>
-<td class="num">{e['id']}</td>
+<td class="num" title="{cur_era_label} — experiment {e['id']} of that era">{cur_prefix}{e['id']}</td>
 <td class="title-cell"><b>{esc(e['title'])}</b>
   <span class="mono" style="color:var(--faint)"> {esc(e['git_commit'][:8])}</span>
   <div class="row-why why-{sr_kind}">{esc(sr_short)}</div></td>
@@ -3797,7 +4150,11 @@ agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duratio
 {figures(e['artifacts_dir'])}
 </div></td></tr>""")
 
-    body.append(f"</tbody></table>{HELP}</div>")
+    body.append(history_rows_html(hist_rows, hist_eras))
+    # The methodology note reads as a footnote to the whole page, so it sits
+    # at the foot of it rather than between the chart and the table.
+    body.append(f"</tbody></table>{HELP}"
+                f"<div class='chart-foot'>{chart_caption}</div></div>")
     body.append("<div id='lightbox'><img alt=''><div class='lb-cap'></div>"
                 "<div class='lb-hint'>click anywhere or press Esc to close</div></div>")
     body.append("<div id='tip'></div>" + OVERLAY_HTML

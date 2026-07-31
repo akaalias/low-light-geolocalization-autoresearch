@@ -200,6 +200,9 @@ CREATE TABLE IF NOT EXISTS history (
     method         TEXT,
     conclusion     TEXT,
     eli5           TEXT,
+    arch_svg       TEXT,                  -- the agent-drawn architecture figure
+    arch_json      TEXT,                  -- pre-registered {"stages":[...]}
+    init_strategy  TEXT,
     artifacts_dir  TEXT,
     git_commit     TEXT,
     duration_s     REAL,
@@ -268,7 +271,10 @@ def main():
                 kind=d.get("kind"), kept=d.get("kept"), title=d.get("title"),
                 category=d.get("category"), hypothesis=d.get("hypothesis"),
                 method=d.get("method"), conclusion=d.get("conclusion"),
-                eli5=d.get("eli5"), artifacts_dir=d.get("artifacts_dir"),
+                eli5=d.get("eli5"), arch_svg=d.get("arch_svg"),
+                arch_json=d.get("arch_json"),
+                init_strategy=d.get("init_strategy"),
+                artifacts_dir=d.get("artifacts_dir"),
                 git_commit=d.get("git_commit"), duration_s=d.get("duration_s"),
                 era_metric=era_metric, era_metric_kind=era["ruler"],
                 mission_score=None, usable_fix_rate=None, false_fix_rate=None,
