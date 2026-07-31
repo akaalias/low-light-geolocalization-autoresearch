@@ -3304,6 +3304,9 @@ EVOLUTION_CSS = """
   text-transform:uppercase;letter-spacing:.09em;color:var(--faint);margin:0 0 14px}
 .evo-tick{stroke:var(--rule);stroke-width:1}
 #evo-svg{display:block;height:auto}
+.evo-branch{fill:none;stroke:var(--ink);stroke-width:3}
+.evo-dormant{stroke:var(--faint);stroke-width:2;stroke-dasharray:5 6;opacity:.65}
+.evo-dormantlab{fill:var(--faint);font:italic 10.5px var(--serif)}
 .evo-era{pointer-events:none}
 .evo-erabound{stroke:var(--rule);stroke-width:1}
 .evo-eralab{font:600 11px var(--serif);font-feature-settings:"smcp" 1;
@@ -3516,6 +3519,86 @@ def evolution_era_bands(eras):
     return "".join(parts)
 
 
+# berlin-slim was a fork of the research framework itself, not another step
+# along it: one locale, daytime only, relighting disabled, figures and pivot
+# gate off. Everything that followed — the viewpoint evaluation, the mission
+# score, the result — happened ON that fork; main has not moved since. Drawing
+# it as trunk absorbed the fork into the mainline and quietly claimed the
+# result for a branch that never produced it.
+SPLIT_X = 4362.6          # the berlin-slim node
+BRANCH_Y = 216.0          # the fork's own lane, above the trunk
+TRUNK_Y = 256.0
+END_X = 4629.7           # where the trunk line stops
+RESULT_X = 4589.7        # the 0.040 result node (short of the line's end)
+
+
+def evolution_fork_svg(svg: str) -> str:
+    """Lift everything after the berlin-slim node onto its own branch lane.
+
+    Surgery on the generated figure rather than a redraw: the coordinates
+    below are read out of it above, and each edit is one element. Kept
+    together here so the whole fork is legible as one change."""
+    dy = TRUNK_Y - BRANCH_Y
+    subs = [
+        # Trunk stops at the fork; what continues is main, dormant since.
+        (f"<line class='evo-trunk' x1='52.0' y1='{TRUNK_Y:.0f}' "
+         f"x2='{END_X}' y2='{TRUNK_Y:.0f}'/>",
+         f"<line class='evo-trunk' x1='52.0' y1='{TRUNK_Y:.0f}' "
+         f"x2='{SPLIT_X}' y2='{TRUNK_Y:.0f}'/>"
+         f"<line class='evo-dormant' x1='{SPLIT_X}' y1='{TRUNK_Y:.0f}' "
+         f"x2='{END_X}' y2='{TRUNK_Y:.0f}'/>"
+         f"<text class='evo-dormantlab' x='{(SPLIT_X + END_X) / 2:.1f}' "
+         f"y='{TRUNK_Y + 15:.0f}' text-anchor='middle'>main — unchanged since</text>"
+         f"<path class='evo-branch' d='M{SPLIT_X},{TRUNK_Y:.0f} "
+         f"C{SPLIT_X + 15:.1f},{TRUNK_Y:.0f} {SPLIT_X + 22:.1f},{BRANCH_Y:.0f} "
+         f"{SPLIT_X + 40:.1f},{BRANCH_Y:.0f} L{END_X},{BRANCH_Y:.0f}'/>"),
+        # The fork node keeps the trunk's y — it IS the split — but its tick
+        # and label swap to the underside, since the lane above is now taken.
+        (f"<line class='evo-tick' x1='{SPLIT_X}' y1='{TRUNK_Y:.0f}' "
+         f"x2='{SPLIT_X}' y2='244.0'/>",
+         f"<line class='evo-tick' x1='{SPLIT_X}' y1='{TRUNK_Y:.0f}' "
+         f"x2='{SPLIT_X}' y2='271.0'/>"),
+        (f"<text class='evo-tlab' data-k='t7' x='{SPLIT_X}' y='232'>"
+         f"berlin-slim branch</text>",
+         f"<text class='evo-tlab' data-k='t7' x='{SPLIT_X}' y='280'>"
+         f"berlin-slim branch</text>"),
+        # The result now sits on the branch that produced it.
+        (f"<line class='evo-tick' x1='{RESULT_X}' y1='{TRUNK_Y:.0f}' "
+         f"x2='{RESULT_X}' y2='271.0'/>",
+         f"<line class='evo-tick' x1='{RESULT_X}' y1='{BRANCH_Y:.0f}' "
+         f"x2='{RESULT_X}' y2='{BRANCH_Y + 15:.0f}'/>"),
+        (f"<circle class='evo-node' data-k='t8' cx='{RESULT_X}' "
+         f"cy='{TRUNK_Y:.0f}' r='6'/>",
+         f"<circle class='evo-node' data-k='t8' cx='{RESULT_X}' "
+         f"cy='{BRANCH_Y:.0f}' r='6'/>"),
+        (f"<text class='evo-tlab' data-k='t8' x='{RESULT_X}' y='280'>",
+         f"<text class='evo-tlab' data-k='t8' x='{RESULT_X}' y='{BRANCH_Y + 24:.0f}'>"),
+    ]
+    # The three insights that arrived after the fork arrived ON the fork, so
+    # their arrows terminate at the branch lane rather than the trunk.
+    tip_y = BRANCH_Y - 9        # where the arrow's point lands
+    for x in ("4455.5", "4538.1", "4589.7"):
+        xf = float(x)
+        subs.append((f"{x},247.0'/>", f"{x},{tip_y:.1f}'/>"))
+        subs.append((f"d='M{xf - 4.5:.1f},245.0 L{x},254.0 L{xf + 4.5:.1f},245.0 z'",
+                     f"d='M{xf - 4.5:.1f},{tip_y - 2:.1f} L{x},{tip_y + 7:.1f} "
+                     f"L{xf + 4.5:.1f},{tip_y - 2:.1f} z'"))
+    # m3 descends from y=192 to a target that is now only 15px below it; its
+    # original second control point (208) would sit PAST that target and bow
+    # the elbow backwards, so it moves up with it.
+    subs.append(("C4448.5,192.0 4455.5,208.0", "C4448.5,192.0 4455.5,200.0"))
+    return _apply(svg, subs)
+
+
+def _apply(svg: str, subs) -> str:
+    for a, b in subs:
+        if a not in svg:
+            print(f"  evolution fork: pattern not found — {a[:70]}")
+            continue
+        svg = svg.replace(a, b, 1)
+    return svg
+
+
 def render_evolution(exps):
     """gallery/research-evolution.html — the research PROCESS as a graph, in
     the same idiom as the experiment lineage: a trunk of what survived, spurs
@@ -3554,8 +3637,9 @@ def render_evolution(exps):
     bands = evolution_era_bands(eras)
     # Splice the bands in right after the opening <svg …> so they sit behind
     # every mark, and extend the key with one swatch per era.
+    forked = evolution_fork_svg(EVOLUTION_SVG)
     evo_svg = (re.sub(r"(<svg\b[^>]*>)", lambda m: m.group(1) + bands,
-                      EVOLUTION_SVG, count=1) if bands else EVOLUTION_SVG)
+                      forked, count=1) if bands else forked)
     if bands:
         key += "".join(
             f"<span class='k'><span class='era-sw' "
