@@ -1,18 +1,35 @@
 """FROZEN (see /FROZEN) — scoring, §6.
 
-Primary metric (optimized by the loop): worst-case (max) GEOMETRIC-MEAN
-position error in meters across all lighting buckets x the DEVELOPMENT areas
-given, on eval-split crops (held-out viewpoints — see pipeline/dataset.py).
-Target <= TARGET_M.
+PRIMARY METRIC = THE PRODUCT REQUIREMENT, not a statistic about errors.
 
-The geometric mean replaced the median on 2026-07-31 because the median
-actively rewarded the degenerate strategy: a model guessing near the map
-centre has a tight unimodal error distribution and a decent median, while a
-model genuinely memorizing places is bimodal — some spots nailed, others
-badly wrong — and scores WORSE on the median. That is backwards for a
-memorization system, and it was observed reverting the first experiment that
-actually learned anything. See the long note in score_area(). Median, mean,
-p10, p25 and hit-rates are all still logged, just not optimized.
+The aircraft takes a vision fix every 5-10 s and it is its ONLY drift
+correction (§2). Per frame, exactly three things can happen:
+
+    confident AND within TARGET_M   -> USABLE FIX   (the product)
+    not confident                   -> abstains     (safe; waits for the next)
+    confident AND outside TARGET_M  -> FALSE FIX    (dangerous; injects a
+                                       wrong position into navigation)
+
+    mission_score = (1 - usable_fix_rate) + false_fix_rate   [minimized]
+
+0.0 is perfect; abstaining everywhere is 1.0; being confidently wrong
+everywhere is 2.0 — strictly worse than silence, which is what a drone needs.
+The loop optimizes the worst such score across buckets x development areas.
+
+WHY NOT AN ERROR STATISTIC. Median, geometric mean and percentiles were each
+tried as the primary and each rewarded something the product does not want.
+The median (to 2026-07-31) rewarded a model that guesses the map centre — a
+tight mediocre distribution beats a bimodal one — and was caught reverting the
+only experiment that had begun to memorize anything. The geometric mean
+(2026-07-31, hours) fixed that but was still a research proxy chosen to make
+progress visible rather than to state what the aircraft needs, which is the
+same category of error. All of them stay LOGGED as diagnostics; none is
+optimized. If a future change makes the score improve while usable_fix_rate
+does not, the metric is wrong again — that is the check to run.
+
+A tiny tie-break term (TIE_BREAK_W, bounded strictly below 1/n_eval) separates
+candidates the product metric scores identically, so the loop still has signal
+at 0% usable. It can never outrank a real difference in usable/false rates.
 
 Gates folded into the scalar (§6): a per-area exported ONNX must fit the
 ESP32-P4 envelope — file size <= MODEL_MAX_BYTES and single-thread host CPU
@@ -47,7 +64,8 @@ CONF_THRESHOLD = 0.3
 MIN_COVERAGE = 0.2
 FAIL_SCORE = 1e9
 MAX_EVAL_CROPS_PER_BUCKET = 400     # deterministic subsample cap for speed
-TARGET_M = 100.0                    # berlin-slim milestone (main-branch target: 20 m)
+TARGET_M = 100.0                    # a fix within this radius is USABLE (main branch: 20 m)
+TIE_BREAK_W = 0.001                 # max influence of the log-error tie-break; < 1/n_eval
 
 
 def load_session(onnx_path: Path):
@@ -112,44 +130,66 @@ def score_area(area: str, model_dir: Path, data_dir: Path, heatmap_dir: Path | N
                 e = error_meters(meta, u, v, c["cx"], c["cy"])
                 errs.append(e)
                 heat_points.append((c["cx"], c["cy"], e))
+        # ---- THE PRODUCT REQUIREMENT (CLAUDE.md §2/§6) ----
+        # The aircraft takes a vision fix every 5-10 s and it is the ONLY drift
+        # correction available. For each frame exactly one of three things
+        # happens, and only these three things matter:
+        #
+        #   confident AND within target  -> USABLE FIX      (what we want)
+        #   not confident                -> abstains        (safe: waits)
+        #   confident AND outside target -> FALSE FIX       (dangerous: it
+        #                                   injects a wrong position into nav)
+        #
+        # So the score is a mission-failure rate, minimized:
+        #
+        #   score = (1 - usable_fix_rate) + false_fix_rate  [+ tiny tie-break]
+        #
+        # Abstaining everywhere gives 1.0. Being confidently wrong everywhere
+        # gives 2.0 -- strictly worse than silence, which is correct for a
+        # drone. Perfect gives 0.0. This directly encodes §6's rule that "a
+        # model that honestly abstains on bad frames is more useful than one
+        # that confidently guesses wrong".
+        #
+        # Deliberately NOT a statistic about the error distribution. Median,
+        # geometric mean and percentiles were each tried as the primary and
+        # each rewarded something the product does not want (2026-07-31: the
+        # median rewarded guessing the map centre; the geometric mean was a
+        # research proxy chosen to make progress visible, which is the same
+        # category of mistake). They remain logged as diagnostics ONLY.
+        #
+        # TIE-BREAK: usable/false rates are quantized to 1/n_eval (0.0025 at
+        # n=400). The log-error term below can shift the score by at most
+        # TIE_BREAK_W (0.001), so it can NEVER outrank a genuine difference in
+        # the product metric -- it only separates candidates the product
+        # metric scores identically, so the loop is not blind at 0% usable.
         coverage = n_conf / max(len(crops), 1)
-        # SCORE = GEOMETRIC MEAN of the position error, not the median.
-        #
-        # Why (measured 2026-07-31, experiments 1-3 on the v2 split): a model
-        # that just guesses near the map centre produces a tight, mediocre,
-        # unimodal error distribution — decent median, no good tail. A model
-        # that genuinely memorizes places produces a BIMODAL one: some spots
-        # nailed, others badly wrong when it misidentifies. The median rewards
-        # the guesser and punishes the learner. Concretely, exp 2 located 8% of
-        # Berlin to within 100 m (the baseline: 0.0%, exp 3: 0.2%) and was
-        # REVERTED for a slightly worse median, while exp 3 — a marginally
-        # better centre-guesser with one good hit in five hundred — was KEPT.
-        # Median was the only candidate statistic that ranked exp 2 last;
-        # p25, p10, geometric mean and hit-rate all ranked it first.
-        #
-        # The geometric mean is used rather than a percentile because it reads
-        # every frame (no arbitrary cutoff), and because error here spans two
-        # orders of magnitude, where the log scale is the natural one: pulling
-        # one spot from 2000 m to 50 m — i.e. actually memorizing it — moves it
-        # substantially, which is exactly the signal the loop must be able to
-        # see. Still minimized and still in metres, so the harness's
-        # keep/revert comparison and the FAIL sentinel are unchanged.
-        # median/mean/percentiles/hit-rates stay logged below, not optimized.
         ea = np.asarray(errs, dtype=float) if errs else np.array([])
+        n_all = max(len(crops), 1)
+        n_usable = int((ea <= TARGET_M).sum()) if errs else 0
+        n_false = int((ea > TARGET_M).sum()) if errs else 0
+        usable_rate = n_usable / n_all
+        false_rate = n_false / n_all
         geo = float(np.exp(np.mean(np.log(np.clip(ea, 1.0, None))))) if errs else None
+        tie = 0.0
+        if geo is not None:
+            tie = TIE_BREAK_W * min(max((np.log10(geo) - 1.0) / 3.0, 0.0), 1.0)
+        mission = (1.0 - usable_rate) + false_rate + tie
         cell = {
             "n_eval": len(crops),
             "coverage": round(coverage, 4),
+            # --- the product requirement ---
+            "usable_fix_rate": round(usable_rate, 4),
+            "false_fix_rate": round(false_rate, 4),
+            "abstain_rate": round(1.0 - coverage, 4),
+            "mission_score": round(mission, 6),
+            # --- diagnostics only, never optimized ---
             "geomean_error_m": round(geo, 2) if geo is not None else None,
             "median_error_m": round(float(np.median(ea)), 2) if errs else None,
             "mean_error_m": round(float(np.mean(ea)), 2) if errs else None,
             "p10_error_m": round(float(np.percentile(ea, 10)), 2) if errs else None,
             "p25_error_m": round(float(np.percentile(ea, 25)), 2) if errs else None,
-            # product-facing: what share of frames give a usable fix at all
-            "hit_rate_at_target": round(float((ea < TARGET_M).mean()), 4) if errs else None,
-            "hit_rate_at_2p5x_target": round(float((ea < 2.5 * TARGET_M).mean()), 4) if errs else None,
         }
-        cell["score"] = FAIL_SCORE if coverage < MIN_COVERAGE else cell["geomean_error_m"]
+        cell["score"] = FAIL_SCORE if coverage < MIN_COVERAGE else cell["mission_score"]
         result["buckets"][bucket] = cell
 
     # Region-holdout diagnostic (dataset.py v2): a small 1-in-32-block region
@@ -171,12 +211,16 @@ def score_area(area: str, model_dir: Path, data_dir: Path, heatmap_dir: Path | N
             if conf >= CONF_THRESHOLD:
                 n_conf += 1
                 errs.append(error_meters(meta, u, v, c["cx"], c["cy"]))
+        eh = np.asarray(errs, dtype=float) if errs else np.array([])
+        nh = max(len(hold), 1)
         result["region_holdout"] = {
             "n_eval": len(hold),
             "bucket": bucket0,
-            "coverage": round(n_conf / max(len(hold), 1), 4),
-            "median_error_m": round(float(np.median(errs)), 2) if errs else None,
-            "mean_error_m": round(float(np.mean(errs)), 2) if errs else None,
+            "coverage": round(n_conf / nh, 4),
+            "usable_fix_rate": round(float((eh <= TARGET_M).sum()) / nh, 4) if errs else 0.0,
+            "false_fix_rate": round(float((eh > TARGET_M).sum()) / nh, 4) if errs else 0.0,
+            "median_error_m": round(float(np.median(eh)), 2) if errs else None,
+            "mean_error_m": round(float(np.mean(eh)), 2) if errs else None,
             "note": "unseen-region diagnostic; logged only, never scored",
         }
 
@@ -246,14 +290,14 @@ def main():
     out = {
         "kind": "holdout_check" if args.holdout else "development",
         "areas": per_area,
-        "primary_worst_median_error_m": primary,
+        "primary_mission_score": primary,
         "target_m": TARGET_M,
     }
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w") as f:
         json.dump(out, f, indent=2)
     label = "HOLDOUT" if args.holdout else "PRIMARY"
-    print(f"{label} worst-case median error: {primary:.2f} m (target <= 100 m)")
+    print(f"{label} worst-case mission score: {primary:.4f} (0=every frame a usable fix, 1=abstains everywhere, 2=confidently wrong everywhere)")
 
 
 if __name__ == "__main__":

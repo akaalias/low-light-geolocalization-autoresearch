@@ -423,7 +423,7 @@ PYCHECK
       if [ -n "$UNCHANGED_STAGES" ]; then
         echo "REJECTED (before implementation): a complete architecture rethink was required, but the design's own self-report leaves these stages unchanged: $UNCHANGED_STAGES — skipping implementation and training."
         mv runs/pending_experiment.json "$RUN_DIR/experiment.json"
-        echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
+        echo '{"kind":"development","areas":[],"primary_mission_score":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
         $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
           --experiment-file "$RUN_DIR/experiment.json" \
           --result "rejected before implementation: a complete architecture rethink was required, but these stages were already self-reported unchanged in the design: $UNCHANGED_STAGES" \
@@ -490,7 +490,7 @@ PYCHECK
   if [ -n "$CARRIED_BACKBONE" ]; then
     REJECT_REASON="a pivot was demanded but the implementation still carries the champion's backbone ($CARRIED_BACKBONE) — checked against the post-implementation source; a pivot must replace the trunk outright, not re-tune, truncate, wrap, or ensemble it"
     echo "REJECTED: $REJECT_REASON — skipping training."
-    echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
+    echo '{"kind":"development","areas":[],"primary_mission_score":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
     snapshot_model_src "$RUN_DIR"
     git checkout -- model/ 2>/dev/null || true
     $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
@@ -561,19 +561,19 @@ PYMERGE
   report_phase score
   T0=$(date +%s)
   if [ "$FAILED" = "1" ]; then
-    echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
+    echo '{"kind":"development","areas":[],"primary_mission_score":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
   else
     $PY -m pipeline.score --areas "$(echo $AREAS | tr ' ' ',')" \
       --model-dir "$RUN_DIR/models" --out "$RUN_DIR/metrics.json" \
       --heatmap-dir "$RUN_DIR/heatmaps" || \
-      echo '{"kind":"development","areas":[],"primary_worst_median_error_m":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
+      echo '{"kind":"development","areas":[],"primary_mission_score":1e9,"target_m":100.0}' > "$RUN_DIR/metrics.json"
   fi
   T_SCORE=$(( $(date +%s) - T0 ))
   T0=$(date +%s)
   $PY -m autoresearch.samples --areas "$(echo $AREAS | tr ' ' ',')" --out "$RUN_DIR/samples" || true
   T_SAMPLES=$(( $(date +%s) - T0 ))
 
-  METRIC="$($PY -c "import json;print(json.load(open('$RUN_DIR/metrics.json'))['primary_worst_median_error_m'])")"
+  METRIC="$($PY -c "import json;print(json.load(open('$RUN_DIR/metrics.json'))['primary_mission_score'])")"
   BEST="$(best_metric)"
   KEEP="$($PY -c "print(1 if $METRIC < $BEST else 0)")"
 
@@ -589,20 +589,20 @@ PYMERGE
   # from its brief. A few KB of .py per experiment is nothing next to losing
   # the only copy of a champion.
   snapshot_model_src "$RUN_DIR"
-  RESULT="primary worst-case geomean error = $METRIC m (previous best $BEST m); full per-area/bucket breakdown in metrics.json"
+  RESULT="mission score = $METRIC (previous best $BEST) — (1 - usable_fix_rate) + false_fix_rate, worst bucket; full breakdown in metrics.json"
   if [ "$KEEP" = "1" ]; then
     quarantine_oversized model
-    git add -A model/ && git commit -q -m "Experiment $N: $METRIC m (previous best $BEST m)
+    git add -A model/ && git commit -q -m "Experiment $N: mission score $METRIC (previous best $BEST)
 
 $(cat "$RUN_DIR/experiment.json")" || true
     echo "{\"primary\": $METRIC, \"run\": \"$RUN_ID\", \"commit\": \"$(git rev-parse HEAD)\"}" > "$STATE/best.json"
     KEPT_COUNT=$(( $(cat "$STATE/kept_count" 2>/dev/null || echo 0) + 1 )); echo "$KEPT_COUNT" > "$STATE/kept_count"
-    CONCLUSION="KEPT — metric improved ($BEST -> $METRIC m); change committed as $(git rev-parse --short HEAD)"
-    echo "KEPT: $METRIC m (improved from $BEST)"
+    CONCLUSION="KEPT — mission score improved ($BEST -> $METRIC); change committed as $(git rev-parse --short HEAD)"
+    echo "KEPT: mission score $METRIC (improved from $BEST)"
   else
     git checkout -- model/ 2>/dev/null || true
-    CONCLUSION="REVERTED — metric did not improve ($METRIC m vs best $BEST m); change discarded"
-    echo "REVERTED: $METRIC m (best remains $BEST)"
+    CONCLUSION="REVERTED — mission score did not improve ($METRIC vs best $BEST); change discarded"
+    echo "REVERTED: mission score $METRIC (best remains $BEST)"
   fi
   DURATION_S=$(( $(date +%s) - EXPERIMENT_T0 ))
   $PY -m autoresearch.db --metrics "$RUN_DIR/metrics.json" \
@@ -677,4 +677,4 @@ PYTIMES
   report_phase "synced"
 done
 report_phase idle
-echo "Loop finished. Best: $(best_metric) m — see gallery/index.html"
+echo "Loop finished. Best mission score: $(best_metric) — see gallery/index.html"
