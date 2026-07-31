@@ -1235,45 +1235,49 @@ def chain_of(e, exps):
 
 
 def arch_block(e, chain_str=""):
-    """One REAL worked example — the same held-out night crop for every
-    experiment, run through the run's actual exported ONNX model — plus a
-    one-line pipeline sentence from the pre-registered architecture stages
-    (changed stages in accent red). Replaces an earlier icon strip: real
-    model output shows mechanism differences icons cannot."""
+    """The hand-drawn architecture diagram, when one exists (main-branch
+    figure generation — off on this branch, see CLAUDE.md "BRANCH OVERRIDE",
+    so this returns "" here). The text-only pipeline-stage fallback and the
+    worked-example figure that used to live here have moved to
+    worked_example_block() / the right column, since without a diagram the
+    fallback sentence added nothing worth its own section."""
     if e["kind"] == "holdout_check":
         return ""
-    try:
-        arch = json.loads(e.get("arch_json") or "null")
-    except (TypeError, json.JSONDecodeError):
-        arch = None
-    stages = arch.get("stages") if isinstance(arch, dict) else None
+    svg = e.get("arch_svg") or ""
+    svg = svg if svg.lstrip().startswith("<svg") else ""
+    if not svg:
+        return ""
+    legend = (" — <span style='color:var(--faint)'>gray = frozen contract"
+              "</span> · ink = the current design · "
+              "<span class='chg'>red = this experiment's change</span>")
+    attrs = (f" data-ovfig data-id='{e['id']}' data-chain='{chain_str}' "
+             f"data-no='Fig. {e['id']}' data-title='{esc(e['title'])}'"
+             if chain_str else "")
+    return (f"<div class='arch'><div class='arch-h'>The design under test — "
+            f"technical diagram{legend}</div>"
+            f"<div class='arch-svg'{attrs}>{svg}</div></div>")
 
-    segs = []
-    for s in (stages or []):
-        chg = bool(s.get("changed"))
-        cls = " class='chg'" if chg else ""  # 3.11-compatible (pod venv): no nested same-quote f-string
-        seg = f"<b{cls}>{esc(s.get('name', '?'))}</b>"
-        if chg and s.get("detail"):
-            seg += f" <span class='pd'>— {esc(s['detail'])}</span>"
-        sep = (" <span class='sep'>&nbsp;+&nbsp;</span> " if s.get("train_only")
-               else " <span class='sep'>→</span> ")
-        segs.append((sep, seg))
-    pipe = "".join((sep if i else "") + seg for i, (sep, seg) in enumerate(segs))
 
+def worked_example_block(e):
+    """One REAL worked example — the same held-out crop for every
+    experiment, run through the run's actual exported ONNX model. Shown in
+    the scoreboard column, above the scoreboard itself."""
+    if e["kind"] == "holdout_check":
+        return ""
     info = workedexample.ensure(e["artifacts_dir"])
-    fig = ""
-    if info:
-        rd = Path("..") / (e["artifacts_dir"] or "")
-        fr, mp = rd / info["frame"], rd / info["map"]
-        if info.get("has_field"):
-            fstat = (f"red glow = its <b>actual internal probability field</b> "
-                     f"recovered from the deployed model — the sharpest cell holds "
-                     f"<span class='num'>{info['peak_pct']}%</span> of the probability mass "
-                     f"(a uniform “no idea” field would be {info['uniform_pct']}%)")
-        else:
-            fstat = ("this design points at a coordinate directly — it has no "
-                     "internal probability field to show")
-        fig = f"""<div class='wex-row'>
+    if not info:
+        return ""
+    rd = Path("..") / (e["artifacts_dir"] or "")
+    fr, mp = rd / info["frame"], rd / info["map"]
+    if info.get("has_field"):
+        fstat = (f"red glow = its <b>actual internal probability field</b> "
+                 f"recovered from the deployed model — the sharpest cell holds "
+                 f"<span class='num'>{info['peak_pct']}%</span> of the probability mass "
+                 f"(a uniform “no idea” field would be {info['uniform_pct']}%)")
+    else:
+        fstat = ("this design points at a coordinate directly — it has no "
+                 "internal probability field to show")
+    fig = f"""<div class='wex-row'>
 <figure class='wex-frame'><a href='{fr}'><img src='{fr}' loading='lazy'></a>
 <figcaption><b>what the camera saw</b> — a real held-out 128 m crop,
 {esc(info['area'])} at {esc(info['bucket'])}; its true spot is the ○ on the map.
@@ -1288,30 +1292,7 @@ Every experiment is shown this same crop.</figcaption></figure>
 <div><div class='wex-num num'>{info['conf']:.2f}</div>
 <div class='wex-lab'>self-reported confidence</div></div>
 </div></div>"""
-    svg = e.get("arch_svg") or ""
-    svg = svg if svg.lstrip().startswith("<svg") else ""
-    if not fig and not pipe and not svg:
-        return ""
-    note = (" — <span class='chg'>red = what this experiment changed</span>"
-            if (svg or (stages and any(s.get("changed") for s in stages)))
-            else "")
-    out = []
-    if svg:
-        legend = (" — <span style='color:var(--faint)'>gray = frozen contract"
-                  "</span> · ink = the current design · "
-                  "<span class='chg'>red = this experiment's change</span>")
-        attrs = (f" data-ovfig data-id='{e['id']}' data-chain='{chain_str}' "
-                 f"data-no='Fig. {e['id']}' data-title='{esc(e['title'])}'"
-                 if chain_str else "")
-        out.append(f"<div class='arch-h'>The design under test — technical "
-                   f"diagram{legend}</div><div class='arch-svg'{attrs}>{svg}</div>")
-    elif pipe:
-        out.append(f"<div class='arch-h'>The pipeline this run used{note}</div>"
-                   f"<div class='wex-pipe' style='margin:0 0 14px'>{pipe}</div>")
-    if fig:
-        out.append(f"<div class='arch-h'>One real test, end to end"
-                   f"{'' if svg or pipe else note}</div>{fig}")
-    return f"<div class='arch'>{''.join(out)}</div>"
+    return f"<div class='arch'><div class='arch-h'>One real test, end to end</div>{fig}</div>"
 
 
 
@@ -2626,15 +2607,14 @@ def render():
 <td class="num">{cost_str(e)}</td>
 <td>{status_of(e)}</td></tr>""")
 
+        eli5_top = (f"<div class='eb eb-eli'><div class='eb-h'>In plain "
+                    f"words</div><p>{esc(e['eli5'])}</p></div>" if e.get("eli5") else "")
         blocks = []
         _why_head = {"kept": "Why it's the new best", "rej": "Why it was rejected",
                      "fail": "Why it failed the gate", "disc": "Why it was discarded",
                      "hold": "What this holdout check is"}.get(sr_kind, "Why this status")
         blocks.append(f"<div class='eb eb-why why-{sr_kind}'><div class='eb-h'>{_why_head}</div>"
                       f"<p>{esc(sr_long)}</p></div>")
-        if e.get("eli5"):
-            blocks.append(f"<div class='eb eb-eli'><div class='eb-h'>In plain "
-                          f"words</div><p>{esc(e['eli5'])}</p></div>")
         for key, cls, label in (("hypothesis", "eb-hyp", "Hypothesis"),
                                 ("method", "eb-met", "Method"),
                                 ("expected_outcome", "eb-exp", "Expected outcome"),
@@ -2646,10 +2626,12 @@ def render():
         metrics = json.loads(e["metrics_json"] or "{}")
         body.append(f"""<tr class="detail" id="d{e['id']}" style="display:none"><td colspan="11">
 <div class="detail-inner">
+{eli5_top}
 {arch_block(e, chain_of(e, exps))}
 <div class="detail-grid">
 <div class="explain">{''.join(blocks)}</div>
 <div>
+{worked_example_block(e)}
 <div class="score-head">Scoreboard — median error (m) per area × lighting</div>
 <div class="score-sub">the worst cell (underlined) is the experiment's score;
 red = failed cell, ink = at target</div>
