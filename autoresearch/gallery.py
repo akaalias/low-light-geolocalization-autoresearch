@@ -25,6 +25,8 @@ import math
 import re
 from pathlib import Path
 
+import numpy as np
+
 from autoresearch import workedexample
 from autoresearch.db import REPO_ROOT, connect
 
@@ -904,6 +906,73 @@ def live_row(next_id):
   }}
   tick(); setInterval(tick,1000);
 }})();</script>"""
+
+
+GOAL_MAP = REPO_ROOT / "gallery" / "goal_map.png"
+
+
+def ensure_goal_map():
+    """Render the GOAL illustration: the exact same held-out viewpoints the
+    real error map uses, drawn as if every one were a usable fix.
+
+    This is deliberately a MOCK, not a measurement — no model produced it. It
+    exists so the overview can show the target state next to the real one, and
+    it is labelled as an illustration everywhere it appears. Reuses the frozen
+    scorer's own renderer (feeding error=0 for every point) so the two images
+    are pixel-for-pixel comparable rather than drawn by different code."""
+    if GOAL_MAP.exists():
+        return GOAL_MAP
+    try:
+        from pipeline.common import DATA_DIR, load_meta
+        from pipeline.dataset import list_crops
+        from pipeline.score import MAX_EVAL_CROPS_PER_BUCKET, render_heatmap
+        meta = load_meta("berlin")
+        crops = list_crops("berlin", meta["width"], meta["height"], "eval")
+        if len(crops) > MAX_EVAL_CROPS_PER_BUCKET:
+            idx = np.linspace(0, len(crops) - 1, MAX_EVAL_CROPS_PER_BUCKET).astype(int)
+            crops = [crops[i] for i in idx]
+        render_heatmap("berlin", DATA_DIR, [(c["cx"], c["cy"], 0.0) for c in crops], GOAL_MAP)
+    except Exception:
+        return None
+    return GOAL_MAP
+
+
+def challenge_block(exps):
+    """Overview hero: the real baseline error map beside the goal illustration."""
+    dev = [e for e in exps if e["kind"] != "holdout_check"]
+    base = next((e for e in dev if e.get("artifacts_dir")), None)
+    if not base:
+        return ""
+    real = REPO_ROOT / base["artifacts_dir"] / "heatmaps" / "heatmap_berlin.png"
+    if not real.exists():
+        return ""
+    goal = ensure_goal_map()
+    if not goal:
+        return ""
+    rel_real = Path(base["artifacts_dir"]) / "heatmaps" / "heatmap_berlin.png"
+    rel_goal = Path("gallery") / "goal_map.png"
+    return f"""<div class="sec-h">The challenge, in one picture</div>
+<div class="pnote"><p>Every dot is one held-out viewpoint over Berlin: ground the
+model was trained on, framed from a position and heading it has never seen —
+what the aircraft actually faces. <b>Left is where we are.</b> <b>Right is what
+winning looks like.</b> Same city, same test points, same renderer; only the
+answers differ.</p></div>
+<div class="wex-row"><div class="wex-imgs">
+<figure class="wex-frame"><a href="{rel_real}"><img src="{rel_real}" loading="lazy"></a>
+<figcaption><b>where we start — measured</b> — the naive baseline. Red is a
+miss beyond 250&nbsp;m. It is confident on every frame and wrong on every
+frame, which scores {fmt_score(base['primary_metric'])} — the worst value the
+metric allows, because a confident wrong answer is worse for a drone than
+silence.</figcaption></figure>
+<div class="wex-arr">→</div>
+<figure class="wex-map"><a href="{rel_goal}"><img src="{rel_goal}" loading="lazy"></a>
+<figcaption><b>the goal — an illustration, not a result</b> — the identical test
+points drawn as if every one were a usable fix (within 100&nbsp;m). <i>No model
+produced this image.</i> It is here to show the target: a network small enough
+for a $4 flight computer that has memorised this city well enough to turn every
+glance into a position.</figcaption></figure>
+</div></div>
+"""
 
 
 def page_header(title, sub_html):
@@ -2228,6 +2297,8 @@ an architecture worth generalizing back out.</p>
   <div class="stat"><b>{progress_s}</b><span>closed toward the goal</span></div>
   <div class="stat"><b>{len(dev)}</b><span>experiments · {n_kept} kept</span></div>
 </div>
+
+{challenge_block(exps)}
 
 <div class="sec-h">How it works — think globally, memorize locally</div>
 <div class="pnote">
