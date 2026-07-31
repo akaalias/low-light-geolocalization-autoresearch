@@ -27,11 +27,30 @@ the branch.
 3. **The harness deleted reverted experiments' source.** `snapshot_model_src()`
    in `loop.sh` now guards all four code-discarding paths.
 
-**Everything before 31 July is void** — ~63 experiments scored on a broken
+**Every verdict before 31 July is void** — 76 experiments scored on a broken
 evaluation with a metric that preferred guessing. Their verdicts do not
 transfer, and the user has decided the design agent must **not** be given the
 old conclusions (importing invalid refutations would steer it away from ideas
 that were never actually refuted). Old DBs are in `archive/`.
+
+**The experiments themselves are not void, and are back on the record.**
+`autoresearch/rescore_history.py` re-runs the *current* frozen `score.py`
+against each archived experiment's exported `berlin.onnx` on the *current*
+eval set, and writes `lineage_history.sqlite` (83 rows, 5 eras). This is
+measurement, not conversion: 53 re-scored from surviving models, 4 native, 4
+with rates recovered arithmetically from the logged record, 17 gated fails
+that had no working model then or now, 2 that predate the 10 m/px → 1 m/px
+imagery switch and so cannot be asked the same question, 1 lost outright.
+Every one of those states is drawn distinctly on the site; none is faked.
+Rebuild with `.venv/bin/python -m autoresearch.rescore_history` (cached in
+`state/rescore_cache/`, so re-runs are seconds) whenever an archived DB
+changes — the gallery reads the generated DB, never the archives directly.
+
+The headline result of that exercise: the ten-day champion re-scores at
+**1.588** — 3.0% usable, 61.8% confidently wrong, i.e. **worse than saying
+nothing**. The best of all 76 is 1.311. That is what makes 0.040 legible as
+an achievement rather than a gift, and it is why every published page shows
+all 81 development experiments rather than the current era's five.
 
 ### How to run it
 
@@ -60,11 +79,32 @@ train.
 
 ### Pages
 
-`gallery/index.html` research log · `gallery/research-lineage.html` experiment
-lineage · `gallery/research-evolution.html` how the research process itself
-branched (reconstructed from conversation transcripts) · `gallery/lab-notebook.html`
+`gallery/index.html` research log · `gallery/inference-paths.html` model
+designs · `gallery/research-lineage.html` experiment lineage ·
+`gallery/research-evolution.html` how the research process itself branched
+(reconstructed from conversation transcripts) · `gallery/lab-notebook.html`
 dated narrative · `index.html` overview. `./infra/build_site.sh` refreshes the
 `_site/` preview copy, which does **not** update on its own.
+
+All five pages now span **every era**, driven by `lineage_history.sqlite`, and
+share one visual system: a background band per evaluation era, same tints and
+same captions on the chart, the lineage arcs, the evolution graph and the
+model-designs headings. Two rules hold across all of them and are easy to
+break by accident:
+
+- **No arc, chain or running-best line crosses an era boundary as ancestry.**
+  Each wipe restarted the search from a fresh baseline, so a link across a
+  boundary asserts a descent that never happened. The one thing that *is*
+  continuous is the re-scored mission score, because the ruler no longer
+  changes at the boundaries.
+- **`kept`/`discarded` is the decision made AT THE TIME**, under whatever
+  metric was then in force — which is why black dots sit high in the early
+  bands. Never re-derive those flags from the re-scored number; say the two
+  disagree instead.
+
+`state/research_status` holds `finished`, which retires the pinned live banner
+(it becomes a footer line) and the pulsing in-progress table row. Set it back
+to `live` before restarting the loop.
 
 ---
 
