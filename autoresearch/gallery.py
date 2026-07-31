@@ -313,6 +313,18 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .chart-card svg{width:100%;height:auto;display:block}
 .axis-lab{font:11px var(--serif);fill:var(--faint)}
 .tick-line{stroke:var(--rule-soft);stroke-width:1}
+/* Era bands: washes behind the data, never competing with it. The caption
+   sits above its band, so identity is never colour-alone. */
+.era-lab{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
+  letter-spacing:.05em}
+rect.era{cursor:default}
+rect.era:hover{filter:brightness(.985)}
+.era-sw{width:9px;height:11px;display:inline-block;vertical-align:-1px;
+  margin-right:1px;background:rgba(107,106,96,.09);
+  outline:1px solid var(--rule-soft)}
+.chart-note{max-width:74ch;margin:10px 0 2px;font:14px/1.5 var(--serif);
+  color:var(--muted)}
+.chart-note b{color:var(--ink);font-weight:600}
 .pt{cursor:pointer}
 circle.pt.big{r:7px}
 text.pt.big{font-size:17px}
@@ -1276,6 +1288,247 @@ def chart_svg(exps):
     parts.append(f"<text class='axis-lab' x='{ml+iw/2:.0f}' y='{H-1}' text-anchor='middle'>experiment №</text>")
     parts.append("</svg>")
     return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# The full project history, across every evaluation era.
+#
+# experiments.sqlite holds only the CURRENT era, because the lineage was wiped
+# each time the evaluation or the metric was corrected. Rendered alone it says
+# the problem took five experiments, which is false: it took 83 across five
+# eras and ten days of them were spent against a broken evaluation.
+#
+# lineage_history.sqlite (built by autoresearch.rescore_history) is the whole
+# record placed on ONE ruler — every surviving model re-run through today's
+# frozen scorer on today's eval set. See that module's docstring for what is
+# and is not comparable.
+# ---------------------------------------------------------------------------
+HISTORY_DB = REPO_ROOT / "lineage_history.sqlite"
+
+# One band per era. Low-chroma washes drawn from the site's own three hues, so
+# the bands recede behind the data: grey for the eras spent lost, ochre as the
+# evaluation is repaired, the accent for the era that worked. Identity is never
+# colour-alone — every band is also labelled in place.
+ERA_TINT = {
+    "bootstrap": "rgba(107,106,96,.055)",
+    "main":      "rgba(107,106,96,.105)",
+    "slim_v1":   "rgba(138,106,30,.075)",
+    "eval_v2":   "rgba(138,106,30,.135)",
+    "mission":   "rgba(140,47,31,.085)",
+}
+ERA_INK = {
+    "bootstrap": "#6b6a60", "main": "#6b6a60", "slim_v1": "#8a6a1e",
+    "eval_v2": "#8a6a1e", "mission": "#8c2f1f",
+}
+# Short band captions. The full era description lives in the eras table and is
+# surfaced on hover; these are what fits above a band.
+ERA_SHORT = {
+    "bootstrap": "bootstrap",
+    "main": "4 areas · 6 lighting buckets · region holdout",
+    "slim_v1": "berlin only",
+    "eval_v2": "viewpoint holdout",
+    "mission": "mission score",
+}
+
+
+def load_history():
+    """Read the merged cross-era record. Returns (rows, eras), or ([], []) if
+    the history DB has not been built yet — every caller degrades to the
+    current era alone rather than failing."""
+    if not HISTORY_DB.exists():
+        return [], []
+    import sqlite3
+    conn = sqlite3.connect(HISTORY_DB)
+    conn.row_factory = lambda cur, row: {d[0]: row[i]
+                                         for i, d in enumerate(cur.description)}
+    rows = conn.execute("SELECT * FROM history ORDER BY seq ASC").fetchall()
+    eras = conn.execute("SELECT * FROM eras ORDER BY era_index ASC").fetchall()
+    conn.close()
+    return rows, eras
+
+
+def history_chart_svg(rows, eras):
+    """Every experiment the project has ever run, on one ruler, with a band
+    per evaluation era.
+
+    Two things are deliberately NOT the same encoding, because they are not
+    the same claim:
+
+      * the DOTS are today's mission score for that model — measured, on
+        today's eval set, by today's frozen scorer;
+      * black vs. grey is whether the loop KEPT it, decided at the time under
+        whatever metric was then in force.
+
+    So a black dot high on the chart is not a contradiction — it is the record
+    of a metric that rewarded the wrong thing, which is the entire point of
+    showing this. The running-best line is the honest one: the best mission
+    score anyone had actually achieved as of that experiment, continuous
+    across era boundaries because the ruler no longer changes at them."""
+    if not rows:
+        return ""
+    W, H = 1000, 384
+    ml, mr, mt, mb = 58, 16, 54, 46      # mt leaves room for the band captions
+    iw, ih = W - ml - mr, H - mt - mb
+    ymin, ymax = 0.0, 2.05
+    n = len(rows)
+
+    def y(v):
+        return mt + ih * (1 - (max(min(v, ymax), ymin) - ymin) / (ymax - ymin))
+
+    def x(i):
+        return ml + iw * (0.5 if n == 1 else i / (n - 1))
+
+    step = iw / max(n - 1, 1)
+    p = [f"<svg viewBox='0 0 {W} {H}' role='img' aria-label='mission score for "
+         f"every experiment across all five evaluation eras'>"]
+
+    # --- era bands, first so everything else sits on top of them ---
+    for era in eras:
+        lo = x(era["seq_start"] - 1) - step / 2
+        hi = x(era["seq_end"] - 1) + step / 2
+        lo, hi = max(lo, ml - 4), min(hi, W - mr + 4)
+        if hi <= lo:
+            continue
+        key = era["key"]
+        tip = esc(f"<b>{esc(era['label'])}</b><span class='t-note'>"
+                  f"{esc(era['note'])}<br><br>Optimised then: "
+                  f"{esc(era['ruler'])} · asked over {esc(era['eval_set'])}"
+                  f"</span>")
+        p.append(f"<rect class='era' data-tip=\"{tip}\" x='{lo:.1f}' y='{mt}' "
+                 f"width='{hi-lo:.1f}' height='{ih}' "
+                 f"fill='{ERA_TINT.get(key, 'rgba(107,106,96,.06)')}'/>")
+        if era["era_index"]:
+            p.append(f"<line x1='{lo:.1f}' x2='{lo:.1f}' y1='{mt}' y2='{mt+ih}' "
+                     f"stroke='#d9d5c3' stroke-width='1'/>")
+        # Caption above the band. Narrow bands get a tick and a label that
+        # leans out of the band rather than an unreadable squeeze inside it.
+        cx, wid = (lo + hi) / 2, hi - lo
+        ink = ERA_INK.get(key, "#6b6a60")
+        label = ERA_SHORT.get(key, era["label"])
+        if wid >= len(label) * 5.4:
+            p.append(f"<text class='era-lab' x='{cx:.1f}' y='{mt-10}' "
+                     f"text-anchor='middle' fill='{ink}'>{esc(label)}</text>")
+        else:
+            row = mt - 10 - 13 * (era["era_index"] % 2)
+            p.append(f"<line x1='{cx:.1f}' x2='{cx:.1f}' y1='{row+3}' y2='{mt-1}' "
+                     f"stroke='{ink}' stroke-width='1'/>")
+            p.append(f"<text class='era-lab' x='{cx:.1f}' y='{row}' "
+                     f"text-anchor='middle' fill='{ink}'>{esc(label)}</text>")
+
+    # --- gridlines and the goal rule ---
+    for v in (0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0):
+        p.append(f"<line class='tick-line' x1='{ml}' x2='{W-mr}' "
+                 f"y1='{y(v):.1f}' y2='{y(v):.1f}'/>")
+        p.append(f"<text class='axis-lab' x='{ml-8}' y='{y(v)+3:.1f}' "
+                 f"text-anchor='end'>{v:g}</text>")
+    p.append(f"<text class='axis-lab' x='{ml-8}' y='{mt-4}' text-anchor='end'>score</text>")
+    # 1.0 is not just another gridline: at or above it the model is worth less
+    # than silence, which is the whole argument for this metric.
+    p.append(f"<line x1='{ml}' x2='{W-mr}' y1='{y(1.0):.1f}' y2='{y(1.0):.1f}' "
+             f"stroke='#9b998c' stroke-width='1' stroke-dasharray='2 4'/>")
+    # Both rule captions hug the LEFT edge. Everything interesting on this
+    # chart happens on the right — the descent through 1.0 and the landing on
+    # 0 — so a right-anchored caption is exactly where the data will be.
+    p.append(f"<text class='axis-lab' x='{ml+6}' y='{y(1.0)-5:.1f}' "
+             f"text-anchor='start'>1 — no better than saying nothing</text>")
+    p.append(f"<line x1='{ml}' x2='{W-mr}' y1='{y(0.0):.1f}' y2='{y(0.0):.1f}' "
+             f"stroke='#8c2f1f' stroke-width='1.5' stroke-dasharray='6 5'/>")
+    p.append(f"<text class='axis-lab' x='{ml+6}' y='{y(0.0)-6:.1f}' "
+             f"text-anchor='start' fill='#8c2f1f'>0 — every frame a usable fix</text>")
+
+    # --- best achieved so far, on today's ruler, unbroken across eras ---
+    best, pts = None, []
+    for i, r in enumerate(rows):
+        v = r["mission_score"]
+        if v is None or r["kind"] == "holdout_check":
+            continue
+        if best is None:
+            best, pts = v, [(x(i), y(v))]
+        elif v < best:
+            pts += [(x(i), y(best)), (x(i), y(v))]
+            best = v
+    if pts:
+        pts.append((x(n - 1), y(best)))
+        p.append("<path d='M" + " L".join(f"{a:.1f},{b:.1f}" for a, b in pts)
+                 + "' fill='none' stroke='#111' stroke-width='2'/>")
+
+    # --- one mark per experiment ---
+    prov_note = {
+        "rescored": "re-scored today from its exported model",
+        "native": "measured natively — this era's own ruler",
+        "derived": "rates recovered from the logged record (model files gone)",
+        "gated": "failed a deployment gate or never trained",
+        "incomparable": "ran on 10 m/px imagery — not answerable on today's eval set",
+        "unrecoverable": "model and rates both lost",
+        "holdout": "blind Hamburg holdout check — a different area, so no Berlin score exists",
+    }
+    for i, r in enumerate(rows):
+        v, prov = r["mission_score"], r["provenance"]
+        cx = x(i)
+        verdict = ("holdout check" if r["kind"] == "holdout_check"
+                   else "kept at the time" if r["kept"] else "discarded at the time")
+        head = f"<b>{esc(r['era_label'])} #{r['src_id']} — {esc(r['title'] or '')}</b>"
+        if v is not None:
+            detail = (f"mission score {v:.3f} · usable "
+                      f"{(r['usable_fix_rate'] or 0)*100:.1f}% · false fix "
+                      f"{(r['false_fix_rate'] or 0)*100:.1f}%")
+        else:
+            detail = prov_note[prov]
+        tip = esc(f"{head}<span class='t-note'>{esc(detail)} · {verdict}"
+                  f"<br>{esc(prov_note[prov])}</span>")
+        # Only the current era exists as a row in the table below, so only its
+        # marks are click-linked; the rest are hover-only.
+        did = f" data-id='{r['src_id']}'" if r["era"] == "mission" else ""
+        common = f"class='pt'{did} data-tip=\"{tip}\""
+        if prov == "holdout":
+            p.append(f"<circle {common} cx='{cx:.1f}' cy='{mt+ih-6}' r='3.5' "
+                     f"fill='#fffff8' stroke='#8a6a1e' stroke-width='1.5'/>")
+        elif prov in ("incomparable", "unrecoverable"):
+            # No score exists and none can be manufactured — say so with a
+            # break in the record rather than a plotted zero.
+            p.append(f"<line {common} x1='{cx:.1f}' x2='{cx:.1f}' "
+                     f"y1='{mt+ih-7}' y2='{mt+ih}' stroke='#9b998c' "
+                     f"stroke-width='1.5' stroke-dasharray='2 2'/>")
+        elif prov == "gated" or v is None:
+            p.append(f"<text {common} x='{cx:.1f}' y='{mt+11}' "
+                     f"text-anchor='middle' fill='#8c2f1f' font-weight='700' "
+                     f"font-size='13'>×</text>")
+        elif r["kind"] == "holdout_check":
+            p.append(f"<circle {common} cx='{cx:.1f}' cy='{y(v):.1f}' r='4' "
+                     f"fill='#fffff8' stroke='#8a6a1e' stroke-width='1.5'/>")
+        elif r["kept"]:
+            p.append(f"<circle {common} cx='{cx:.1f}' cy='{y(v):.1f}' r='3.6' fill='#111'/>")
+        else:
+            p.append(f"<circle {common} cx='{cx:.1f}' cy='{y(v):.1f}' r='3' fill='#b9b6a6'/>")
+
+    # --- x labels: per-era numbering, placed greedily with a hard minimum gap.
+    # Numbering restarts inside every era, so two bands' labels can otherwise
+    # collide across a boundary ("...64 65 1 2..." runs together). Each era
+    # always gets its own #1 as an anchor; everything after it has to earn its
+    # place by clearing MIN_GAP from whatever was drawn last, boundary or not.
+    MIN_GAP = 24.0
+    ticks = []          # [(x, label)] chosen, left to right
+    for era in eras:
+        lo_i, hi_i = era["seq_start"] - 1, era["seq_end"] - 1
+        for i in range(lo_i, hi_i + 1):
+            cx, lab = x(i), rows[i]["src_id"]
+            clear = not ticks or cx - ticks[-1][0] >= MIN_GAP
+            if i == lo_i:
+                # An era's opening number anchors its band, so it always gets
+                # drawn; the previous era's trailing number yields to it.
+                while ticks and cx - ticks[-1][0] < MIN_GAP:
+                    ticks.pop()
+                ticks.append((cx, lab))
+            elif clear:
+                ticks.append((cx, lab))
+    for cx, lab in ticks:
+        p.append(f"<text class='axis-lab' x='{cx:.1f}' y='{mt+ih+15}' "
+                 f"text-anchor='middle'>{lab}</text>")
+    p.append(f"<text class='axis-lab' x='{ml+iw/2:.0f}' y='{H-8}' "
+             f"text-anchor='middle'>experiment № — restarting at 1 with each "
+             f"evaluation era</text>")
+    p.append("</svg>")
+    return "\n".join(p)
 
 
 def cells_table(metrics):
@@ -3222,6 +3475,7 @@ def render():
     conn.row_factory = lambda cur, row: {d[0]: row[i] for i, d in enumerate(cur.description)}
     exps = conn.execute("SELECT * FROM experiments ORDER BY id ASC").fetchall()
     annotate_pivot(exps)
+    hist_rows, hist_eras = load_history()
     n_dev = sum(1 for e in exps if e["kind"] != "holdout_check")
     n_kept = sum(1 for e in exps if e["kept"] and e["kind"] != "holdout_check")
     best = next((e["primary_metric"] for e in reversed(exps)
@@ -3229,6 +3483,63 @@ def render():
                  and e["primary_metric"] and e["primary_metric"] < FAIL),
                 None)
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    era_band_key = "".join(
+        f"<span class='era-sw' style='background:{ERA_TINT.get(e['key'], '')}'></span>"
+        for e in hist_eras) or "<span class='era-sw'></span>"
+    # "5 experiments, 4 kept" is true of the table below and false of the
+    # project: the current era is the fifth, and the four experiments that
+    # solved it stand on 78 that came before.
+    if hist_rows:
+        n_all = sum(1 for r in hist_rows if r["kind"] != "holdout_check")
+        status_meta = (f"{n_dev} experiment{'s' if n_dev != 1 else ''} in this "
+                       f"era, {n_kept} kept &mdash; and {n_all - n_dev} before it, "
+                       f"across {len(hist_eras) - 1} earlier evaluation "
+                       f"{'eras' if len(hist_eras) > 2 else 'era'}. The chart "
+                       f"below shows all {n_all}.")
+    else:
+        status_meta = (f"{n_dev} experiment{'s' if n_dev != 1 else ''}, "
+                       f"{n_kept} kept.")
+
+    # The chart shows the WHOLE project when the cross-era record has been
+    # built, and falls back to the current era alone when it hasn't. Showing
+    # only the current era is misleading on its own: it reads as though the
+    # problem took five experiments, when five eras and 83 experiments went
+    # into it and most of them were spent measuring the wrong thing.
+    if hist_rows:
+        n_hist = sum(1 for r in hist_rows if r["kind"] != "holdout_check")
+        n_by = {}
+        for r in hist_rows:
+            n_by[r["provenance"]] = n_by.get(r["provenance"], 0) + 1
+        n_era = len(hist_eras)
+        chart_heading = (f"Mission score per experiment, all {n_hist} of them "
+                         f"&mdash; (1 &minus; usable-fix rate) + false-fix rate, "
+                         f"lower is better")
+        chart_block = history_chart_svg(hist_rows, hist_eras)
+        chart_caption = (
+            f"<p class='chart-note'>Every experiment the project has run, across "
+            f"{n_era} evaluation eras. The lineage was wiped at each era boundary, "
+            f"so the numbering restarts inside every band &mdash; but the "
+            f"<b>vertical scale is one ruler throughout</b>. "
+            f"{n_by.get('rescored', 0)} of these were re&#8209;measured for this "
+            f"chart by running their exported model through <i>today&rsquo;s</i> "
+            f"frozen scorer on <i>today&rsquo;s</i> held&#8209;out viewpoints; "
+            f"{n_by.get('native', 0)} are native to the current era; "
+            f"{n_by.get('derived', 0)} had their run artifacts deleted and have "
+            f"their usable- and false-fix rates recovered arithmetically from the "
+            f"logged record; {n_by.get('gated', 0)} failed a deployment gate and "
+            f"had no working model to score, then or now. Nothing was converted "
+            f"by a fudge factor. "
+            f"<b>Black means the loop kept it</b> &mdash; judged at the time, "
+            f"under whatever metric was then in force, which is why kept "
+            f"experiments sit high in the early bands: the old metric was "
+            f"rewarding the wrong thing. The step line is the best mission score "
+            f"anyone had actually achieved, and it is unbroken across the "
+            f"boundaries because the ruler no longer changes at them.</p>")
+    else:
+        chart_heading = ("Mission score per experiment — (1 &minus; usable-fix "
+                         "rate) + false-fix rate, lower is better")
+        chart_block = chart_svg(exps)
+        chart_caption = ""
     best_size = next((e["model_bytes_max"] for e in reversed(exps)
                       if e["kept"] and e["kind"] != "holdout_check"
                       and e["model_bytes_max"]), None)
@@ -3260,7 +3571,7 @@ def render():
 <div class="status-callout">
   <div class="status-callout-h">Where we are right now</div>
   <p>{status_line}</p>
-  <p class="status-meta">{n_dev} experiment{'s' if n_dev != 1 else ''}, {n_kept} kept.</p>
+  <p class="status-meta">{status_meta}</p>
 </div>
 <header class="dash-head">
   <div class="dash-meta">
@@ -3271,14 +3582,15 @@ def render():
     <span class="k" title="Violated a deployment gate (model size, latency, or abstained too much) — scored as failure regardless of accuracy."><span class="x">×</span>Gated fail</span>
     <span class="k" title="Region-holdout check on genuinely untrained ground — logged for honesty, never used to decide keep/revert."><span class="ring"></span>Holdout check</span>
     <span class="k" title="This experiment ran after the design agent had gone 4+ consecutive tries without beating the running best — the harness injects a mandatory 'do not refine the champion again, pick an absent design family' directive into its prompt. Disabled on this branch (berlin-slim) — will not appear until reintroduced."><span class="tri"></span>Pivot-directed</span>
-    <span class="k" title="The frozen evaluation data itself was revised (bootstrap phase only). Scores before and after are measured on different test sets and cannot be compared; the running-best line restarts."><span class="vrule"></span>Eval-set reset</span>
+    <span class="k" title="No mission score exists for this experiment and none can be honestly reconstructed: either it ran on 10 m/px imagery before the switch to 1 m/px orthophotos (so it is not being asked the same question), or its model files and rate data are both gone."><span class="vrule"></span>Not on this ruler</span>
+    <span class="k" title="Each shaded band is one evaluation era. Within a band the eval set and the optimized metric were held fixed; between bands one or both changed and the lineage was wiped. Hover a band for what it was measuring.">{era_band_key}Evaluation era</span>
     <span id="updated">updated {now}</span>
   </div>
 </header>
 <div class="dash-wrap">
 <div class="chart-card">
-<div class="chart-title">Mission score per experiment — (1 &minus; usable-fix rate) + false-fix rate, lower is better</div>
-{chart_svg(exps)}</div>
+<div class="chart-title">{chart_heading}</div>
+{chart_block}{chart_caption}</div>
 <div class="tbl-card"><table class="main">
 <thead><tr><th></th><th>#</th><th>Experiment</th>
 <th title="Which lever the experiment pulls: architecture, loss, augmentation, relighting, training, quantization.">Category</th>
