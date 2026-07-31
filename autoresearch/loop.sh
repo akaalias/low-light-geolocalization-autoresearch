@@ -563,7 +563,18 @@ PYMERGE
 
   # 4. Keep or revert (Karpathy-style), then log the completed experiment
   #    record (pre-registered design + measured result + conclusion).
-  RESULT="primary worst-case median error = $METRIC m (previous best $BEST m); full per-area/bucket breakdown in metrics.json"
+  #
+  # ALWAYS snapshot the source that produced this result, BEFORE the revert
+  # below can destroy it. Until 2026-07-31 a reverted experiment's code was
+  # simply thrown away (`git checkout -- model/`), leaving only prose and an
+  # ONNX behind — so when the scoring metric was later corrected and a
+  # previously-reverted experiment turned out to be the best result the
+  # project had, its implementation no longer existed and had to be rebuilt
+  # from its brief. A few KB of .py per experiment is nothing next to losing
+  # the only copy of a champion.
+  mkdir -p "$RUN_DIR/model_src"
+  cp model/*.py "$RUN_DIR/model_src/" 2>/dev/null || true
+  RESULT="primary worst-case geomean error = $METRIC m (previous best $BEST m); full per-area/bucket breakdown in metrics.json"
   if [ "$KEEP" = "1" ]; then
     quarantine_oversized model
     git add -A model/ && git commit -q -m "Experiment $N: $METRIC m (previous best $BEST m)
