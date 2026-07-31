@@ -44,3 +44,19 @@ wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/galle
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-evolution.html (16 eras)
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
+WARNING: sync with origin/main failed (conflict or offline) — 76 commit(s) ahead, record is committed locally only
+=== Experiment 5 (4/12 recorded)  run=20260731_112048_experiment5  parent=4efadfe45bb1f6236b8a262d0176e7b2b5865235 ===
+agents finished (design: claude-fable-5, claude-haiku-4-5-20251001 322s, impl: claude-haiku-4-5-20251001, claude-opus-5 132s)
+--- train berlin:
+[berlin] epoch 8/8 loss=2.3152 top1=0.8254 mean_max_softmax=0.4713 views=72712 lr=1.00e-04
+{"area": "berlin", "n_train_crops": 581696, "epochs": 8, "device": "mps", "train_seconds": 906.4, "onnx_bytes": 3079093, "init": "from-scratch", "n_cells": 2970, "distinct_vantages_seen": 581696, "full_lattice_epochs": true, "final_train_top1": 0.8254, "chunk_size": 4096, "max_crops_per_bucket_arg": 6000}
+PRIMARY worst-case mission score: 0.0401 (0=every frame a usable fix, 1=abstains everywhere, 2=confidently wrong everywhere)
+samples -> runs/20260731_112048_experiment5/samples
+KEPT: mission score 0.040131 (improved from 0.09018)
+5
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/index.html (5 experiments)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/inference-paths.html (0 figures)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (5 nodes)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-evolution.html (graph: 13 trunk nodes, 4 abandoned, 5 superseded)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
