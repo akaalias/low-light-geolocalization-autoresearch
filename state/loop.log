@@ -60,3 +60,6 @@ wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/galle
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-evolution.html (graph: 13 trunk nodes, 4 abandoned, 5 superseded)
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
+WARNING: sync with origin/main failed (conflict or offline) — 79 commit(s) ahead, record is committed locally only
+Graceful stop requested — 5/12 experiments recorded so far.
+./autoresearch/loop.sh: line 708: l: command not found
