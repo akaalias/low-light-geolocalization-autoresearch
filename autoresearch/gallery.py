@@ -3066,7 +3066,7 @@ knows yet; finding out is the project.</p>
   <div class="stat"><b>{n_all_exp}</b><span>experiments designed, trained
     and scored to get here</span></div>
   <div class="stat"><b>{fmt_usd(cost_all)}</b><span>total cost &mdash; agent
-    tokens at API-equivalent rates, plus rented GPU</span></div>
+    tokens plus rented GPU</span></div>
 </div>
 
 {challenge_block(exps)}
