@@ -3377,14 +3377,47 @@ def render_overview(exps):
     # Figures for "The answer" and "The verdict". Read from the champion's own
     # record and training info rather than typed in, so the prose cannot drift
     # from the model it describes the way the 0.183 numbers did.
-    champ = next((e for e in reversed(dev)
-                  if e["kept"] and e["primary_metric"] is not None
-                  and e["primary_metric"] < FAIL), None)
-    best_mb = (champ["model_bytes_max"] or 0) / 1e6 if champ else 0.0
-    best_ms = champ["latency_ms_host_proxy"] if champ else 0.0
-    cm = json.loads(champ["metrics_json"] or "{}") if champ else {}
-    cell = next((c for a in cm.get("areas", [])
-                 for c in a.get("buckets", {}).values()), {})
+    # THE BEST RESULT ACROSS EVERY ERA, not the best in the current lineage.
+    #
+    # This used to read the current DB's last kept experiment, which is right
+    # only while an era is the whole story. The moment the lineage was wiped
+    # for the Prignitz era, "champion" became that era's day-one baseline and
+    # the front page advertised 92.5% / 29 m -- a WEAKER result than the
+    # project had already achieved, with Berlin's 96.5% nowhere on it. Every
+    # future wipe would do the same, resetting the overview to a baseline.
+    #
+    # The overview's job is "what did this achieve", so it reads the merged
+    # cross-era record, where every era is on one ruler by construction. The
+    # live era's own progress is the research log's job, not this page's.
+    _scored = [r for r in _hist if r["kind"] != "holdout_check"
+               and r["mission_score"] is not None and r["mission_score"] < FAIL]
+    best_hist = min(_scored, key=lambda r: r["mission_score"], default=None)
+    cm = {}
+    if best_hist and best_hist["artifacts_dir"]:
+        mp = REPO_ROOT / best_hist["artifacts_dir"] / "metrics.json"
+        if mp.exists():
+            try:
+                cm = json.loads(mp.read_text())
+            except (OSError, ValueError):
+                cm = {}
+    gates = next((a.get("gates") or {} for a in cm.get("areas", [])), {})
+    best_mb = (gates.get("model_bytes") or 0) / 1e6
+    best_ms = gates.get("latency_ms_host_proxy") or 0.0
+    # Rates come from the HISTORY row, which is the re-scored number on today's
+    # ruler -- not from the archived metrics.json, which its own era's scorer
+    # wrote and which may be on a ruler that no longer exists.
+    cell = {k: best_hist[k] for k in
+            ("usable_fix_rate", "false_fix_rate", "abstain_rate", "coverage",
+             "median_error_m", "geomean_error_m", "p10_error_m")} if best_hist else {}
+    # WHICH AREA the champion is for, read from its own metrics rather than
+    # typed into the prose. The overview said "Berlin" in five places while
+    # pulling its numbers from whatever the current lineage's champion happens
+    # to be -- so the moment the lineage moved to Prignitz the page claimed a
+    # drone could place itself in Berlin to 29 m at 92.5%, which are rural
+    # numbers under an urban sentence. Nothing warned; the figures are correct
+    # and only the noun was wrong, which is the hardest kind to notice.
+    champ_area = next((a.get("area") for a in cm.get("areas", [])), "berlin")
+    Area = champ_area.capitalize()
     hold = next((a.get("region_holdout") or {} for a in cm.get("areas", [])), {})
     usable_pct = f"{100*(cell.get('usable_fix_rate') or 0):.1f}%"
     false_pct = f"{100*(cell.get('false_fix_rate') or 0):.1f}%"
@@ -3411,7 +3444,10 @@ def render_overview(exps):
     chal_contract, _, chal_maps = _chal.partition("<!--SPLIT-->")
 
     champ_fig = ""
-    _csvg = (champ.get("arch_svg") or "") if champ else ""
+    # Same source as every other champion figure on this page: the best
+    # result across all eras, so the drawing cannot describe one model
+    # while the numbers beside it describe another.
+    _csvg = (best_hist.get("arch_svg") or "") if best_hist else ""
     # The figures live on a page where they are numbered, and cross-reference
     # each other ("byte-identical to Fig. 4"). Lifted onto the overview, which
     # has no numbered figures, that points at nothing — so name the relation
@@ -3420,7 +3456,8 @@ def render_overview(exps):
     if _csvg.lstrip().startswith("<svg"):
         champ_fig = (
             f"<div class='contract-fig' data-ovfig "
-            f"data-title='The design that works — experiment {champ['id']}'>"
+            f"data-title='The design that works — experiment "
+            f"{best_hist['era_index'] + 1}.{best_hist['src_id']}'>"
             f"{_csvg}"
             f"<p class='contract-cap'>The champion, drawn by the design agent "
             f"<i>before</i> it was allowed to train. One camera crop enters at "
@@ -3444,19 +3481,12 @@ def render_overview(exps):
     # The mission score is in [0,2] and 0 is the goal, so "distance to goal"
     # is just the score itself, and progress is how far it has closed from the
     # first scoreable run toward 0.
-    usable_best = med_best = false_best = abstain_best = None
-    for e in reversed(dev):
-        if e["kept"] and e.get("metrics_json"):
-            try:
-                cells = json.loads(e["metrics_json"])["areas"][0]["buckets"].values()
-                worst = max(cells, key=lambda c: c.get("mission_score") or 0)
-                usable_best = worst.get("usable_fix_rate")
-                abstain_best = worst.get("abstain_rate")
-                false_best = worst.get("false_fix_rate")
-                med_best = worst.get("median_error_m")
-            except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
-                pass
-            break
+    # Same source as the headline above: the best result across ALL eras, so
+    # the hero figure and the bottom line can never describe different models.
+    usable_best = cell.get("usable_fix_rate")
+    abstain_best = cell.get("abstain_rate")
+    false_best = cell.get("false_fix_rate")
+    med_best = cell.get("median_error_m")
     usable_s2 = f"{100*usable_best:.0f}%" if usable_best is not None else "—"
     med_s = f"{med_best:,.0f} m" if med_best else "—"
     false_s = f"{100*false_best:.1f}%" if false_best is not None else "—"
@@ -3497,11 +3527,16 @@ def render_overview(exps):
 run by an autonomous loop of coding agents</p>
 
 <div class="bl-h">The bottom line</div>
-<p class="bottom-line"><span class="hl">A drone can look down at Berlin and
+<p class="bottom-line"><span class="hl">A drone can look down at {Area} and
 know where it is to within {med_s} &mdash; no GPS, no internet, no map on
 board, just a {best_mb:.1f}&nbsp;MB file of weights.</span> It works on
-{usable_pct} of camera frames, it took {n_all_exp} experiments to find, and
-almost everything we tried first failed.</p>
+{usable_pct} of camera frames, and it took {n_all_exp} experiments to find
+&mdash; ImageNet-pretrained backbones, separate day and night specialists
+behind a dispatcher, contrastive pretraining on the imagery itself,
+retrieval against a stored fingerprint of the city, dense per-patch
+coordinate voting, learned relighting, calibrated abstention, and more.
+Almost all of it failed. What worked was the plainest idea of the lot:
+<i>cut the map into tiles and have the model name one.</i></p>
 
 <div class="stat-hero">
   <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
@@ -3543,7 +3578,7 @@ longitude. It fails badly. When such a network is unsure it has no way to
 is drift toward the middle of the map. Our first attempt did exactly that
 &mdash; confident on every frame, wrong on every frame.</p>
 <p><b>So we stopped asking for a coordinate and started asking a
-multiple-choice question.</b> Berlin is cut into {n_cells:,} tiles of
+multiple-choice question.</b> {Area} is cut into {n_cells:,} tiles of
 128&nbsp;m, and the network points at one of them. That one change is the
 whole idea, because now the answer carries its own certainty: if the network
 is sure, its choice piles onto a single tile; if it is lost, its belief
@@ -3573,7 +3608,7 @@ inside 100&nbsp;m, with <b>{false_pct}</b> confidently wrong. Typical miss
 when it answers: <b>{med_s}</b>; best decile <b>{p10_s}</b>. Those frames are
 positions and headings the model never trained on, over ground it did.</p>
 <p><b>Not shown: generalisation, and deliberately so.</b> Asked about a
-1&#8209;in&#8209;32 block of Berlin held out of training entirely, the same
+1&#8209;in&#8209;32 block of {Area} held out of training entirely, the same
 model returns <b>0% usable fixes</b> and a median miss of
 <b>{holdout_med}</b>. That is the design behaving exactly as intended rather
 than a defect: the map lives in the weights, so ground it was never shown is
@@ -3608,9 +3643,9 @@ on held-out <i>viewpoints</i>. That ruler is deliberately the product
 requirement rather than a statistic about errors &mdash; a frame counts only if
 the model is <i>confident and right</i>, an abstention is safe, and a confident
 wrong answer is penalised as worse than silence, because it would feed a false
-position into navigation. Training covers all of Berlin and the test frames sit
+position into navigation. Training covers all of {Area} and the test frames sit
 11&ndash;17&nbsp;m off the nearest training vantage at their own rotation, so
-the ground is mapped but the view is new (currently Berlin only, one
+the ground is mapped but the view is new (currently {Area} only, one
 lighting condition; the full spec adds 6 lighting conditions × 4 German test
 areas — dense Berlin, rural Prignitz, Munich, Frankfurt). Improvements are kept
 as git commits; everything else is reverted but stays in the record.</p>
