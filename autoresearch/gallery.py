@@ -3144,19 +3144,16 @@ def render_overview(exps):
 run by an autonomous loop of coding agents</p>
 
 <div class="bl-h">The bottom line</div>
-<p class="bottom-line"><span class="hl">Yes. We found a technique that turns
-one downward camera frame into a position accurate enough to steer by, on
-{usable_pct} of frames, from a {best_mb:.1f}&nbsp;MB file with no map, no
-internet and no GPS aboard.</span> It took {n_all_exp} experiments across
-{n_eras} rebuilt evaluations to test every lever we could find &mdash;
-from-scratch and ImageNet-pretrained backbones, domain-contrastive
-pre-training, direct coordinate regression, spatial probability fields,
-soft-argmax and peak-commit decoding, dense per-patch scene coordinates,
-multi-hypothesis and Gaussian-mixture heads, vector-quantised codebooks,
-retrieve-then-rerank, sliding-window map correlation, lighting dispatchers and
-mixture-of-experts, contrastive and hardest-impostor losses, reconstruction
-auxiliaries, rotation and mirror voting, illumination-invariant channels,
-learned delighting, calibrated abstention, and quantisation-aware training.</p>
+<p class="bottom-line"><span class="hl">We found a way to turn a camera frame
+into coordinates &mdash; GPS without the GPS.</span> Flying over Berlin, it
+puts itself within about {med_s} of where it really is, on {usable_pct} of
+frames, from a {best_mb:.1f}&nbsp;MB file that carries no map and needs no
+internet.</p>
+<p class="bottom-line">Getting there took {n_all_exp} experiments across
+{n_eras} rebuilt evaluations. We tried most of what the field offers &mdash;
+bigger networks, borrowed ones, matching each frame against stored imagery,
+separate specialists for different lighting &mdash; and nearly all of it
+failed. What finally worked was simpler than any of it.</p>
 
 <div class="stat-hero">
   <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
