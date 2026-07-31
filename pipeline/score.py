@@ -120,7 +120,10 @@ HEATMAP_MAX_PX = 1600
 
 
 def render_heatmap(area, data_dir, points, out_path: Path):
-    base = Image.open(area_dir(area, data_dir) / "relight" / "midday.png").convert("RGB")
+    # Background bucket: whichever comes first in LIGHTING_BUCKETS, not a
+    # hardcoded name — berlin-slim's collapsed bucket set is just "asis".
+    bg_bucket = next(iter(LIGHTING_BUCKETS))
+    base = Image.open(area_dir(area, data_dir) / "relight" / f"{bg_bucket}.png").convert("RGB")
     scale = min(1.0, HEATMAP_MAX_PX / max(base.size))
     if scale < 1.0:
         base = base.resize((int(base.width * scale), int(base.height * scale)),
@@ -129,7 +132,9 @@ def render_heatmap(area, data_dir, points, out_path: Path):
     draw = ImageDraw.Draw(base)
     r = 5
     for cx, cy, e in points:
-        color = (60, 220, 60) if e < 20 else (240, 200, 40) if e < 50 else (230, 60, 60)
+        # Color bands scaled to this branch's 100 m milestone (main branch's
+        # bands are 20/50 m, keyed to its 20 m target — same ratio, 5x scale).
+        color = (60, 220, 60) if e < 100 else (240, 200, 40) if e < 250 else (230, 60, 60)
         x, y = cx * scale, cy * scale
         draw.ellipse([x - r, y - r, x + r, y + r], fill=color)
     out_path.parent.mkdir(parents=True, exist_ok=True)
