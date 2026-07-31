@@ -9,6 +9,12 @@ hypothesis. Entries are inspiration, not instructions; you own the design.
 
 ## L1 · Canonicalize the night: denoise toward the clean render (2026-07-21)
 
+> **NOT APPLICABLE on the berlin-slim branch.** This entry depends on the
+> frozen relighting sim for supervised clean/night pairs, and relighting is
+> disabled here — training and eval both use the raw daytime imagery as
+> fetched, so there is no night frame to canonicalize and no pair to learn
+> from. Kept for the main branch; do not build on it on this branch.
+
 The worst-case input is the noisy night frame. What if the hard part —
 seeing through gain noise and washed-out color — were handled explicitly,
 so the localizer works on something closer to a clean, high-contrast

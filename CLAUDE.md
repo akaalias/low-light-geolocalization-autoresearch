@@ -23,7 +23,8 @@ direction (see memory: `berlin-slim-branch-pivot`).
   the periodic Hamburg holdout check is disabled (gated off, not deleted —
   see `HOLDOUT_ENABLED` in `loop.sh`).
 - **§6 (target ≤ 20 m):** the operative milestone on this branch is
-  **≤ 100 m** worst-case median error, Berlin daytime-only. This was
+  **≤ 100 m** worst-case error, Berlin daytime-only (see §6 for the
+  statistic — geometric mean, not median). This was
   derived from data, not chosen arbitrarily: the main-branch champion
   (exp 35, 743 m across 4 areas × 6 buckets) scores roughly 650-720 m on
   Berlin's own daytime buckets alone, so 20 m was a ~35× gap — not a useful
