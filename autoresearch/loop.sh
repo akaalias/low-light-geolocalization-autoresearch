@@ -280,6 +280,7 @@ while :; do
   PLATEAU=$(sqlite3 experiments.sqlite "SELECT COUNT(*) FROM experiments \
     WHERE kind='development' AND id > $LAST_KEPT_ID;" 2>/dev/null || echo 0)
   PIVOT_DEMANDED=0
+  FROZEN_STAGES=""  # only ever set inside the (disabled) pivot block below; must default to "" under set -u
   # berlin-slim branch override (see CLAUDE.md "BRANCH OVERRIDE"): pivot
   # enforcement forced off — reintroduce by deleting this line once a
   # plateau shows up worth forcing a rethink over.
