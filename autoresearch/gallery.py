@@ -2750,6 +2750,90 @@ updated {now}</p>"""]
     print(f"wrote {PATHS_OUT} ({len(figs)} figures)")
 
 
+ERAS = [{'d': '20 Jul', 't': '17:05', 'kind': 'start', 'title': 'Bootstrap — and two course corrections before a single experiment ran', 'trig': 'A spec, an empty repo, and a MacBook Air.', 'body': "The harness shipped on Sentinel-2 imagery at 10&nbsp;m/px. Within twenty minutes that was rejected and the frozen fetch stage rewritten for 1&nbsp;m/px open orthophotos — a 50&times; finer ground resolution, re-frozen before any research began. Hours later, looking at the six lighting renders, the human spotted that five of them were effectively identical: the simulated auto-exposure was re-brightening every bucket under its gain ceiling. The metric's &ldquo;six lighting conditions&rdquo; were very nearly a fiction. The loop was stopped and the relighting rebuilt.", 'q': 'Assume the UAV is at 100m altitude &mdash; find better satellite imagery that does NOT widen the sim-to-real gap', 'q2': 'honestly, all times other than night look the same to me', 'state': '7 bootstrap experiments, archived. Baseline 3,216.74&nbsp;m.'}, {'d': '20 Jul', 't': '20:35', 'kind': 'science', 'title': 'The human writes the anti-plateau rule himself', 'trig': 'The first loop runs flatten out.', 'body': 'Watching early experiments circle the same mechanism, he dictated the rule that would govern the loop for the next ten days — and which later hardened into code after five failed attempts to enforce it by prompt alone.', 'q': 'If three or more consecutive experiments were reverted, do not attempt another variation of the last refuted mechanism.', 'state': 'Loop running unattended overnight on a laptop.'}, {'d': '21 Jul', 't': '07:58', 'kind': 'infra', 'title': 'Rented GPU — decided in eleven minutes', 'trig': 'Experiments taking 20&ndash;50 minutes each on a MacBook Air.', 'body': "Not thermals, not a training failure — wall-clock per experiment. $200 went onto a RunPod account eleven minutes after the question was asked, and the <i>entire</i> loop moved to the pod, headless agents included. The pod's database was declared production, one-directional: local runs became testing only.", 'q': "I've added $200 to my runpod account.", 'state': 'Repo private on GitHub. Loop runs 24/7.'}, {'d': '21 Jul', 't': '12:11', 'kind': 'scope', 'title': 'The project goes public', 'trig': 'A decision to publish the research trail, not just the result.', 'body': "GitHub Pages, a homepage entry, and a title chosen from a shortlist. The same day he set the north star that still governs design decisions: that anyone should be able to draw a box and generate their own tiny, self-contained model, freely. He also stress-tested §6's premise — <i>how should it know about held-out spots inside Berlin?</i> — and let it stand. That question turned out to be the right one, ten days early.", 'q': 'I like &lsquo;Think globally, memorize locally&rsquo; a lot. And &lsquo;Not all who wander are lost&rsquo;.', 'state': 'Public site live: overview, research log, model designs, lineage.'}, {'d': '22 Jul', 't': '00:50', 'kind': 'infra', 'title': 'Infrastructure failures recorded as science', 'trig': 'A frozen site at one in the morning.', 'body': "Experiment 17's training code had been caching ~5.7&nbsp;GB of renders <i>per iteration</i> and the harness was committing them to Git LFS. The pod's 50&nbsp;GB volume filled at 23:34. Two experiments recorded as &ldquo;gated fail&rdquo; had not failed on their merits at all — they were disk crashes written into the research record as results. Later the same day GitHub Actions ran out of disk on 1.45&nbsp;GB of leftover debug PNGs.", 'q': 'Okay, the last 24h have been bumpy to say the least. Experiments break, commits can&rsquo;t get pushed to origin, now this.', 'state': '~40&nbsp;GB reclaimed. 25&nbsp;MB commit guard added. Hourly health check created.'}, {'d': '22 Jul', 't': '11:59', 'kind': 'science', 'title': 'Five attempts to make a pivot mean something', 'trig': 'The loop claiming to pivot while still building on MobileNetV3.', 'body': "A demanded pivot kept returning the champion's backbone with different machinery bolted around it — experiments 37, 38, 40. Four prompt-level fixes failed. What finally worked was enforcement in code: <code>backbonecheck.py</code>, which fingerprints backbone identity from the <i>post-implementation source</i> and rejects before training. The lesson generalised: prompt instructions are not guarantees.", 'q': 'That&rsquo;s not a PIVOT but a continuation.', 'q2': 'fuck this. fuck you. stop the current loop. &hellip; make the next experiment a fucking pivot', 'state': 'Champion 743&nbsp;m, unmoved. Trust in the harness at its lowest.'}, {'d': '23 Jul', 't': '13:00', 'kind': 'infra', 'title': 'Off RunPod — for process, not compute', 'trig': 'Three days of stuck commits, merge conflicts and platform friction.', 'body': "The decisive reframe came later that afternoon: the pain had never been RunPod, it was <b>two git writers on one branch</b> — the pod committing experiments while the laptop committed harness and docs. RunPod's last act was a stopped pod that could not resume because no GPU was free. Modal was chosen specifically because a <i>stateless</i> trainer that never touches git makes the two-writer problem impossible by construction.", 'q': 'It&rsquo;s been a fucking nightmare. I don&rsquo;t care about the compute.', 'state': 'Laptop = single writer. Modal A100 = stateless trainer, $30 credits.'}, {'d': '23 Jul', 't': '13:33', 'kind': 'scope', 'title': 'Scope narrowed to Berlin — and restored six hours later', 'trig': 'Local M1 training too slow for four areas.', 'body': 'Berlin-only, figures off, holdout skipped — a deliberate cut to buy iteration speed. But <code>state/best.json</code> did not follow the change, so for a while the loop was scoring four-area results against a Berlin-only yardstick. Once Modal made four areas cheap again, the cut was reversed and 743&nbsp;m restored as the number to beat.', 'q': 'I&rsquo;d rather see us move faster.', 'state': 'Back to the four-area §6 metric by 20:17.'}, {'d': '24&ndash;29 Jul', 't': '', 'kind': 'silence', 'title': 'Six days of silence — an abandonment, not a pause', 'trig': 'A training call that died at 00:25 and nobody noticed.', 'body': 'All four Modal A100 calls returned <i>cancelled by user or a failure</i> twenty-seven minutes in. The loop stopped. Git shows zero commits for six days; the only interaction in the entire window is a single <code>/compact</code> on the 29th. Read from the commit history alone this looks like a quiet week. It was a silent failure nobody was watching for.', 'q': 'I believe I cut that off because it took longer than expected.', 'state': 'Frozen: champion 743&nbsp;m, 54 experiments, 21 consecutive failures.'}, {'d': '30 Jul', 't': '18:26', 'kind': 'science', 'title': 'Attacking the premises instead of the hyperparameters', 'trig': 'A plateau six days old and a cold restart.', 'body': "Within three hours: a literature sweep asking whether the problem was already solved (no published system matches the constraint set — no on-board reference gallery, one compact model, km-scale); an offer to abandon the project's most-defended rule; and a 3D-shadow relighting idea, raised and parked. The constraint was then closed <i>empirically</i>: a retrieval-index probe ran three rounds and scored ~2,700&nbsp;m against the champion's 743&nbsp;m. Parked, not disproven — it never ran at real training scale.", 'q': 'Maybe the platonic idea of &lsquo;everything is in the weights&rsquo; is not worth keeping.', 'state': 'Four experiments, four reverts. Modal credits exhausted at 23:00.'}, {'d': '30 Jul', 't': '20:23', 'kind': 'infra', 'title': 'The real bottleneck was a PNG', 'trig': '&ldquo;Why does one experiment still take an hour?&rdquo;', 'body': 'Profiling found each ~120&nbsp;MB lighting render being decoded from disk every single epoch: <b>78% of training wall-clock</b>, against 14.5% for the actual forward and backward passes. Two prior theories — batch transfer and GPU compute — were wrong by an order of magnitude. Caching the decode cut training from ~40 to ~26 minutes.', 'q': 'yup, let&rsquo;s instrument to better understand what&rsquo;s taking so long.', 'state': "The evening's two biggest wins were both infrastructure. The metric did not move."}, {'d': '31 Jul', 't': '09:00', 'kind': 'scope', 'title': 'berlin-slim — trading scope for iteration speed', 'trig': 'Sixty-three experiments, still ~37&times; from target.', 'body': "A deliberate fork: one locale, daytime imagery only, no synthetic relighting, figures off, pivot gate off. The framing was explicit — <i>what if overfitting is a feature?</i> Nail one city first, worry later about whether the technique generalises. The milestone moved from 20&nbsp;m to 100&nbsp;m, derived from the champion's own Berlin-daytime numbers rather than picked.", 'q': 'I think we&rsquo;ve over-scoped and over-engineered the whole thing.', 'state': 'Fresh lineage. Baseline re-measured.'}, {'d': '31 Jul', 't': '11:20', 'kind': 'measure', 'title': 'The evaluation had been asking an impossible question', 'trig': 'One roundabout, surrounded by red dots.', 'body': 'Why was the Gro&szlig;er Stern — a seven-way star that exists once in Berlin — never located? Because <b>zero</b> training crops contained it and <b>twelve</b> eval questions did: it sits three pixels from an eval block, and the anti-leakage buffer had deleted every training view. Measured across the city: <b>28.2%</b> of Berlin appeared in no training crop, <b>100%</b> of eval questions stood on never-seen ground, and 65% of eval frames contained not one familiar pixel. For a system whose job is to memorise one city, that is unanswerable by construction. The split was rebuilt to hold out <i>viewpoints</i>, not <i>regions</i>.', 'q': 'a clear star-like circular roundabout &hellip; should score higher, no?', 'state': 'Training coverage 71.8% &rarr; 93.5%. Eval on seen ground 0% &rarr; 100%.'}, {'d': '31 Jul', 't': '13:10', 'kind': 'measure', 'title': 'The score rewarded guessing over learning — twice', 'trig': 'A map full of green dots, discarded; a map with one, kept.', 'body': 'A model that guesses the map centre has a tight, mediocre error distribution and a respectable <i>median</i>. A model that genuinely memorises is bimodal — some places nailed, others badly missed — and scores <i>worse</i> on a median. The metric had been reverting the only experiment that had begun to work. Replacing it with a geometric mean fixed the symptom, but that was still a proxy chosen to make progress visible rather than to state what the aircraft needs. The score is now the product requirement itself: usable fixes minus dangerous ones.', 'q': 'There is ONLY the product requirement.', 'state': 'Every result before today is void — ~63 experiments on a broken ruler.'}, {'d': '31 Jul', 't': '13:40', 'kind': 'measure', 'title': 'And the harness had been deleting its own work', 'trig': 'The corrected metric promoting a previously-reverted experiment to champion.', 'body': 'Its implementation no longer existed. Reverting an experiment ran <code>git checkout -- model/</code>, discarding the source outright; only kept experiments ever entered the git trail. Safe only if the metric is correct and permanent — an assumption nobody had written down, and which had just been disproved twice in one day. Of sixty archived experiments, thirteen survive.', 'q': 'We can&rsquo;t LOSE our fucking experiment implementations EVER.', 'state': 'All four code-discarding paths now snapshot first.'}, {'d': '31 Jul', 't': '14:00', 'kind': 'result', 'title': 'With honest instruments, the approach works', 'trig': 'The first experiment measured on a correct evaluation and a correct metric.', 'body': 'Full-lattice coverage training — the same architecture the previous metric had thrown away as a failure — took the mission score from <b>2.001</b> (confident and wrong on every single frame, the worst value the scale allows) to <b>0.183</b>. 84% of camera frames now yield a usable fix; the typical miss when it answers is 48&nbsp;m, already inside the 100&nbsp;m target. The region-holdout diagnostic reads 0% usable, confirming this is genuine memorisation rather than generalisation — exactly the design intent.', 'q': '', 'state': 'The plateau was never the task being hard. The instruments were pointed at the wrong thing.'}]
+
+KIND = {'start': ('#4a473e', 'bootstrap'), 'infra': ('#8a6a1e', 'infrastructure'), 'science': ('#2f5d7c', 'research direction'), 'scope': ('#5b6e4a', 'scope'), 'silence': ('#9b998c', 'silence'), 'measure': ('#8c2f1f', 'measurement bug'), 'result': ('#3c9c3c', 'result')}
+
+EVOLUTION_CSS = """
+.evo{max-width:860px;margin:0 auto;padding:0 16px 90px}
+.evo-key{display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:center;
+  margin:14px 0 34px;font-size:12px;color:var(--muted)}
+.evo-key .k{display:inline-flex;align-items:center;gap:7px}
+.evo-key .kd{width:9px;height:9px;border-radius:50%;display:inline-block}
+.evo-line{position:relative;padding-left:34px}
+.evo-line:before{content:'';position:absolute;left:9px;top:6px;bottom:6px;
+  width:1px;background:var(--rule)}
+.evo-item{position:relative;margin:0 0 38px}
+.evo-dot{position:absolute;left:-30px;top:5px;width:13px;height:13px;
+  border-radius:50%;border:2.5px solid var(--paper);box-shadow:0 0 0 1px var(--rule)}
+.evo-when{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
+  display:flex;gap:10px;align-items:baseline}
+.evo-when .kind{color:var(--faint)}
+.evo-h{font-size:19px;line-height:1.3;color:var(--ink);margin:5px 0 3px}
+.evo-trig{font-size:12.5px;font-style:italic;color:var(--muted);margin:0 0 9px}
+.evo-b{font-size:14.5px;line-height:1.72;color:#4a473e;margin:0}
+.evo-b b{color:var(--ink)}
+.evo-q{border-left:2px solid var(--accent);padding:2px 0 2px 15px;margin:13px 0 0;
+  font-size:15px;line-height:1.6;color:var(--ink);font-style:italic}
+.evo-q + .evo-q{margin-top:7px}
+.evo-state{margin-top:11px;font:600 10.5px var(--serif);
+  font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--faint);border-top:1px dotted var(--rule);padding-top:8px}
+@media(max-width:620px){.evo-line{padding-left:26px}.evo-dot{left:-24px}}
+"""
+
+
+EVOLUTION_OUT = REPO_ROOT / "gallery" / "research-evolution.html"
+
+
+def render_evolution(exps):
+    """gallery/research-evolution.html — how the research process itself
+    changed, reconstructed from the project's conversation transcripts and git
+    history. This is NOT derived from experiments.sqlite: the interesting
+    turns (why compute moved twice, why the evaluation was wrong for ten days)
+    never appear as experiment rows."""
+    items = []
+    for e in ERAS:
+        col, label = KIND.get(e["kind"], ("#4a473e", ""))
+        when = f"{e['d']}" + (f" &middot; {e['t']}" if e.get("t") else "")
+        qs = ""
+        for key in ("q", "q2"):
+            if e.get(key):
+                qs += f"<p class='evo-q'>&ldquo;{e[key]}&rdquo;</p>"
+        items.append(
+            f"<div class='evo-item'><span class='evo-dot' style='background:{col}'></span>"
+            f"<div class='evo-when'><span>{when}</span>"
+            f"<span class='kind'>{label}</span></div>"
+            f"<div class='evo-h'>{e['title']}</div>"
+            f"<p class='evo-trig'>{e['trig']}</p>"
+            f"<p class='evo-b'>{e['body']}</p>{qs}"
+            f"<div class='evo-state'>{e['state']}</div></div>")
+    key = "".join(
+        f"<span class='k'><span class='kd' style='background:{c}'></span>{l}</span>"
+        for c, l in KIND.values())
+    body = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=1100">
+<title>Research Evolution — Low-Light Geolocalization</title>
+<style>{CSS}{EVOLUTION_CSS}</style></head><body>
+{topnav('evolution')}
+{compute_banner()}
+{page_header("Research evolution: how the process changed",
+  "The experiment lineage shows what the loop tried. This shows what happened to "
+  "the <i>research itself</i> — where compute moved and why, which constraints were "
+  "challenged, and the three days it took to discover the measurements had been "
+  "wrong. Reconstructed from the project's own conversation transcripts and git "
+  "history; quotes are verbatim.")}
+<div class="evo">
+<div class="evo-key">{key}</div>
+<div class="evo-line">{''.join(items)}</div>
+</div>
+{CREDITS}</body></html>"""
+    EVOLUTION_OUT.parent.mkdir(exist_ok=True)
+    EVOLUTION_OUT.write_text(body)
+    print(f"wrote {EVOLUTION_OUT} ({len(ERAS)} eras)")
+
+
 LINEAGE_OUT = REPO_ROOT / "gallery" / "research-lineage.html"
 
 # Ported from the author's llm-heuristic-scientists-workshop lineage page
@@ -3157,6 +3241,7 @@ agent model {esc(e.get('agent_model') or '—')} · took {fmt_dur(e.get('duratio
     print(f"wrote {OUT} ({len(exps)} experiments)")
     render_paths(exps)
     render_lineage(exps)
+    render_evolution(exps)
     render_overview(exps)
     render_notebook()
 
