@@ -1,5 +1,73 @@
 # UAV Low-Light Geolocalization — Autoresearch Bootstrap Spec
 
+## STATE AS OF 2026-07-31 — read this before doing anything
+
+**Branch `berlin-slim`, pushed to origin. Loop stopped, tree clean.**
+
+Best: **experiment 5, mission penalty 0.040** — 96.5% of held-out frames give
+a usable fix (confident and within 100 m), 3.0% honest abstention, 0.5%
+confidently wrong, median miss 27 m, p10 10 m. The region-holdout diagnostic
+reads 0% usable / 756 m, which is **correct and expected**: this is
+memorisation of one bounding box, not generalisation. That is the point of
+the branch.
+
+### Three measurement bugs were found and fixed on 31 July. Do not undo them.
+
+1. **The evaluation held out REGIONS.** That left 28.2% of Berlin in no
+   training crop and put 100% of eval questions on ground the model had never
+   seen — unanswerable for a memorisation system. Now it holds out
+   **viewpoints** (§4 step 4). Never reintroduce a region-based holdout as the
+   primary metric.
+2. **The score was an error statistic.** Median rewarded guessing the map
+   centre over genuinely memorising, and reverted the first experiment that
+   worked; the geometric mean that briefly replaced it was still a proxy. The
+   score is now **the product requirement** (§6): `(1 - usable_fix_rate) +
+   false_fix_rate`. Standing check: *if the score improves while
+   `usable_fix_rate` does not, the metric is wrong again.*
+3. **The harness deleted reverted experiments' source.** `snapshot_model_src()`
+   in `loop.sh` now guards all four code-discarding paths.
+
+**Everything before 31 July is void** — ~63 experiments scored on a broken
+evaluation with a metric that preferred guessing. Their verdicts do not
+transfer, and the user has decided the design agent must **not** be given the
+old conclusions (importing invalid refutations would steer it away from ideas
+that were never actually refuted). Old DBs are in `archive/`.
+
+### How to run it
+
+```bash
+./autoresearch/loop.sh 12        # runs until the DB holds 12 experiments
+touch state/stop                 # graceful stop after the current one
+```
+
+Training is **local on the M1**. Modal credits are exhausted; RunPod was
+abandoned. One git writer, always — the laptop commits, a remote may only
+train.
+
+### Operational hazards that have already bitten
+
+- **Commit frozen-file edits immediately.** The running loop hard-reverts any
+  uncommitted change to a `/FROZEN` file — it cannot tell an assistant's edit
+  from an agent trying to cheat.
+- **A running `loop.sh` ignores edits to itself** until the next launch.
+- **Never kill the loop during `train`.** By then the design and
+  implementation agents have already finished (~6 min of work) but nothing is
+  written until the experiment completes. Stop during `design`, or use
+  `state/stop`.
+- **After any significant change, sweep the whole project**, not just the file
+  you were asked to touch. The 20 m → 100 m change missed `gallery.py`'s own
+  `TARGET_M` and shipped stale numbers to the live site.
+
+### Pages
+
+`gallery/index.html` research log · `gallery/research-lineage.html` experiment
+lineage · `gallery/research-evolution.html` how the research process itself
+branched (reconstructed from conversation transcripts) · `gallery/lab-notebook.html`
+dated narrative · `index.html` overview. `./infra/build_site.sh` refreshes the
+`_site/` preview copy, which does **not** update on its own.
+
+---
+
 ## BRANCH OVERRIDE — `berlin-slim` (2026-07-31)
 
 This branch is a deliberate, scoped fork of the spec below, traded for much
@@ -25,13 +93,15 @@ direction (see memory: `berlin-slim-branch-pivot`).
 - **§6 (target ≤ 20 m):** on this branch a fix counts as **usable within
   100 m** rather than 20 m, Berlin daytime-only. The statistic itself is
   the §6 mission score (product requirement), not an error percentile. This was
-  derived from data, not chosen arbitrarily: the main-branch champion
-  (exp 35, 743 m across 4 areas × 6 buckets) scores roughly 650-720 m on
-  Berlin's own daytime buckets alone, so 20 m was a ~35× gap — not a useful
-  near-term gate. 100 m is a ~6-7× gap: ambitious, reachable. 20 m remains
-  the real deployment-relevant number and stays logged, not deleted — same
-  "milestone, not a stop condition" philosophy as the main branch: hitting
-  100 m does not end the loop, it just marks a report-worthy checkpoint.
+  derived from data, not chosen arbitrarily: it was set from what the
+  then-champion actually achieved on Berlin daytime imagery. (Those
+  pre-31-July numbers are now void — see the state block at the top — but the
+  100 m figure stands on its own as the radius inside which a fix is useful.)
+  20 m remains the real deployment-relevant number and stays logged, not
+  deleted — "milestone, not a stop condition": hitting 100 m does not end the
+  loop, it just marks a report-worthy checkpoint. As of experiment 5 the
+  median miss is 27 m, so the interesting question is now how far below the
+  milestone this can go, not whether it can be reached.
 - **§7 (pivot-gate enforcement, `PIVOT_DEMANDED`/`backbonecheck.py`):**
   disabled on this branch (forced to `PIVOT_DEMANDED=0` in `loop.sh`).
   Reintroduce once a plateau shows up worth forcing a rethink over — this

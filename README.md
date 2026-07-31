@@ -49,62 +49,53 @@ calibrations collapsed dark-bucket coverage and were correctly scored FAIL.
 
 ## Phase 2 — running the autoresearch loop (run this yourself, separately)
 
+> **Current branch: `berlin-slim`.** Berlin only, raw daytime imagery, no
+> synthetic relighting, figures off, pivot gate off. See CLAUDE.md's
+> "BRANCH OVERRIDE" for what it supersedes and why.
+
 ```bash
-# once: fetch + relight the remaining areas
-for a in munich frankfurt hamburg; do
+./autoresearch/loop.sh 12               # run until the DB holds 12 experiments
+SKIP_AGENT=1 ./autoresearch/loop.sh 1   # smoke-test the harness without an agent
+touch state/stop                        # graceful stop after the current experiment
+```
+
+Data for berlin is already fetched and relit; the other areas are only
+needed if you restore the full four-area scope:
+
+```bash
+for a in prignitz munich frankfurt hamburg; do
   .venv/bin/python -m pipeline.fetch --area $a
   .venv/bin/python -m pipeline.relight --area $a
 done
-
-# then let it run (each iteration: headless Claude designs ONE experiment,
-# edits model/, harness trains 4 areas + scores + logs + keeps/reverts):
-./autoresearch/loop.sh 25          # 25 iterations
-EPOCHS=15 ./autoresearch/loop.sh 50
-SKIP_AGENT=1 ./autoresearch/loop.sh 1   # smoke-test harness without an agent
 ```
 
-Per iteration the agent must pre-register `title / category / hypothesis /
-method / expected_outcome` (written to the run's `experiment.json`); the
-harness appends measured `result` and a kept/reverted `conclusion`, logs
-everything to SQLite, and commits kept improvements so git history is the
-research trail. Every 5 kept improvements it runs the read-only **hamburg
-holdout check** (§5) — logged, never fed back into keep/revert, and
-`pipeline/score.py` hard-refuses to score hamburg without `--holdout`.
+Per experiment the design agent pre-registers `title / category / hypothesis
+/ method / expected_outcome` (written to the run's `experiment.json`); the
+harness appends the measured `result` and a kept/reverted `conclusion`, logs
+to SQLite, snapshots `model/*.py` into `runs/<id>/model_src/` **whatever the
+outcome**, and commits kept improvements so git history is the research trail.
 
-Watch progress: `open gallery/index.html` (re-rendered after every
-iteration — reload to see the latest), or
+Watch progress: `open gallery/index.html` (re-rendered when a design lands
+*and* again when the experiment finishes), or
 `sqlite3 experiments.sqlite "SELECT id,title,primary_metric,kept FROM experiments ORDER BY id DESC LIMIT 10;"`
 
-### Running on RunPod (v2 — scripted, the current setup)
+### Compute
 
-Since 2026-07-21 the whole loop runs on a RunPod Secure Cloud RTX 4090
-(the agent-design phase is LLM-bound, but train+score dropped from
-15–45 min per iteration on the bootstrap M1 Air to minutes, and the pod
-runs 24/7 without occupying — or thermally throttling — a laptop).
-Provisioning and sync are scripted:
+Training runs **locally on the M1** (`model/train.py` auto-selects
+cuda > mps > cpu). Viable on a laptop again only because this branch trains
+one area instead of four.
 
-```bash
-# laptop (.env holds RUNPOD_API_KEY):
-infra/runpod.sh up          # create the pod (idempotent)
-infra/runpod.sh sync-up     # rsync repo + data/ up — data is NEVER re-fetched
-                            # on the pod: frozen eval sets stay byte-identical
-infra/runpod.sh ssh         # shell on the pod; launch loop.sh in tmux there
-infra/runpod.sh pull        # runs/ + sqlite + state/ back, ff-merge pod commits
-infra/runpod.sh stop        # stop the $0.69/hr meter; volume persists
-```
+Two remote paths exist and are dormant:
 
-**The pod's `experiments.sqlite` is the production database.** It flows one
-way only — pod → laptop via `pull`, which replaces the local copy wholesale.
-`sync-up` never pushes it (excluded). Local runs are for testing/trying
-things out; DB fixes and migrations run *on the pod* (e.g. the scripts in
-`archive/`), never from a laptop copy.
+| | status |
+|---|---|
+| **Modal** (`REMOTE_TRAIN=1 REMOTE_BACKEND=modal`) | stateless per-area trainer, never touches git. Used 23–30 Jul; **credits exhausted**, so unusable until topped up. |
+| **RunPod** (`infra/runpod.sh`, `REMOTE_BACKEND=runpod`) | **abandoned 2026-07-23** after three days of stuck commits and merge conflicts. Scripts kept for reference; do not restart it without reading `docs/infra.md` first. |
 
-```bash
-```
-
-`model/train.py` auto-selects cuda > mps > cpu; nothing else changes.
-One-time pod setup, cost history, measurement caveats of the hardware
-switch, and the M1-era timings live in **`docs/infra.md`**.
+The rule that came out of that period and still holds: **one git writer,
+always.** The laptop commits; a remote may only train and hand back
+artifacts. Two writers on one branch was the root cause of the whole
+mess, not the provider.
 
 ## Reference imagery (pipeline data v2) & licensing
 
