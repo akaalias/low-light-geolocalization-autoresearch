@@ -813,7 +813,7 @@ def live_row(next_id):
 <div class="detail-inner"><div class="detail-grid">
 <div class="explain" id="live-explain"><div class="eb eb-why">
 <div class="eb-h">Status</div><p>Design not finished yet — check back shortly.</p></div></div>
-<div><div class="score-head">Scoreboard — geometric-mean error (m) per area × lighting</div>
+<div><div class="score-head">Scoreboard — mission score per area × lighting</div>
 <div class="score-sub">pending — lands once training and scoring finish</div></div>
 </div></div></td></tr>
 <script>(function(){{
@@ -940,9 +940,25 @@ def fmt_dur(s):
     return f"{s // 60} m {s % 60:02d} s" if s >= 60 else f"{s} s"
 
 
-def fmt_m(v):
+def fmt_score(v):
+    """The PRIMARY metric is the mission score, not a distance:
+    (1 - usable_fix_rate) + false_fix_rate, minimized. 0 = every frame a
+    usable fix; 1 = abstains everywhere; 2 = confidently wrong everywhere."""
     if v is None:
         return "—"
+    if v >= 1e15:
+        return "no prior best"
+    if v >= FAIL:
+        return "gated fail"
+    return f"{v:.3f}"
+
+
+def fmt_m(v):
+    """Distances (diagnostics only — median/geomean/percentiles)."""
+    if v is None:
+        return "—"
+    if v >= 1e15:
+        return "no prior best"
     if v >= FAIL:
         return "gated fail"
     if v >= 1000:
@@ -961,13 +977,12 @@ def chart_svg(exps):
         return ""
     finite = [e["primary_metric"] for e in exps
               if e["primary_metric"] and e["primary_metric"] < FAIL]
-    ymax = max(finite + [TARGET_M * 4]) * 1.6
-    ymin = max(min([TARGET_M / 2] + finite) / 1.6, 1.0)
+    ymax = min(max(finite + [1.0]) * 1.15, 2.05)
+    ymin = 0.0
 
     def y(v):
         v = max(min(v, ymax), ymin)
-        return mt + ih * (1 - (math.log10(v) - math.log10(ymin)) /
-                          (math.log10(ymax) - math.log10(ymin)))
+        return mt + ih * (1 - (v - ymin) / max(ymax - ymin, 1e-9))
 
     n = len(exps)
 
@@ -976,18 +991,15 @@ def chart_svg(exps):
 
     parts = [f"<svg viewBox='0 0 {W} {H}' role='img' "
              f"aria-label='worst-case position error per experiment'>"]
-    t = 1.0
-    while t <= ymax:
-        for v in (t, 2 * t, 5 * t):
-            if ymin <= v <= ymax:
-                parts.append(f"<line class='tick-line' x1='{ml}' x2='{W-mr}' y1='{y(v):.1f}' y2='{y(v):.1f}'/>")
-                parts.append(f"<text class='axis-lab' x='{ml-8}' y='{y(v)+3:.1f}' text-anchor='end'>{int(v):,}</text>")
-        t *= 10
-    parts.append(f"<text class='axis-lab' x='{ml-8}' y='{mt-4}' text-anchor='end'>m</text>")
-    parts.append(f"<line x1='{ml}' x2='{W-mr}' y1='{y(TARGET_M):.1f}' y2='{y(TARGET_M):.1f}' "
+    for v in (0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0):
+        if ymin <= v <= ymax:
+            parts.append(f"<line class='tick-line' x1='{ml}' x2='{W-mr}' y1='{y(v):.1f}' y2='{y(v):.1f}'/>")
+            parts.append(f"<text class='axis-lab' x='{ml-8}' y='{y(v)+3:.1f}' text-anchor='end'>{v:g}</text>")
+    parts.append(f"<text class='axis-lab' x='{ml-8}' y='{mt-4}' text-anchor='end'>score</text>")
+    parts.append(f"<line x1='{ml}' x2='{W-mr}' y1='{y(0.0):.1f}' y2='{y(0.0):.1f}' "
                  f"stroke='#8c2f1f' stroke-width='1.5' stroke-dasharray='6 5'/>")
-    parts.append(f"<text class='axis-lab' x='{W-mr}' y='{y(TARGET_M)-5:.1f}' "
-                 f"text-anchor='end' fill='#8c2f1f'>goal — locate the drone to within {TARGET_M:.0f} m</text>")
+    parts.append(f"<text class='axis-lab' x='{W-mr}' y='{y(0.0)+12:.1f}' "
+                 f"text-anchor='end' fill='#8c2f1f'>0 — every frame a usable fix</text>")
 
     # Running-best step line, one segment per evaluation era. Within an era
     # the line only ever steps DOWN (the loop keeps only improvements). A
@@ -1087,17 +1099,19 @@ def cells_table(metrics):
             if not c:
                 rows.append("<td>—</td>")
                 continue
-            med = c["median_error_m"]
+            med = c.get("mission_score")
             classes = []
-            if med is not None and c["score"] <= TARGET_M:
+            if med is not None and c["score"] < 0.9:
                 classes.append("cell-good")
             if c["score"] is not None and c["score"] >= FAIL:
                 classes.append("cell-bad")
             if worst is not None and c["score"] == worst and worst < FAIL:
                 classes.append("cell-worst")
             cls = f" class='{' '.join(classes)}'" if classes else ""
-            val = "abstained" if med is None else f"{med:,.0f}"
-            rows.append(f"<td{cls}><span class='num'>{val}</span> "
+            val = "abstained" if med is None else f"{med:.3f}"
+            uf = c.get("usable_fix_rate")
+            uf_s = f" <span class='cov'>{100*uf:.0f}% usable</span>" if uf is not None else ""
+            rows.append(f"<td{cls}><span class='num'>{val}</span>{uf_s} "
                         f"<span class='cov'>cov {c['coverage']:.2f}</span></td>")
         rows.append("</tr>")
     rows.append("</table>")
@@ -1405,13 +1419,11 @@ def _m_str(s):
         v = float(s)
     except (TypeError, ValueError):
         return "—"
-    # loop.sh's best_metric() falls back to 1e18 when state/best.json doesn't
-    # exist yet (nothing to compare against — the very first experiment after
-    # a lineage reset). That's a different thing from FAIL=1e9 (a real gated
-    # failure) and fmt_m() alone can't tell them apart, so check first.
-    if v >= 1e15:
-        return "no prior best"
-    return fmt_m(v)
+    # These come from the harness-written conclusion, which quotes the PRIMARY
+    # metric — the mission score, not a distance. (loop.sh's best_metric()
+    # falls back to 1e18 before state/best.json exists; fmt_score maps that to
+    # "no prior best" and FAIL=1e9 to "gated fail".)
+    return fmt_score(v)
 
 
 def _fail_detail(e):
@@ -1468,7 +1480,7 @@ def status_reason(e):
         return ("hold", "blind Hamburg generalisation check",
                 "Not a competing design — this is the periodic blind holdout. The current "
                 "champion's training recipe is run on Hamburg, a city the loop never tunes "
-                f"against, purely to check the method still generalises. It scored {fmt_m(metric)}; "
+                f"against, purely to check the method still generalises. It scored {fmt_score(metric)}; "
                 "the number is logged for monitoring only and never affects which experiments "
                 "are kept or reverted.")
 
@@ -1502,7 +1514,7 @@ def status_reason(e):
 
     metric_s, best_s = _nums_from_conclusion(concl)
     if e["kept"]:
-        got = _m_str(metric_s) if metric_s else fmt_m(metric)
+        got = _m_str(metric_s) if metric_s else fmt_score(metric)
         extra = ""
         if metric_s and best_s:
             try:
@@ -1516,8 +1528,8 @@ def status_reason(e):
                 f"{extra}, beating the previous champion — so its code was committed as the new best, "
                 "and later experiments branch from here.")
 
-    return ("disc", f"worse than champion: {fmt_m(metric)} vs {_m_str(best_s)}",
-            f"The change trained and scored cleanly, but at {fmt_m(metric)} it didn't beat the champion's "
+    return ("disc", f"worse than champion: {fmt_score(metric)} vs {_m_str(best_s)}",
+            f"The change trained and scored cleanly, but at {fmt_score(metric)} it didn't beat the champion's "
             f"{_m_str(best_s)}, so the loop discarded it and kept the previous best. A normal negative "
             "result — most experiments land here, and each still narrows down what doesn't work.")
 
@@ -1525,21 +1537,20 @@ def status_reason(e):
 HELP = f"""
 <details class="help"><summary>What do the columns and marks mean?</summary>
 <dl class="help-grid">
-<dt>Worst-case error</dt><dd>The single number the loop optimizes. On this
-branch (berlin-slim), every experiment trains <b>one model on Berlin only</b>,
-on the raw daytime imagery as fetched (no synthetic relighting). It is tested
-on held-out <b>viewpoints</b>, not held-out regions: training covers all of
-Berlin — the model is supposed to memorize its one box — and the test frames
-sit 11–17&nbsp;m off the nearest training vantage, each at its own rotation.
-Mapped ground, new view; that is what the aircraft actually faces. That gives
-a <b>geometric-mean</b> position error, taken as the <b>worst</b> bucket's score. The
-geometric mean replaced the median because the median rewarded guessing near
-the map centre and punished genuine memorisation — a learner nails some spots
-and badly misses others, which reads worse on a median than uniform mediocrity
-does. Median, p10, p25 and hit-rate are still shown, just not optimised. Not an
-average across cells, so a good result in one cell can't hide a bad one elsewhere. Mission
-milestone on this branch: <b>≤ {TARGET_M:.0f} m</b> (main branch target:
-≤ 20 m).</dd>
+<dt>Mission score</dt><dd>The single number the loop optimizes, and
+deliberately <b>the product requirement rather than a statistic about
+errors</b>. The aircraft takes a vision fix every 5&ndash;10&nbsp;s and it is
+its only drift correction, so per frame exactly three things can happen:
+it is <b>confident and within {TARGET_M:.0f}&nbsp;m</b> (a <b>usable fix</b> &mdash; the
+product), <b>not confident</b> (it abstains &mdash; safe, it waits), or
+<b>confident and wrong</b> (a <b>false fix</b> &mdash; dangerous, it feeds a
+wrong position into navigation). The score is
+<b>(1 &minus; usable-fix rate) + false-fix rate</b>: <b>0</b> means every frame
+is a usable fix, <b>1.0</b> means it abstains on everything, <b>2.0</b> means it
+is confidently wrong on everything &mdash; strictly worse than silence, which is
+the point. Error statistics (median, geometric mean, p10, p25) are all still
+recorded, but none is optimized: each was tried as the target and each rewarded
+something the aircraft does not want.</dd>
 <dt>Region-holdout (diagnostic)</dt><dd>A small 1-in-32-block slice of Berlin
 is kept genuinely out of training and scored separately. It is <b>logged and
 never optimized</b> — it cannot move keep/revert. Its only job is to show
@@ -2073,18 +2084,28 @@ def render_overview(exps):
     best_size = next((e["model_bytes_max"] for e in reversed(dev)
                       if e["kept"] and e["model_bytes_max"]), None)
     now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    best_s = fmt_m(best) if best is not None else "—"
+    best_s = fmt_score(best) if best is not None else "—"
     size_s = f"{best_size/1024:,.0f} KB" if best_size else "—"
-    factor = (f"{best/TARGET_M:,.0f}×" if best and best > TARGET_M
-              else "at goal" if best else "—")
+    # The mission score is in [0,2] and 0 is the goal, so "distance to goal"
+    # is just the score itself, and progress is how far it has closed from the
+    # first scoreable run toward 0.
+    usable_best = None
+    for e in reversed(dev):
+        if e["kept"] and e.get("metrics_json"):
+            try:
+                a = json.loads(e["metrics_json"])["areas"][0]["buckets"]
+                usable_best = max(c.get("usable_fix_rate") or 0.0 for c in a.values())
+            except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
+                usable_best = None
+            break
+    factor = (f"{100*usable_best:.0f}% of frames usable" if usable_best is not None
+              else "—")
     baseline = next((e["primary_metric"] for e in dev
                      if e["primary_metric"] and e["primary_metric"] < FAIL),
                     None)
-    if best and baseline and baseline > TARGET_M and best < baseline:
-        progress = (math.log(baseline / best)
-                    / math.log(baseline / TARGET_M) * 100)
-        progress_s = f"{progress:,.0f}%"
-    elif best and best <= TARGET_M:
+    if best is not None and baseline and baseline > 0 and best < baseline:
+        progress_s = f"{100 * (baseline - best) / baseline:,.0f}%"
+    elif best is not None and best <= 0.05:
         progress_s = "100%"
     else:
         progress_s = "0%"
@@ -2117,9 +2138,9 @@ main project's full scope for faster rounds while the loop searches for
 an architecture worth generalizing back out.</p>
 
 <div class="stats">
-  <div class="stat"><b>≤ {TARGET_M:.0f} m</b><span>the goal</span></div>
-  <div class="stat"><b>{best_s}</b><span>today — {factor} to go</span></div>
-  <div class="stat"><b>{progress_s}</b><span>progress, log scale</span></div>
+  <div class="stat"><b>0.000</b><span>the goal — every frame a usable fix</span></div>
+  <div class="stat"><b>{best_s}</b><span>best mission score — {factor}</span></div>
+  <div class="stat"><b>{progress_s}</b><span>closed toward the goal</span></div>
   <div class="stat"><b>{len(dev)}</b><span>experiments · {n_kept} kept</span></div>
 </div>
 
@@ -2140,15 +2161,17 @@ fetch as-is.</p>
 <p>The research loop is Karpathy-style autoresearch: each experiment, a
 headless coding agent reads the full experiment history, pre-registers ONE
 focused change — hypothesis, method, expected outcome — then the harness
-trains and scores it against a single frozen ruler: the <b>worst</b>
-geometric-mean position error on held-out <i>viewpoints</i> — training covers all of
-Berlin and the test frames sit 11&ndash;17&nbsp;m off the nearest training
-vantage at their own rotation, so the ground is mapped but the view is new
-(on this branch: Berlin only,
-one lighting condition; the main branch's ruler is the worst cell across
-6 lighting conditions × 4 German test areas — dense Berlin, rural
-Prignitz, Munich, Frankfurt). Improvements are kept as git commits;
-everything else is reverted but stays in the record.</p>
+trains and scores it against a single frozen ruler: the <b>mission score</b>
+on held-out <i>viewpoints</i>. That ruler is deliberately the product
+requirement rather than a statistic about errors &mdash; a frame counts only if
+the model is <i>confident and right</i>, an abstention is safe, and a confident
+wrong answer is penalised as worse than silence, because it would feed a false
+position into navigation. Training covers all of Berlin and the test frames sit
+11&ndash;17&nbsp;m off the nearest training vantage at their own rotation, so
+the ground is mapped but the view is new (on this branch: Berlin only, one
+lighting condition; the main branch adds 6 lighting conditions × 4 German test
+areas — dense Berlin, rural Prignitz, Munich, Frankfurt). Improvements are kept
+as git commits; everything else is reverted but stays in the record.</p>
 </div>
 
 <div class="contract-fig static">{contract_svg()}
@@ -2329,8 +2352,8 @@ def paths_status(e, is_current):
         return "<span class='fail'>gated fail</span> — reverted"
     if e["kept"]:
         cur = " <span class='chip-cur'>current design</span>" if is_current else ""
-        return f"<b>kept</b> — new best, <b class='num'>{fmt_m(e['primary_metric'])}</b>{cur}"
-    return f"discarded — <span class='num'>{fmt_m(e['primary_metric'])}</span>, reverted"
+        return f"<b>kept</b> — new best, mission score <b class='num'>{fmt_score(e['primary_metric'])}</b>{cur}"
+    return f"discarded — mission score <span class='num'>{fmt_score(e['primary_metric'])}</span>, reverted"
 
 
 def render_paths(exps):
@@ -2660,7 +2683,7 @@ def render_lineage(exps):
         if kind == "kept":
             last_kept = e["id"]
     n_dev = sum(1 for nd in nodes if nd["kind"] != "holdout")
-    data_json = json.dumps({"nodes": nodes, "target": TARGET_M})
+    data_json = json.dumps({"nodes": nodes, "target": 0.0})
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
 <title>Research Lineage — Low-Light Geolocalization</title>
@@ -2707,16 +2730,19 @@ def render():
                  f"<b class='num'>4 MiB</b>" if best_size else "hard limit <b>4 MiB</b>")
     if best is None:
         status_line = "No scoreable model yet."
-    elif best <= TARGET_M:
-        status_line = (f"<b>Goal reached:</b> worst-case median miss "
-                       f"<b class='num'>{fmt_m(best)}</b> — at or under the {TARGET_M:.0f} m goal.")
+    elif best <= 0.05:
+        status_line = (f"<b>Goal reached:</b> mission score "
+                       f"<b class='num'>{fmt_score(best)}</b> — very nearly every frame "
+                       f"yields a usable fix.")
     else:
         status_line = (
-            f"Status: in its hardest cell, the best model's "
-            f"<b>median miss is {fmt_m(best)}</b> — half its position estimates land "
-            f"farther than that from the drone's true location. The goal is a median "
-            f"miss of <b class='num'>≤ {TARGET_M:.0f} m</b> in <i>every</i> combination — "
-            f"<b class='num'>{best/TARGET_M:,.0f}×</b> better than today.")
+            f"Status: best mission score is <b class='num'>{fmt_score(best)}</b> in its "
+            f"hardest cell. That number is <b>(1 &minus; usable-fix rate) + false-fix "
+            f"rate</b>: a frame counts as a <b>usable fix</b> only when the model is "
+            f"confident <i>and</i> within {TARGET_M:.0f} m; abstaining is safe; being "
+            f"confident and wrong is a <b>false fix</b>, which for a drone is worse than "
+            f"saying nothing at all. <b>1.0</b> means it abstains on everything, "
+            f"<b>2.0</b> means it is confidently wrong on everything, <b>0</b> is the goal.")
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
@@ -2724,7 +2750,7 @@ def render():
 <style>{CSS}</style><script>{JS}</script></head><body>
 {topnav('log')}
 {compute_banner()}
-{page_header("Where we are: The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a single GPU and measured against one frozen ruler: the <b>worst</b> geometric-mean position error on held-out viewpoints ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
+{page_header("Where we are: The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a single GPU and measured against one frozen ruler: the <b>worst</b> mission score on held-out viewpoints — (1 &minus; usable-fix rate) + false-fix rate, the product requirement rather than an error statistic ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
 <div class="status-callout">
   <div class="status-callout-h">Where we are right now</div>
   <p>{status_line}</p>
@@ -2734,10 +2760,10 @@ def render():
   <div class="dash-meta">
     <span class="k" title="This change improved the worst-case error and was committed."><span class="dot kept"></span>Kept improvement</span>
     <span class="k" title="No improvement — the code change was reverted; only the record remains."><span class="dot disc"></span>Discarded</span>
-    <span class="k" title="Best worst-case error achieved so far."><span class="bar"></span>Running best</span>
-    <span class="k" title="Mission target: worst cell at or below {TARGET_M:.0f} m."><span class="bar dash"></span>Target {TARGET_M:.0f} m</span>
+    <span class="k" title="Best mission score achieved so far."><span class="bar"></span>Running best</span>
+    <span class="k" title="The goal: mission score 0 — every frame a usable fix."><span class="bar dash"></span>Goal (score 0)</span>
     <span class="k" title="Violated a deployment gate (model size, latency, or abstained too much) — scored as failure regardless of accuracy."><span class="x">×</span>Gated fail</span>
-    <span class="k" title="Blind Hamburg check — logged for honesty, never used to decide keep/revert."><span class="ring"></span>Holdout check</span>
+    <span class="k" title="Region-holdout check on genuinely untrained ground — logged for honesty, never used to decide keep/revert."><span class="ring"></span>Holdout check</span>
     <span class="k" title="This experiment ran after the design agent had gone 4+ consecutive tries without beating the running best — the harness injects a mandatory 'do not refine the champion again, pick an absent design family' directive into its prompt. Disabled on this branch (berlin-slim) — will not appear until reintroduced."><span class="tri"></span>Pivot-directed</span>
     <span class="k" title="The frozen evaluation data itself was revised (bootstrap phase only). Scores before and after are measured on different test sets and cannot be compared; the running-best line restarts."><span class="vrule"></span>Eval-set reset</span>
     <span id="updated">updated {now}</span>
@@ -2745,13 +2771,13 @@ def render():
 </header>
 <div class="dash-wrap">
 <div class="chart-card">
-<div class="chart-title">Worst-case position error per experiment — log scale, lower is better</div>
+<div class="chart-title">Mission score per experiment — (1 &minus; usable-fix rate) + false-fix rate, lower is better</div>
 {chart_svg(exps)}</div>
 <div class="tbl-card"><table class="main">
 <thead><tr><th></th><th>#</th><th>Experiment</th>
 <th title="Which lever the experiment pulls: architecture, loss, augmentation, relighting, training, quantization.">Category</th>
 <th title="Weight initialization: from scratch, or a permissively-licensed pretrained backbone.">Init</th>
-<th title="Worst geometric-mean position error on held-out Berlin daytime viewpoints — the geometric mean is used because a median rewards centre-guessing and hides real memorisation. The one number the loop optimizes. Milestone: at or below 100 m (branch override — main-branch target is 20 m across 6 lighting conditions x 4 areas).">Worst-case error</th>
+<th title="Mission score on held-out Berlin daytime viewpoints: (1 - usable-fix rate) + false-fix rate. A frame is a usable fix only if the model is confident AND within 100 m; abstaining is safe; confident-but-wrong is a false fix, worse than silence for a drone. 0 = every frame usable, 1 = abstains everywhere, 2 = confidently wrong everywhere. The one number the loop optimizes -- deliberately the product requirement, not an error statistic.">Mission score</th>
 <th title="Largest per-area exported model. Hard limit: 4 MiB (ESP32-P4 flight computer).">Model</th>
 <th title="Single-frame inference on one CPU thread - a documented proxy for the flight computer, budget 250 ms.">Latency</th>
 <th title="Wall time of the whole experiment: agent design + training all areas + scoring.">Time</th>
@@ -2775,7 +2801,7 @@ def render():
   <div class="row-why why-{sr_kind}">{esc(sr_short)}</div></td>
 <td><span class="cat">{esc(e['category'] or '—')}</span>{pivot_tag}</td>
 <td class="mono">{esc(e['init_strategy'] or '—')}</td>
-<td class="num">{fmt_m(e['primary_metric'])}</td>
+<td class="num">{fmt_score(e['primary_metric'])}</td>
 <td class="num">{size}</td><td class="num">{lat}</td>
 <td class="num">{fmt_dur(e.get('duration_s'))}</td>
 <td class="num">{cost_str(e)}</td>
@@ -2807,9 +2833,10 @@ def render():
 <div>
 {heatmap_block(e['artifacts_dir'], metrics)}
 {worked_example_block(e)}
-<div class="score-head">Scoreboard — geometric-mean error (m) per area × lighting</div>
-<div class="score-sub">the worst cell (underlined) is the experiment's score;
-red = failed cell, ink = at target</div>
+<div class="score-head">Scoreboard — mission score per area × lighting</div>
+<div class="score-sub">mission score per cell — (1 &minus; usable-fix rate) + false-fix
+rate; the worst cell (underlined) is the experiment's score. red = failed cell,
+ink = better than abstaining on everything</div>
 {cells_table(metrics)}
 {gates_block(e, metrics)}
 {train_block(e['artifacts_dir'])}

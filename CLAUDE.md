@@ -22,9 +22,9 @@ direction (see memory: `berlin-slim-branch-pivot`).
 - **§5 (four dev areas + Hamburg holdout):** not run. `AREAS=berlin` only;
   the periodic Hamburg holdout check is disabled (gated off, not deleted —
   see `HOLDOUT_ENABLED` in `loop.sh`).
-- **§6 (target ≤ 20 m):** the operative milestone on this branch is
-  **≤ 100 m** worst-case error, Berlin daytime-only (see §6 for the
-  statistic — geometric mean, not median). This was
+- **§6 (target ≤ 20 m):** on this branch a fix counts as **usable within
+  100 m** rather than 20 m, Berlin daytime-only. The statistic itself is
+  the §6 mission score (product requirement), not an error percentile. This was
   derived from data, not chosen arbitrarily: the main-branch champion
   (exp 35, 743 m across 4 areas × 6 buckets) scores roughly 650-720 m on
   Berlin's own daytime buckets alone, so 20 m was a ~35× gap — not a useful
@@ -281,22 +281,34 @@ continuing, not something to quietly average away.
 
 ## 6. Target metric — the single scalar the loop optimizes
 
-**Primary (optimized by the loop):** worst-case (max, not mean)
-**geometric-mean** position error in meters, across all lighting buckets ×
-the development areas, evaluated on held-out **viewpoints** (§4 step 4).
-**Target: ≤ 20 m** (≤ 100 m on the berlin-slim branch).
+**Primary (optimized by the loop) — THE PRODUCT REQUIREMENT, not an error
+statistic.** The aircraft takes a vision fix every 5–10 s and it is its only
+drift correction (§2). Per frame, exactly three things can happen:
 
-**The geometric mean replaced the median on 2026-07-31, and must not be
-changed back to a median.** Measured reason: a model that guesses near the
-map centre has a tight unimodal error distribution — a decent median and no
-good tail — while a model that genuinely memorizes places is bimodal, nailing
-some spots and badly missing others. The median therefore *rewards the
-guesser and punishes the learner*. It was caught doing exactly that:
-experiment 2 located 8% of Berlin within 100 m (baseline 0.0%, experiment 3
-0.2%) and was reverted for a marginally worse median, while experiment 3 —
-a slightly better centre-guesser — was kept. Of every candidate statistic
-tested, the median was the only one that ranked experiment 2 last. Median,
-mean, p10, p25 and a product-facing hit-rate remain logged as secondaries.
+| outcome | meaning |
+|---|---|
+| confident **and** within target | **usable fix** — the product |
+| not confident | abstains — safe, waits for the next frame |
+| confident **but** outside target | **false fix** — dangerous, injects a wrong position into navigation |
+
+    mission_score = (1 - usable_fix_rate) + false_fix_rate     [minimized]
+
+0.0 = every frame usable; 1.0 = abstains everywhere; 2.0 = confidently wrong
+everywhere, i.e. **strictly worse than silence** — which is what this section
+always asserted ("a model that honestly abstains on bad frames is more useful
+than one that confidently guesses wrong") and what no earlier metric actually
+encoded. The loop optimizes the worst such score across lighting buckets ×
+development areas. A fix counts as usable within **20 m** (**100 m** on the
+berlin-slim branch).
+
+**Do not replace this with an error statistic.** Median, geometric mean, p10
+and p25 were each tried as the primary and each rewarded something the product
+does not want. The median rewarded a model guessing the map centre and was
+caught reverting the only experiment that had begun to memorize; the geometric
+mean that replaced it was a research proxy chosen to make progress *visible*
+rather than to state what the aircraft *needs* — the same category of error.
+All remain logged as diagnostics. **The standing check: if the score improves
+while `usable_fix_rate` does not, the metric is wrong again.**
 
 Use worst-case rather than mean deliberately — an average can hide a bad
 rural or night-time failure behind a good Berlin-daytime score, which is

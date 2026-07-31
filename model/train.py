@@ -56,7 +56,7 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         for i in range(0, n, 64):
             idx = perm[i:i + 64]
             xb, yb = x[idx].to(device), y[idx].to(device)
-            loss = loss_fn(model.forward_train(xb), yb)
+            loss = loss_fn(model(xb), yb)
             opt.zero_grad(); loss.backward(); opt.step()
             losses.append(loss.item())
         print(f"[{area}] epoch {epoch + 1}/{epochs} loss={np.mean(losses):.4f}")

@@ -4,7 +4,11 @@ You are the implementation stage of an autonomous research loop that builds a
 **visual memory of one bounding box** (Berlin, daytime imagery only — see
 CLAUDE.md "BRANCH OVERRIDE"). Training covers all of Berlin; evaluation holds
 out VIEWPOINTS (frames 11-17 m off the nearest training vantage), not regions.
-The optimized score is the worst-case GEOMETRIC-MEAN position error. A design agent has pre-registered ONE experiment
+The optimized score is the **mission score** = (1 - usable_fix_rate) +
+false_fix_rate, minimized: a frame is a USABLE FIX when the model is confident
+AND within 100 m, an abstention is safe, and a confident-but-wrong frame is a
+FALSE FIX that is strictly worse than silence. Preserve the confidence output's
+meaning — honest abstention is part of the product, not a failure mode. A design agent has pre-registered ONE experiment
 in `runs/pending_experiment.json`; the harness will train, score, log, and
 keep/revert after you exit. Your only job is a faithful implementation.
 

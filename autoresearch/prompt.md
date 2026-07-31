@@ -38,26 +38,37 @@ no synthetic relighting — the relighting machinery is disabled on this branch)
 There is no cross-lighting robustness to reason about and no other area's
 texture to generalize to.
 
-## THE METRIC: WORST-CASE GEOMETRIC-MEAN ERROR, MILESTONE ≤ 100 m
+## THE METRIC IS THE PRODUCT REQUIREMENT, NOT AN ERROR STATISTIC
 
-The optimized scalar is the **geometric mean** of position error in metres
-(worst bucket), NOT the median. This matters for how you judge your own idea:
+The aircraft takes a vision fix every 5–10 s and it is its ONLY drift
+correction. Per frame exactly three things can happen:
 
-* A model that guesses near the map centre gets a tight, mediocre, unimodal
-  error distribution — a decent median and no good tail.
-* A model that genuinely memorizes is **bimodal**: some spots nailed, others
-  badly wrong when it misidentifies. That is what progress looks like here.
-* The median rewarded the first and punished the second, and was caught
-  reverting the only experiment that had actually started memorizing (it
-  located 8% of Berlin within 100 m; the baseline located 0.0%). The geometric
-  mean reads every frame on a log scale, so pulling ONE place from 2 km to
-  50 m — real memorization — moves the number.
-* **Do not fear a worse median or a heavier tail if more places get nailed.**
-  Also logged, not optimized: median, mean, p10, p25, and `hit_rate_at_target`
-  (share of frames localized within 100 m). `hit_rate_at_target` is the most
-  product-meaningful number — the aircraft takes a fix every 5–10 s and needs
-  *some* frames to be good and to know which ones — so a design that raises it
-  is on the right track even if other statistics wobble.
+| outcome | meaning |
+|---|---|
+| confident **and** within 100 m | **USABLE FIX** — this is the product |
+| not confident | abstains — safe, it waits for the next frame |
+| confident **but** outside 100 m | **FALSE FIX** — dangerous, it injects a wrong position into navigation |
+
+    mission_score = (1 - usable_fix_rate) + false_fix_rate      [MINIMIZED]
+
+* **0.0** = every frame a usable fix. **1.0** = abstains everywhere.
+  **2.0** = confidently wrong everywhere — *strictly worse than silence*,
+  because a confidently wrong fix corrupts navigation while an abstention
+  merely costs time.
+* Therefore: **making the model honest is as valuable as making it
+  accurate.** Converting a confident-but-wrong frame into an abstention
+  improves the score. Converting an abstention into a correct confident fix
+  improves it twice as much. Both are real progress; design for either.
+* A cell whose coverage falls below 0.2 scores FAIL — you cannot pass by
+  abstaining on everything.
+
+**Do not optimize an error statistic.** Median, geometric mean, p10, p25 are
+all still logged, and you may read them to understand *why* something worked,
+but none of them is the target. Each was tried as the primary and each
+rewarded something the aircraft does not want — the median rewarded a model
+that guesses the map centre, and it reverted the first experiment that had
+actually begun memorizing. If your design improves the geometric mean while
+`usable_fix_rate` stays flat, it has not helped the product.
 
 ## Your job, in order
 
@@ -95,7 +106,7 @@ The optimized scalar is the **geometric mean** of position error in metres
      "category": "architecture|loss|augmentation|relighting|training|quantization|other",
      "hypothesis": "what you believe is limiting the metric and why this change addresses it",
      "method": "the ONE focused change, concretely (files, mechanism)",
-     "expected_outcome": "predicted effect on the §6 worst-case GEOMETRIC-MEAN error and on hit_rate_at_target, quantified if possible",
+     "expected_outcome": "predicted effect on mission_score, and on usable_fix_rate / false_fix_rate specifically, quantified if possible",
      "init_strategy": "from-scratch | pretrained:<name>",
      "eli5": "2-4 sentences for a smart non-ML reader: what you changed and why it might help, in everyday language — analogies welcome, zero jargon",
      "architecture": {"stages": [
