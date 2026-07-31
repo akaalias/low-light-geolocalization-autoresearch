@@ -1,9 +1,10 @@
 """AGENT-EDITABLE — training procedure. One model per area (CLAUDE.md §1).
 
-Sample train-split crops from every relight bucket, then train TinyLocNet to
-convergence: crop SELECTION is fixed once, but crop EXTRACTION is re-run every
-epoch with fresh random rotations so a long budget buys generalization instead
-of memorizing one frozen view per crop.
+Train TinyLocNet to convergence on train-split crops from every relight bucket:
+crop SELECTION is re-drawn at random from the full train list before every
+epoch, and crop EXTRACTION is re-run every epoch with fresh random rotations,
+so a long budget buys dataset-scale coverage instead of memorizing one frozen
+subset of vantage points.
 
 Usage: python -m model.train --area berlin --out-dir runs/<id> [--epochs 2]
 """
@@ -29,14 +30,28 @@ ROT_POOL = 8          # fallback: pre-rotated variants per crop
 EXTRACT_BUDGET_S = 15.0  # per-epoch extraction cost above which we fall back
 
 
-def load_training_plan(area: str, data_dir: Path, max_crops_per_bucket: int, rng):
-    """Pick the training crops once. Targets are rotation-invariant (extract_crop
-    rotates about the crop center), so only x has to be rebuilt per epoch."""
+def load_area_assets(area: str, data_dir: Path):
+    """Load the per-bucket relight images and the FULL train-split crop list once.
+
+    No sampling happens here — which positions get trained on is decided fresh
+    every epoch by sample_epoch_plan.
+    """
     meta = load_meta(area, data_dir)
+    buckets = [(bucket,
+                np.asarray(Image.open(area_dir(area, data_dir) / "relight" / f"{bucket}.png")))
+               for bucket in LIGHTING_BUCKETS]
     crops = list_crops(area, meta["width"], meta["height"], "train")
+    return meta, buckets, crops
+
+
+def sample_epoch_plan(buckets, crops, meta, max_crops_per_bucket, rng):
+    """Draw this epoch's crop positions at random from the full train list.
+
+    Targets are rotation-invariant (extract_crop rotates about the crop center),
+    so y depends only on the drawn positions, not on the heading.
+    """
     plan, ys = [], []
-    for bucket in LIGHTING_BUCKETS:
-        img = np.asarray(Image.open(area_dir(area, data_dir) / "relight" / f"{bucket}.png"))
+    for _bucket, img in buckets:
         picks = rng.choice(len(crops), size=min(max_crops_per_bucket, len(crops)),
                            replace=False)
         for i in picks:
@@ -76,19 +91,26 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
              "cuda" if torch.cuda.is_available() else "cpu"
     t0 = time.time()
     total_epochs = epochs * EPOCH_MULT
-    plan, y = load_training_plan(area, data_dir, max_crops_per_bucket, rng)
+    meta, buckets, crops = load_area_assets(area, data_dir)
     model = build_model().to(device)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         opt, T_max=total_epochs, eta_min=1e-5)
-    n = len(plan)
-    print(f"[{area}] {n} crops, device={device}, epochs={total_epochs}")
-    pool = None
+    n = len(buckets) * min(max_crops_per_bucket, len(crops))
+    print(f"[{area}] {n} crops/epoch drawn from {len(crops)} train positions, "
+          f"device={device}, epochs={total_epochs}")
+    pool, plan, y = None, None, None
     for epoch in range(total_epochs):
+        if pool is None:
+            # Fresh draw of positions every epoch: over the full budget the model
+            # sees essentially the whole train split, not one frozen subset.
+            plan, y = sample_epoch_plan(buckets, crops, meta,
+                                        max_crops_per_bucket, rng)
         te = time.time()
         x = epoch_tensor_from_pool(pool, rng) if pool is not None \
             else epoch_tensor(plan, rng)
         extract_s = time.time() - te
+        n = len(plan)
         perm = torch.randperm(n)
         losses = []
         for i in range(0, n, 64):
@@ -101,10 +123,12 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         print(f"[{area}] epoch {epoch + 1}/{total_epochs} "
               f"loss={np.mean(losses):.4f} extract={extract_s:.1f}s")
         if pool is None and extract_s > EXTRACT_BUDGET_S:
-            # Too slow to re-rotate every epoch: amortize into a sampled pool
-            # rather than dropping fresh rotations altogether.
+            # Too slow to re-extract every epoch: freeze this epoch's positions
+            # and amortize into a sampled rotation pool rather than dropping
+            # fresh rotations altogether. No further position resampling.
             print(f"[{area}] extraction {extract_s:.1f}s > {EXTRACT_BUDGET_S}s, "
-                  f"switching to a {ROT_POOL}-variant rotation pool")
+                  f"freezing positions and switching to a {ROT_POOL}-variant "
+                  f"rotation pool")
             pool = build_rot_pool(plan, rng)
 
     models_dir = out_dir / "models"
@@ -121,6 +145,8 @@ def train_area(area: str, out_dir: Path, data_dir: Path, epochs: int,
         "train_seconds": round(time.time() - t0, 1),
         "onnx_bytes": onnx_path.stat().st_size,
         "init": "from-scratch",  # §9: log init strategy per experiment
+        "position_sampling": "per-epoch",
+        "distinct_positions_available": len(crops),
     }
 
 
