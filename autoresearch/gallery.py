@@ -1068,29 +1068,88 @@ def ensure_goal_map():
     return GOAL_MAP
 
 
+def _usable_of(e):
+    try:
+        b = json.loads(e["metrics_json"])["areas"][0]["buckets"]
+        return max(c.get("usable_fix_rate") or 0.0 for c in b.values())
+    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
+        return None
+
+
 def challenge_block(exps):
-    """Overview hero: what one camera frame must become, then the real
-    baseline error map beside the goal state, each stamped with its metric."""
+    """Overview hero: what one camera frame must become, then the starting
+    baseline's error map beside the CURRENT model's — both real, both
+    measured on the same test points by the same renderer.
+
+    This used to put the baseline next to a synthetic picture of the goal,
+    which was right while the baseline was the state of the art. It is not
+    right now: the right-hand panel is an actual result, and showing an
+    illustration in its place both understates the work and reads, to anyone
+    skimming, as though nothing had been achieved."""
     dev = [e for e in exps if e["kind"] != "holdout_check"]
     base = next((e for e in dev if e.get("artifacts_dir")), None)
+    champ = next((e for e in reversed(dev)
+                  if e.get("kept") and e.get("artifacts_dir")
+                  and e["primary_metric"] is not None
+                  and e["primary_metric"] < FAIL), None)
     if not base:
         return ""
     real = REPO_ROOT / base["artifacts_dir"] / "heatmaps" / "heatmap_berlin.png"
-    goal = ensure_goal_map()
-    if not real.exists() or not goal:
+    if not real.exists():
         return ""
     rel_real = Path(base["artifacts_dir"]) / "heatmaps" / "heatmap_berlin.png"
-    rel_goal = Path("gallery") / "goal_map.png"
 
-    usable = None
-    try:
-        b = json.loads(base["metrics_json"])["areas"][0]["buckets"]
-        usable = max(c.get("usable_fix_rate") or 0.0 for c in b.values())
-    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
-        pass
+    # Prefer the current model's own map; fall back to the goal illustration
+    # only while there is no kept result to show (i.e. a fresh lineage).
+    now_map = (REPO_ROOT / champ["artifacts_dir"] / "heatmaps" / "heatmap_berlin.png"
+               if champ else None)
+    if champ and now_map.exists():
+        rel_now = Path(champ["artifacts_dir"]) / "heatmaps" / "heatmap_berlin.png"
+        now_usable = _usable_of(champ)
+        right = (
+            f"<figure class='wex-map'><a href='{rel_now}'>"
+            f"<img src='{rel_now}' loading='lazy'></a>"
+            "<figcaption><b>where we are — measured</b><br>mission score "
+            f"<b class='num'>{fmt_score(champ['primary_metric'])}</b> · usable "
+            f"fixes <b class='num'>"
+            f"{f'{100*now_usable:.1f}%' if now_usable is not None else '—'}</b>"
+            "<br>The identical test points, answered by the current model. "
+            "Green is a fix inside 100 m — close enough to correct the "
+            "aircraft's drift. Nothing about the test changed; only the "
+            "answers did.</figcaption></figure>")
+        lead = ("<b>Left is where this started. Right is where it is now.</b> "
+                "Same city, same test points, same renderer — only the answers "
+                "differ.")
+    else:
+        goal = ensure_goal_map()
+        if not goal:
+            return ""
+        rel_goal = Path("gallery") / "goal_map.png"
+        right = (
+            f"<figure class='wex-map'><a href='{rel_goal}'>"
+            f"<img src='{rel_goal}' loading='lazy'></a>"
+            "<figcaption><b>the goal — an illustration, not a result</b><br>"
+            "mission score <b class='num'>0.000</b> · usable fixes "
+            "<b class='num'>100%</b><br>The identical test points drawn as if "
+            "every one were a usable fix (within 100 m). <i>No model produced "
+            "this image</i> — it is the target, not an achievement.</figcaption>"
+            "</figure>")
+        lead = ("<b>Left is where we are, measured. Right is what winning looks "
+                "like.</b> Same city, same test points, same renderer — only the "
+                "answers differ.")
+
+    usable = _usable_of(base)
     usable_s = f"{100*usable:.0f}%" if usable is not None else "—"
 
     info = workedexample.ensure(base["artifacts_dir"])
+    # The same frame, answered by the current model — the contract paragraph
+    # otherwise leaves the reader on the baseline's 2 km miss.
+    champ_answer = ""
+    if champ and champ is not base:
+        ci = workedexample.ensure(champ["artifacts_dir"])
+        if ci and "miss_m" in ci:
+            champ_answer = (f" The current model answers that same frame within "
+                            f"<b>{fmt_m(ci['miss_m'])}</b>.")
     contract = ""
     if info and "lat_true" in info:
         fr = Path(base["artifacts_dir"]) / info["frame"]
@@ -1111,11 +1170,13 @@ def challenge_block(exps):
             "<figcaption><b>what it must return</b> — the true answer for that "
             "frame, computed on board.</figcaption></figure>"
             "</div>"
-            "<p class='contract-note'>Today the baseline replies "
+            "<p class='contract-note'>The starting baseline replied "
             f"<span class='num'>{info['lat_pred']:.5f}, {info['lon_pred']:.5f}</span> "
             f"at confidence <span class='num'>{info['conf']:.2f}</span> — about "
             f"<b>{fmt_m(info['miss_m'])}</b> away, stated almost certainly. "
-            "Confident and wrong is the one answer a drone must never get.</p>")
+            "Confident and wrong is the one answer a drone must never get, "
+            "which is what the whole project is measured against."
+            + champ_answer + "</p>")
 
     return (
         "<div class='sec-h'>The challenge, in one picture</div>"
@@ -1125,28 +1186,18 @@ def challenge_block(exps):
         + contract +
         "<div class='pnote'><p>Run that over the whole city and you get the maps "
         "below. Every dot is one held-out viewpoint: ground the model trained on, "
-        "framed from a position and heading it has never seen. <b>Left is where we "
-        "are, measured. Right is what winning looks like.</b> Same city, same test "
-        "points, same renderer — only the answers differ.</p></div>"
+        f"framed from a position and heading it has never seen. {lead}</p></div>"
         "<div class='wex-row'><div class='wex-imgs'>"
         f"<figure class='wex-frame'><a href='{rel_real}'>"
         f"<img src='{rel_real}' loading='lazy'></a>"
-        "<figcaption><b>where we start — measured</b><br>mission score "
+        "<figcaption><b>where this started — measured</b><br>mission score "
         f"<b class='num'>{fmt_score(base['primary_metric'])}</b> · usable fixes "
-        f"<b class='num'>{usable_s}</b><br>Red is a miss beyond 250 m. The "
+        f"<b class='num'>{usable_s}</b><br>Red is a miss beyond 250 m. The "
         "baseline is confident on every frame and wrong on every frame — the "
         "worst value the metric allows, because for a drone a confident wrong "
         "answer is worse than silence.</figcaption></figure>"
         "<div class='wex-arr'>→</div>"
-        f"<figure class='wex-map'><a href='{rel_goal}'>"
-        f"<img src='{rel_goal}' loading='lazy'></a>"
-        "<figcaption><b>the goal — an illustration, not a result</b><br>"
-        "mission score <b class='num'>0.000</b> · usable fixes "
-        "<b class='num'>100%</b><br>The identical test points drawn as if every "
-        "one were a usable fix (within 100 m). <i>No model produced this "
-        "image</i> — it is the target, not an achievement: a network small "
-        "enough for a $4 board that has memorised this city well enough to turn "
-        "every glance into a position.</figcaption></figure></div></div>")
+        + right + "</div></div>")
 
 def page_header(title, sub_html):
     """THE one header for every inner page (log, designs, lineage) — same
