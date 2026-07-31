@@ -3144,16 +3144,11 @@ def render_overview(exps):
 run by an autonomous loop of coding agents</p>
 
 <div class="bl-h">The bottom line</div>
-<p class="bottom-line"><span class="hl">We found a way to turn a camera frame
-into coordinates &mdash; GPS without the GPS.</span> Flying over Berlin, it
-puts itself within about {med_s} of where it really is, on {usable_pct} of
-frames, from a {best_mb:.1f}&nbsp;MB file that carries no map and needs no
-internet.</p>
-<p class="bottom-line">Getting there took {n_all_exp} experiments across
-{n_eras} rebuilt evaluations. We tried most of what the field offers &mdash;
-bigger networks, borrowed ones, matching each frame against stored imagery,
-separate specialists for different lighting &mdash; and nearly all of it
-failed. What finally worked was simpler than any of it.</p>
+<p class="bottom-line"><span class="hl">A drone can look down at Berlin and
+know where it is to within {med_s} &mdash; no GPS, no internet, no map on
+board, just a {best_mb:.1f}&nbsp;MB file of weights.</span> It works on
+{usable_pct} of camera frames, it took {n_all_exp} experiments to find, and
+almost everything we tried first failed.</p>
 
 <div class="stat-hero">
   <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
@@ -3212,9 +3207,8 @@ figures, and the <a href="gallery/index.html">research log</a> has each step
 as its own experiment.</p>
 <p>The result is one file of <b>{best_mb:.1f}&nbsp;MB</b> that answers in
 <b>{best_ms:.1f}&nbsp;ms</b>. Nothing is looked up and nothing is matched
-&mdash; the map <i>is</i> the weights. Here is the whole of it:</p>
+&mdash; the map <i>is</i> the weights.</p>
 </div>
-{champ_fig}
 
 {chal_maps}
 
