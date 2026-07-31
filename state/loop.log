@@ -13,3 +13,18 @@ wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/galle
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (2 nodes)
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
+WARNING: sync with origin/main failed (conflict or offline) — 61 commit(s) ahead, record is committed locally only
+=== Experiment 3 (2/12 recorded)  run=20260731_103727_experiment3  parent=3f53bcf4f5befbead219660311cbee8a8a3bd714 ===
+agents finished (design: claude-fable-5, claude-haiku-4-5-20251001 298s, impl: claude-haiku-4-5-20251001, claude-opus-5 115s)
+--- train berlin:
+[berlin] epoch 8/8 loss=1.6867 top1=0.8313 mean_max_softmax=0.5734 views=72712 lr=1.00e-04
+{"area": "berlin", "n_train_crops": 581696, "epochs": 8, "device": "mps", "train_seconds": 917.3, "onnx_bytes": 3053335, "init": "from-scratch", "n_cells": 2970, "distinct_vantages_seen": 581696, "full_lattice_epochs": true, "final_train_top1": 0.8313, "chunk_size": 4096, "max_crops_per_bucket_arg": 6000}
+PRIMARY worst-case mission score: 0.1827 (0=every frame a usable fix, 1=abstains everywhere, 2=confidently wrong everywhere)
+samples -> runs/20260731_103727_experiment3/samples
+KEPT: mission score 0.182715 (improved from 2.00075)
+3
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/index.html (3 experiments)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/inference-paths.html (0 figures)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (3 nodes)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
