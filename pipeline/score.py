@@ -1,8 +1,18 @@
 """FROZEN (see /FROZEN) — scoring, §6.
 
-Primary metric (optimized by the loop): worst-case (max) median position
-error in meters across all lighting buckets x the DEVELOPMENT areas given,
-on eval-split crops. Target <= 20 m.
+Primary metric (optimized by the loop): worst-case (max) GEOMETRIC-MEAN
+position error in meters across all lighting buckets x the DEVELOPMENT areas
+given, on eval-split crops (held-out viewpoints — see pipeline/dataset.py).
+Target <= TARGET_M.
+
+The geometric mean replaced the median on 2026-07-31 because the median
+actively rewarded the degenerate strategy: a model guessing near the map
+centre has a tight unimodal error distribution and a decent median, while a
+model genuinely memorizing places is bimodal — some spots nailed, others
+badly wrong — and scores WORSE on the median. That is backwards for a
+memorization system, and it was observed reverting the first experiment that
+actually learned anything. See the long note in score_area(). Median, mean,
+p10, p25 and hit-rates are all still logged, just not optimized.
 
 Gates folded into the scalar (§6): a per-area exported ONNX must fit the
 ESP32-P4 envelope — file size <= MODEL_MAX_BYTES and single-thread host CPU
@@ -37,6 +47,7 @@ CONF_THRESHOLD = 0.3
 MIN_COVERAGE = 0.2
 FAIL_SCORE = 1e9
 MAX_EVAL_CROPS_PER_BUCKET = 400     # deterministic subsample cap for speed
+TARGET_M = 100.0                    # berlin-slim milestone (main-branch target: 20 m)
 
 
 def load_session(onnx_path: Path):
@@ -102,13 +113,43 @@ def score_area(area: str, model_dir: Path, data_dir: Path, heatmap_dir: Path | N
                 errs.append(e)
                 heat_points.append((c["cx"], c["cy"], e))
         coverage = n_conf / max(len(crops), 1)
+        # SCORE = GEOMETRIC MEAN of the position error, not the median.
+        #
+        # Why (measured 2026-07-31, experiments 1-3 on the v2 split): a model
+        # that just guesses near the map centre produces a tight, mediocre,
+        # unimodal error distribution — decent median, no good tail. A model
+        # that genuinely memorizes places produces a BIMODAL one: some spots
+        # nailed, others badly wrong when it misidentifies. The median rewards
+        # the guesser and punishes the learner. Concretely, exp 2 located 8% of
+        # Berlin to within 100 m (the baseline: 0.0%, exp 3: 0.2%) and was
+        # REVERTED for a slightly worse median, while exp 3 — a marginally
+        # better centre-guesser with one good hit in five hundred — was KEPT.
+        # Median was the only candidate statistic that ranked exp 2 last;
+        # p25, p10, geometric mean and hit-rate all ranked it first.
+        #
+        # The geometric mean is used rather than a percentile because it reads
+        # every frame (no arbitrary cutoff), and because error here spans two
+        # orders of magnitude, where the log scale is the natural one: pulling
+        # one spot from 2000 m to 50 m — i.e. actually memorizing it — moves it
+        # substantially, which is exactly the signal the loop must be able to
+        # see. Still minimized and still in metres, so the harness's
+        # keep/revert comparison and the FAIL sentinel are unchanged.
+        # median/mean/percentiles/hit-rates stay logged below, not optimized.
+        ea = np.asarray(errs, dtype=float) if errs else np.array([])
+        geo = float(np.exp(np.mean(np.log(np.clip(ea, 1.0, None))))) if errs else None
         cell = {
             "n_eval": len(crops),
             "coverage": round(coverage, 4),
-            "median_error_m": round(float(np.median(errs)), 2) if errs else None,
-            "mean_error_m": round(float(np.mean(errs)), 2) if errs else None,
+            "geomean_error_m": round(geo, 2) if geo is not None else None,
+            "median_error_m": round(float(np.median(ea)), 2) if errs else None,
+            "mean_error_m": round(float(np.mean(ea)), 2) if errs else None,
+            "p10_error_m": round(float(np.percentile(ea, 10)), 2) if errs else None,
+            "p25_error_m": round(float(np.percentile(ea, 25)), 2) if errs else None,
+            # product-facing: what share of frames give a usable fix at all
+            "hit_rate_at_target": round(float((ea < TARGET_M).mean()), 4) if errs else None,
+            "hit_rate_at_2p5x_target": round(float((ea < 2.5 * TARGET_M).mean()), 4) if errs else None,
         }
-        cell["score"] = FAIL_SCORE if coverage < MIN_COVERAGE else cell["median_error_m"]
+        cell["score"] = FAIL_SCORE if coverage < MIN_COVERAGE else cell["geomean_error_m"]
         result["buckets"][bucket] = cell
 
     # Region-holdout diagnostic (dataset.py v2): a small 1-in-32-block region
@@ -206,7 +247,7 @@ def main():
         "kind": "holdout_check" if args.holdout else "development",
         "areas": per_area,
         "primary_worst_median_error_m": primary,
-        "target_m": 100.0,  # berlin-slim branch milestone (main-branch target is 20 m)
+        "target_m": TARGET_M,
     }
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w") as f:
