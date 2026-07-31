@@ -1,0 +1,10 @@
+[berlin] 72712 lattice positions, 2970 cells, device=mps
+[berlin] epoch 1/8 loss=6.6781 top1=0.0334 mean_max_softmax=0.0128 views=72712 lr=9.66e-04
+[berlin] epoch 2/8 loss=4.2910 top1=0.2592 mean_max_softmax=0.1024 views=72712 lr=8.68e-04
+[berlin] epoch 3/8 loss=3.0344 top1=0.5088 mean_max_softmax=0.2592 views=72712 lr=7.22e-04
+[berlin] epoch 4/8 loss=2.4170 top1=0.6492 mean_max_softmax=0.3899 views=72712 lr=5.50e-04
+[berlin] epoch 5/8 loss=2.0874 top1=0.7261 mean_max_softmax=0.4730 views=72712 lr=3.78e-04
+[berlin] epoch 6/8 loss=1.8841 top1=0.7776 mean_max_softmax=0.5248 views=72712 lr=2.32e-04
+[berlin] epoch 7/8 loss=1.7633 top1=0.8093 mean_max_softmax=0.5554 views=72712 lr=1.34e-04
+[berlin] epoch 8/8 loss=1.6867 top1=0.8313 mean_max_softmax=0.5734 views=72712 lr=1.00e-04
+{"area": "berlin", "n_train_crops": 581696, "epochs": 8, "device": "mps", "train_seconds": 925.3, "onnx_bytes": 3079093, "init": "from-scratch", "n_cells": 2970, "distinct_vantages_seen": 581696, "full_lattice_epochs": true, "final_train_top1": 0.8313, "chunk_size": 4096, "max_crops_per_bucket_arg": 6000}
