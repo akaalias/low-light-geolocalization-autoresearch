@@ -13,3 +13,9 @@ wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/galle
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (5 nodes)
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
+=== Experiment 6 (5/10 recorded)  run=20260731_092000_experiment6  parent=2e3c737b7799122716744331f244f3aadd41d30f ===
+agents finished (design: claude-fable-5, claude-haiku-4-5-20251001 195s, impl: claude-haiku-4-5-20251001, claude-opus-5 47s)
+
+Interrupted — discarding the in-flight experiment (all completed
+experiments are already committed/logged). Safe to restart with:
+  ./autoresearch/loop.sh
