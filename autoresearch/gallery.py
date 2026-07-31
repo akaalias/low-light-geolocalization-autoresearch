@@ -387,17 +387,35 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
   margin-top:6px;max-width:100%}
 .wex-row figcaption b{color:var(--ink);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.05em}
-.wex-arr{color:var(--faint);font-size:18px;flex:none;align-self:center;
-  padding-bottom:34px}
+.wex-arr{color:var(--accent);font-size:30px;line-height:1;flex:none;
+  align-self:center;padding-bottom:34px;opacity:.85}
 .wex-stats{display:flex;flex-direction:row;gap:28px;padding:2px 0 0}
-.contract-out{border:1px solid var(--rule);background:var(--paper);padding:14px 16px;
-  display:flex;flex-direction:column;gap:8px;justify-content:center;min-height:150px}
-.co-row{display:flex;justify-content:space-between;align-items:baseline;gap:18px;
+/* the one-frame-in / one-position-out contract: a SMALL fixed thumbnail beside
+   a compact readout — deliberately not the .wex-* map layout, whose fluid
+   flex:1 1 0 blew the 256px frame up to ~430px and stretched the row */
+.contract-row{display:flex;align-items:flex-start;gap:22px;margin:16px 0 30px;
+  flex-wrap:wrap}
+.contract-frame{flex:none;width:176px;margin:0}
+.contract-frame img{width:176px;height:176px;display:block;
+  border:1px solid var(--rule)}
+.contract-frame figcaption{font-size:11px;color:var(--muted);line-height:1.55;
+  margin-top:7px;max-width:176px}
+.contract-arrow{flex:none;color:var(--accent);font-size:30px;line-height:176px;
+  opacity:.85}
+.contract-right{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;
+  gap:11px}
+.contract-out{border:1px solid var(--rule);background:var(--paper);
+  padding:13px 16px;display:flex;flex-direction:column;gap:8px;max-width:340px}
+.co-row{display:flex;justify-content:space-between;align-items:baseline;gap:20px;
   border-bottom:1px dotted var(--rule);padding-bottom:6px}
 .co-row:last-child{border-bottom:none;padding-bottom:0}
-.co-k{font:600 11px var(--serif);font-feature-settings:"smcp" 1;
-  text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-.co-v{font-size:19px;color:var(--ink)}
+.co-k{font:600 10px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.co-v{font-size:16.5px;color:var(--ink)}
+.contract-note{font-size:12.5px;color:var(--muted);line-height:1.62;max-width:56ch;
+  margin:0}
+.contract-note b{color:var(--ink);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.05em;font-size:11.5px}
 .wex-num{font-size:27px;line-height:1.1;color:var(--ink)}
 .wex-lab{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:2px}
@@ -972,26 +990,27 @@ def challenge_block(exps):
     if info and "lat_true" in info:
         fr = Path(base["artifacts_dir"]) / info["frame"]
         contract = (
-            "<div class='wex-row'><div class='wex-imgs'>"
-            f"<figure class='wex-frame'><a href='{fr}'>"
+            "<div class='contract-row'>"
+            f"<figure class='contract-frame'><a href='{fr}'>"
             f"<img src='{fr}' loading='lazy'></a>"
-            "<figcaption><b>what the UAV sees</b> — one real 128 m frame from "
+            "<figcaption><b>what the UAV sees</b> — one real 128 m frame from "
             "the downward camera. No map aboard, no internet, no GPS.</figcaption>"
-            "</figure><div class='wex-arr'>→</div>"
-            "<figure class='wex-map'><div class='contract-out'>"
-            f"<div class='co-row'><span class='co-k'>lat</span>"
+            "</figure>"
+            "<div class='contract-arrow'>&rarr;</div>"
+            "<div class='contract-right'><div class='contract-out'>"
+            "<div class='co-row'><span class='co-k'>lat</span>"
             f"<span class='co-v num'>{info['lat_true']:.5f}</span></div>"
-            f"<div class='co-row'><span class='co-k'>lon</span>"
+            "<div class='co-row'><span class='co-k'>lon</span>"
             f"<span class='co-v num'>{info['lon_true']:.5f}</span></div>"
             "<div class='co-row'><span class='co-k'>confidence</span>"
             "<span class='co-v num'>high</span></div></div>"
-            "<figcaption><b>what it must return</b> — the true answer for that "
-            f"frame. Today the baseline replies <span class='num'>"
-            f"{info['lat_pred']:.5f}, {info['lon_pred']:.5f}</span> at confidence "
-            f"<span class='num'>{info['conf']:.2f}</span> — about "
-            f"<b>{fmt_m(info['miss_m'])}</b> away, stated almost certainly. "
-            "Confident and wrong is the one answer a drone must never get."
-            "</figcaption></figure></div></div>")
+            "<p class='contract-note'><b>what it must return</b> &mdash; the true "
+            "answer for that frame. Today the baseline replies "
+            f"<span class='num'>{info['lat_pred']:.5f}, {info['lon_pred']:.5f}</span> "
+            f"at confidence <span class='num'>{info['conf']:.2f}</span> &mdash; about "
+            f"<b style='font-size:12.5px;letter-spacing:0;text-transform:none'>"
+            f"{fmt_m(info['miss_m'])}</b> away, stated almost certainly. Confident and "
+            "wrong is the one answer a drone must never get.</p></div></div>")
 
     return (
         "<div class='sec-h'>The challenge, in one picture</div>"
