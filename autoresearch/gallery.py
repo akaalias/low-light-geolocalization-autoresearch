@@ -390,6 +390,16 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 .wex-arr{color:var(--accent);font-size:30px;line-height:1;flex:none;
   align-self:center;padding-bottom:34px;opacity:.85}
 .wex-stats{display:flex;flex-direction:row;gap:28px;padding:2px 0 0}
+/* a bare "0.183" is meaningless without its scale — show where it sits */
+.stat-score .sc-wrap{display:block;margin-top:9px}
+.sc-bar{position:relative;display:block;height:4px;border-radius:2px;
+  background:linear-gradient(90deg,#3c9c3c 0%,#c9a227 50%,#8c2f1f 100%);
+  opacity:.5}
+.sc-dot{position:absolute;top:-3px;width:10px;height:10px;border-radius:50%;
+  background:var(--ink);border:2px solid var(--paper);transform:translateX(-50%)}
+.sc-ends{display:flex;justify-content:space-between;margin-top:5px;
+  font-size:9.5px;letter-spacing:.04em;color:var(--faint);
+  text-transform:none;font-feature-settings:normal}
 /* the one-frame-in / one-position-out contract: a SMALL fixed thumbnail beside
    a compact readout — deliberately not the .wex-* map layout, whose fluid
    flex:1 1 0 blew the 256px frame up to ~430px and stretched the row */
@@ -757,7 +767,8 @@ def esc(s):
 NAV_PAGES = (("overview", "overview"),
              ("log", "research log"),
              ("paths", "model designs"),
-             ("lineage", "research lineage"),
+             ("lineage", "experiment lineage"),
+             ("evolution", "research evolution"),
              ("notebook", "lab notebook"))
 
 
@@ -1065,6 +1076,8 @@ def topnav(active, root=False):
                        else "inference-paths.html"),
              "lineage": ("gallery/research-lineage.html" if root
                          else "research-lineage.html"),
+             "evolution": ("gallery/research-evolution.html" if root
+                           else "research-evolution.html"),
              "notebook": ("gallery/lab-notebook.html" if root
                           else "lab-notebook.html")}
     links = []
@@ -2316,17 +2329,32 @@ def render_overview(exps):
     # The mission score is in [0,2] and 0 is the goal, so "distance to goal"
     # is just the score itself, and progress is how far it has closed from the
     # first scoreable run toward 0.
-    usable_best = None
+    usable_best = med_best = false_best = None
     for e in reversed(dev):
         if e["kept"] and e.get("metrics_json"):
             try:
-                a = json.loads(e["metrics_json"])["areas"][0]["buckets"]
-                usable_best = max(c.get("usable_fix_rate") or 0.0 for c in a.values())
+                cells = json.loads(e["metrics_json"])["areas"][0]["buckets"].values()
+                worst = max(cells, key=lambda c: c.get("mission_score") or 0)
+                usable_best = worst.get("usable_fix_rate")
+                false_best = worst.get("false_fix_rate")
+                med_best = worst.get("median_error_m")
             except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError):
-                usable_best = None
+                pass
             break
-    factor = (f"{100*usable_best:.0f}% of frames usable" if usable_best is not None
-              else "—")
+    usable_s2 = f"{100*usable_best:.0f}%" if usable_best is not None else "—"
+    med_s = f"{med_best:,.0f} m" if med_best else "—"
+    false_s = f"{100*false_best:.1f}%" if false_best is not None else "—"
+    # a bare 0.183 says nothing without its scale, so draw one: where this run
+    # sits between 0 (every frame usable) and 2 (confidently wrong on all)
+    if best is not None and best < FAIL:
+        pos = max(0.0, min(best / 2.0, 1.0)) * 100
+        scale_svg = (
+            "<span class='sc-wrap'><span class='sc-bar'>"
+            f"<span class='sc-dot' style='left:{pos:.1f}%'></span></span>"
+            "<span class='sc-ends'><span>0 · perfect</span>"
+            "<span>1 · silent</span><span>2 · worst</span></span></span>")
+    else:
+        scale_svg = ""
     baseline = next((e["primary_metric"] for e in dev
                      if e["primary_metric"] and e["primary_metric"] < FAIL),
                     None)
@@ -2365,10 +2393,11 @@ main project's full scope for faster rounds while the loop searches for
 an architecture worth generalizing back out.</p>
 
 <div class="stats">
-  <div class="stat"><b>0.000</b><span>the goal — every frame a usable fix</span></div>
-  <div class="stat"><b>{best_s}</b><span>best mission score — {factor}</span></div>
-  <div class="stat"><b>{progress_s}</b><span>closed toward the goal</span></div>
-  <div class="stat"><b>{len(dev)}</b><span>experiments · {n_kept} kept</span></div>
+  <div class="stat"><b>{usable_s2}</b><span>of camera frames give a <b>usable fix</b> —
+    confident <i>and</i> within {TARGET_M:.0f} m</span></div>
+  <div class="stat"><b>{med_s}</b><span>typical miss when it answers</span></div>
+  <div class="stat"><b>{false_s}</b><span>confident <i>and wrong</i> — the dangerous case</span></div>
+  <div class="stat stat-score"><b>{best_s}</b><span>mission score{scale_svg}</span></div>
 </div>
 
 {challenge_block(exps)}
@@ -2421,7 +2450,7 @@ anything flies.</p>
 hypotheses, results, per-area × lighting scoreboards, the exact prompts
 the agents received, and one real worked example per experiment — the same
 night crop through each model's actual deployed weights.</span></a>
-<a class="card" href="gallery/research-lineage.html"><b>Research
+<a class="card" href="gallery/research-lineage.html"><b>Experiment
 lineage</b>
 <span>The family tree of the search: every experiment as one node in
 discovery order, arcs to the design it built on — hover any node to trace
@@ -2915,11 +2944,11 @@ def render_lineage(exps):
     data_json = json.dumps({"nodes": nodes, "target": 0.0})
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
-<title>Research Lineage — Low-Light Geolocalization</title>
+<title>Experiment Lineage — Low-Light Geolocalization</title>
 <style>{CSS}{LINEAGE_CSS}</style></head><body>
 {topnav('lineage')}
 {compute_banner()}
-{page_header("How we got here: Research experiment lineage", f"{n_dev} experiments, left → right in discovery order; each arc links an experiment to the kept design it built on. <b>Hover</b> to trace its ancestry back to the root; <b>click</b> to open its full record in the <a href='index.html'>research log</a>.")}
+{page_header("Experiment lineage: the family tree of the search", f"{n_dev} experiments, left → right in discovery order; each arc links an experiment to the kept design it built on. <b>Hover</b> to trace its ancestry back to the root; <b>click</b> to open its full record in the <a href='index.html'>research log</a>.")}
 <div class="lin-head">
 <div class="legend">
   <span class="k"><span class="ldot" style="background:var(--ink)"></span>Kept (new best)</span>
