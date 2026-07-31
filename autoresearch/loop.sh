@@ -73,9 +73,29 @@ report_phase() {
   # backward compatibility with the live page and the external health-check
   # that already read them; the values now carry the experiment number, the
   # target, and the experiment's start time.
-  printf '{"iter":%s,"iterations":%s,"iter_started":%s,"phase":"%s","phase_started":%s,"best":%s,"push_ok":%s,"push_ahead":%s}\n' \
+  # Design snippet: once the design agent has written a design (still at
+  # runs/pending_experiment.json pre-implementation, moved to
+  # $RUN_DIR/experiment.json once implementation starts), publish its
+  # human-facing fields so the live row can show title/eli5/hypothesis
+  # before training even starts, not just a phase name.
+  DESIGN_JSON="null"
+  for _df in "runs/pending_experiment.json" "${RUN_DIR:-}/experiment.json"; do
+    if [ -n "$_df" ] && [ -f "$_df" ]; then
+      DESIGN_JSON="$($PY -c "
+import json,sys
+try:
+    d = json.load(open('$_df'))
+except Exception:
+    print('null'); sys.exit()
+snip = {k: d.get(k) for k in ('title','category','init_strategy','eli5','hypothesis') if d.get(k)}
+print(json.dumps(snip) if snip else 'null')
+" 2>/dev/null || echo 'null')"
+      break
+    fi
+  done
+  printf '{"iter":%s,"iterations":%s,"iter_started":%s,"phase":"%s","phase_started":%s,"best":%s,"push_ok":%s,"push_ahead":%s,"design":%s}\n' \
     "${N:-0}" "$TARGET" "${EXPERIMENT_T0:-$(date +%s)}" "$1" "$(date +%s)" "$(best_metric)" \
-    "$PUSH_OK" "$PUSH_AHEAD" \
+    "$PUSH_OK" "$PUSH_AHEAD" "$DESIGN_JSON" \
     > "$STATE/phase.json" || true
   ( BLOB=$(git hash-object -w "$STATE/phase.json") &&
     TREE=$(printf '100644 blob %s\tphase.json\n' "$BLOB" | git mktree) &&
