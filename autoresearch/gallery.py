@@ -1857,7 +1857,7 @@ the day closes with the same 743.07&nbsp;m champion still standing.</p></div>
 
 <section class="nb-day">
 <h2>31 July 2026</h2>
-<p class="daysub">The scope itself gets rethought &mdash; a slimmed, single-locale branch</p>
+<p class="daysub">The scope gets rethought &mdash; then the evaluation itself turns out to have been asking an impossible question</p>
 
 <div class="nb-row"><span class="nb-time">morning</span>
 <p class="nb-text"><b>The human proposes deliberately narrowing scope.</b>
@@ -1907,6 +1907,47 @@ from-scratch <code>TinyLocNet</code> baseline. The full experiment lineage
 is wiped, not just the comparison metric, so berlin-slim&rsquo;s research
 trail starts at Experiment&nbsp;1 with nothing to live up to; the old
 62-row history is archived, not deleted.</p></div>
+
+<div class="nb-row"><span class="nb-time">11:20</span>
+<p class="nb-text"><b>A question about one roundabout unravels the whole
+evaluation.</b> Looking at Berlin&rsquo;s error map, the human asks why the
+Gro&szlig;er Stern &mdash; a seven-way star roundabout that exists exactly
+once in the city, about as visually unmistakable as a landmark gets &mdash;
+is surrounded entirely by red dots. If anything should be memorable, that
+should be. Checking the frozen split directly: <b>zero</b> training crops
+contain that roundabout, and <b>twelve</b> evaluation questions do. It sits
+three pixels from the edge of its 360&nbsp;m block, and the block next door
+is an eval block &mdash; so the anti-leakage buffer had deleted every single
+training view of it.</p></div>
+
+<div class="nb-pull"><span class="nb-time">11:20&ndash;11:40</span>
+<div class="nb-quote"><p><b>The evaluation had been asking the model to
+locate places it was never shown.</b> The one-in-five block holdout, plus a
+92&nbsp;px no-leakage buffer around every eval block, means <b>28.2%</b> of
+Berlin never appears inside any training crop &mdash; and <b>100%</b> of the
+15,585 eval questions are centred on ground the model has never seen. Worse,
+for <b>65%</b> of them the entire 128&nbsp;m frame contains not one familiar
+pixel; the median eval frame is 0% familiar ground. Two independent
+derivations agree: from the geometry alone, a train crop&rsquo;s content
+stops 28&nbsp;px short of any eval block, so only eval centres within
+36&nbsp;px of a block edge can see anything familiar at all &mdash;
+predicting 64.0% blind, against 65.1% measured. This is the likely reason
+roughly sixty experiments plateaued between 700 and 1000&nbsp;m: for most of
+the test set the question is not hard, it is unanswerable.</p></div></div>
+
+<div class="nb-row"><span class="nb-time">11:40</span>
+<p class="nb-text"><b>The mismatch, stated plainly.</b> This branch was
+founded on treating overfitting as a feature &mdash; build a visual memory
+of one city. But the metric was built to defeat memorisation: withhold
+regions, then grade the model on those regions. The architecture is a memory
+system; the ruler was grading it as an extrapolator. It is also stricter
+than the prior art the spec cites: DSAC and ACE evaluate on held-out camera
+trajectories through a <i>fully mapped</i> scene, not on unmapped parts of
+it. And in deployment the aircraft only ever flies over the box the model
+was trained on, so the metric measured a capability the product never needs
+while never measuring the one it does. The loop is stopped mid-experiment;
+the split is being redesigned to hold out <i>viewpoints</i> rather than
+<i>regions</i>.</p></div>
 </section>
 """
 
