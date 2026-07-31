@@ -1565,10 +1565,12 @@ ERA_TINT = {
     "slim_v1":   "rgba(138,106,30,.075)",
     "eval_v2":   "rgba(138,106,30,.135)",
     "mission":   "rgba(140,47,31,.085)",
+    "berlin_prignitz": "rgba(140,47,31,.145)",
 }
 ERA_INK = {
     "bootstrap": "#6b6a60", "main": "#6b6a60", "slim_v1": "#8a6a1e",
     "eval_v2": "#8a6a1e", "mission": "#8c2f1f",
+    "berlin_prignitz": "#8c2f1f",
 }
 # Short band captions. The full era description lives in the eras table and is
 # surfaced on hover; these are what fits above a band.
@@ -1578,6 +1580,7 @@ ERA_SHORT = {
     "slim_v1": "berlin only",
     "eval_v2": "viewpoint holdout",
     "mission": "mission score",
+    "berlin_prignitz": "berlin + prignitz · one model",
 }
 
 

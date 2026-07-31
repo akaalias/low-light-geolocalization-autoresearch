@@ -112,13 +112,30 @@ ERAS = [
     dict(
         key="mission",
         label="Mission score",
-        db="experiments.sqlite",
+        db="archive/pre-berlin-prignitz-experiments.sqlite",
         ruler="mission score — (1 - usable) + false",
         eval_set="viewpoint holdout, daytime only, Berlin only",
-        note="The metric became the product requirement itself. Scores from "
-             "here on are native, not re-scored.",
+        note="The metric became the product requirement itself, and the "
+             "approach finally worked: 2.001 to 0.040 in four experiments.",
         rescorable=True,
         native=True,
+    ),
+    dict(
+        key="berlin_prignitz",
+        label="Berlin + Prignitz, one model",
+        db="experiments.sqlite",
+        ruler="mission score — worst case across BOTH areas",
+        eval_set="viewpoint holdout, daytime only, Berlin and Prignitz",
+        note="§1's one-model-per-bounding-box rule amended by decision: the "
+             "goal became a single model covering a dense-urban and a rural "
+             "box at once. The loop optimizes the worst case across the two, "
+             "so the ruler is strictly harder than every era before it — "
+             "which is why the line on this chart stays BERLIN-only "
+             "throughout. Berlin is the one question every era has been "
+             "asked, so it is the only honest continuous series; each row's "
+             "own two-area worst case is carried alongside it.",
+        rescorable=True,
+        native=False,   # its native score is worst-of-two, a different ruler
     ),
 ]
 
