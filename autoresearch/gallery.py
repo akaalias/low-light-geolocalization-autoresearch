@@ -31,7 +31,7 @@ from pathlib import Path
 
 import numpy as np
 
-from autoresearch import workedexample
+from autoresearch import evofig, workedexample
 from autoresearch.db import REPO_ROOT, connect
 
 OUT = REPO_ROOT / "gallery" / "index.html"
@@ -3913,9 +3913,11 @@ ERAS = [{'d': '20 Jul', 't': '17:05', 'kind': 'start', 'title': 'Bootstrap — a
 
 KIND = {'start': ('#4a473e', 'bootstrap'), 'infra': ('#8a6a1e', 'infrastructure'), 'science': ('#2f5d7c', 'research direction'), 'scope': ('#5b6e4a', 'scope'), 'silence': ('#9b998c', 'silence'), 'measure': ('#8c2f1f', 'measurement bug'), 'result': ('#3c9c3c', 'result')}
 
-TRUNK = [(20.73, 'Bootstrap', 'Spec, empty repo, MacBook Air. Frozen pipeline + naive baseline in one session.'), (20.8, '1 m/px orthophotos', 'Sentinel-2 at 10 m/px rejected within 20 minutes; fetch stage re-frozen 50x finer before any experiment ran.'), (20.86, 'Relighting rebuilt', 'Five of six lighting buckets were effectively identical — auto-exposure was re-brightening them. Caught by eye, not by a test.'), (21.33, 'Rented GPU', '20-50 min/experiment on a laptop. $200 on RunPod eleven minutes after the question; the whole loop moved, agents included.'), (21.51, 'Goes public', 'GitHub Pages, the research trail published as it runs. North star set: anyone draws a box, gets their own model, freely.'), (22.85, 'Pivot enforced in code', 'Four prompt-level fixes failed to stop the loop rebuilding on the same backbone. backbonecheck.py fingerprints the post-implementation source instead.'), (23.6, 'Local + Modal', 'One git writer, always. The remote becomes a stateless trainer that never touches git, so the divergence cannot recur.'), (30.77, 'Restart', 'Six days after the loop silently died, work resumes — and turns on the premises rather than the parameters.'), (30.87, 'PNG decode fix', 'Each ~120 MB render was re-decoded every epoch: 78% of training wall-clock, against 14.5% for the actual maths.'), (31.38, 'berlin-slim', 'Deliberate narrowing: one locale, daytime only, figures off. What if overfitting is the feature?'), (31.47, 'Viewpoint evaluation', 'Hold out VIEWPOINTS, not regions. Train on all of Berlin; test 11-17 m off the nearest training vantage.'), (31.55, 'Mission score', 'The metric becomes the product requirement: usable fixes minus dangerous ones. Not a statistic about errors.'), (31.6, '0.040 · 96.5% usable', 'Four experiments on honest instruments. 96.5% of held-out frames give a usable fix, 0.5% are confidently wrong; median miss 27 m, well inside the 100 m target.')]
-DEAD = [(20.73, 20.8, 1, 'Sentinel-2 10 m/px', "The bootstrap's imagery source. Too coarse for a 100 m-altitude camera footprint; abandoned inside 20 minutes."), (22.5, 22.85, 1, 'Prompt-only pivot rules', "Four attempts to make 'pivot' mean something by instruction. Experiments 37, 38 and 40 all came back on the same backbone."), (30.9, 30.94, 1, 'Retrieval-index probe', "Shipping a few MB of reference index was briefly on the table — the project's most-defended constraint. Three rounds, ~2,700 m against the champion's 743 m. Parked, not disproven."), (30.88, 30.91, 2, '3D shadow relighting', 'Simulate real sun angles from 3D terrain instead of flat imagery. Raised and parked the same evening; still open.')]
-SUPER = [(20.75, 31.47, 1, 'Region-holdout evaluation', 'Held out one map block in five. For ten days this meant 28.2% of Berlin was in NO training crop and 100% of test questions stood on ground the model had never seen — unanswerable for a memorisation system. Every result measured against it is void.'), (20.75, 31.55, 2, 'Median error as the score', 'Rewards a model that guesses the map centre over one that genuinely memorises. It was caught reverting the only experiment that had begun to work.'), (31.52, 31.55, 3, 'Geometric mean', "Fixed the median's symptom, but still a proxy chosen to make progress visible rather than to state what the aircraft needs. Lasted two hours."), (21.33, 23.6, 3, 'RunPod as the platform', 'Three days of stuck commits and merge conflicts. The root cause was never the GPU — it was two git writers on one branch.'), (23.6, 23.85, 4, 'Berlin-only scope cut', "Narrowed to survive on an M1. state/best.json didn't follow, so the loop briefly scored four-area results against a Berlin-only yardstick. Reverted six hours later.")]
+# The evolution figure's marks now live in autoresearch/evofig.py, which both
+# holds the data AND lays it out. Three lists used to sit here looking like
+# the source of truth while the hand-edited SVG literal below had moved past
+# them -- SUPER held five entries while the figure drew six. Removed rather
+# than fixed: two places to edit is how they drifted apart.
 
 EVOLUTION_CSS = """
 .evo{margin:0;padding:0 0 80px}
@@ -3992,7 +3994,8 @@ EVOLUTION_CSS = """
 #evo-tip .tk.silence{color:var(--faint)}
 """
 
-EVOLUTION_SVG = """<svg id='evo-svg' viewBox='0 0 5349 608' width='5349' height='608' role='img' aria-label='research process as a branching graph'><line class='evo-grid' x1='306.5' y1='30' x2='306.5' y2='574'/><text class='evo-day' x='312.5' y='22'>21 Jul</text><line class='evo-grid' x1='610.5' y1='30' x2='610.5' y2='574'/><text class='evo-day' x='616.5' y='22'>22 Jul</text><line class='evo-grid' x1='1538.5' y1='30' x2='1538.5' y2='574'/><text class='evo-day' x='1544.5' y='22'>23 Jul</text><line class='evo-grid' x1='2362.5' y1='30' x2='2362.5' y2='574'/><text class='evo-day' x='2368.5' y='22'>24 Jul</text><line class='evo-grid' x1='2562.5' y1='30' x2='2562.5' y2='574'/><text class='evo-day' x='2568.5' y='22'>25 Jul</text><line class='evo-grid' x1='2658.5' y1='30' x2='2658.5' y2='574'/><text class='evo-day' x='2664.5' y='22'>26 Jul</text><line class='evo-grid' x1='2754.5' y1='30' x2='2754.5' y2='574'/><text class='evo-day' x='2760.5' y='22'>27 Jul</text><line class='evo-grid' x1='2850.5' y1='30' x2='2850.5' y2='574'/><text class='evo-day' x='2856.5' y='22'>28 Jul</text><line class='evo-grid' x1='2946.5' y1='30' x2='2946.5' y2='574'/><text class='evo-day' x='2952.5' y='22'>29 Jul</text><line class='evo-grid' x1='3042.5' y1='30' x2='3042.5' y2='574'/><text class='evo-day' x='3048.5' y='22'>30 Jul</text><line class='evo-grid' x1='3970.5' y1='30' x2='3970.5' y2='574'/><text class='evo-day' x='3976.5' y='22'>31 Jul</text><rect class='evo-gap' x='2366.5' y='242' width='1390.6' height='28'/><text class='evo-gaplab' x='3061.8' y='235'>six days of silence</text><line class='evo-trunk' x1='52.0' y1='256' x2='4629.7' y2='256'/><path class='evo-dead' data-k='d0' d='M84.0,256 C99.0,256 84.0,128.0 108.0,128.0 L141.7,128.0'/><g class='evo-end' data-k='d0'><line x1='137.2' y1='123.5' x2='146.2' y2='132.5'/><line x1='137.2' y1='132.5' x2='146.2' y2='123.5'/></g><text class='evo-lab d' data-k='d0' x='116.0' y='118.0' text-anchor='start'>Sentinel-2 10 m/px</text><text class='evo-endlab d' data-k='d0' x='152.7' y='132.0' text-anchor='start'>dropped in 20 min</text><path class='evo-dead' data-k='d1' d='M1074.5,256 C1089.5,256 1074.5,128.0 1098.5,128.0 L1399.3,128.0'/><g class='evo-end' data-k='d1'><line x1='1394.8' y1='123.5' x2='1403.8' y2='132.5'/><line x1='1394.8' y1='132.5' x2='1403.8' y2='123.5'/></g><text class='evo-lab d' data-k='d1' x='1106.5' y='118.0' text-anchor='start'>Prompt-only pivot rules</text><text class='evo-endlab d' data-k='d1' x='1410.3' y='132.0' text-anchor='start'>never worked</text><path class='evo-dead' data-k='d2' d='M3859.1,256 C3868.4,256 3859.1,64.0 3874.0,64.0 L3887.0,64.0'/><g class='evo-end' data-k='d2'><line x1='3882.5' y1='59.5' x2='3891.5' y2='68.5'/><line x1='3882.5' y1='68.5' x2='3891.5' y2='59.5'/></g><text class='evo-lab d' data-k='d2' x='3882.0' y='54.0' text-anchor='start'>3D shadow relighting</text><text class='evo-endlab d' data-k='d2' x='3898.0' y='68.0' text-anchor='start'>parked</text><path class='evo-dead' data-k='d3' d='M3877.7,256 C3890.1,256 3877.7,128.0 3897.5,128.0 L3914.8,128.0'/><g class='evo-end' data-k='d3'><line x1='3910.3' y1='123.5' x2='3919.3' y2='132.5'/><line x1='3910.3' y1='132.5' x2='3919.3' y2='123.5'/></g><text class='evo-lab d' data-k='d3' x='3905.5' y='118.0' text-anchor='start'>Retrieval-index probe</text><text class='evo-endlab d' data-k='d3' x='3925.8' y='132.0' text-anchor='start'>parked, not disproven</text><path class='evo-super' data-k='s0' d='M100.5,256 C115.5,256 100.5,320.0 124.5,320.0 L4455.5,320.0'/><circle class='evo-endr' data-k='s0' cx='4455.5' cy='320.0' r='5'/><text class='evo-lab s' data-k='s0' x='132.5' y='310.0' text-anchor='start'>Region-holdout evaluation</text><text class='evo-endlab s' data-k='s0' x='4466.5' y='324.0' text-anchor='start'>→ held-out viewpoints</text><path class='evo-super' data-k='s1' d='M100.5,256 C115.5,256 100.5,384.0 124.5,384.0 L4507.1,384.0'/><circle class='evo-endr' data-k='s1' cx='4507.1' cy='384.0' r='5'/><text class='evo-lab s' data-k='s1' x='132.5' y='374.0' text-anchor='start'>Median error as the score</text><text class='evo-endlab s' data-k='s1' x='4518.1' y='388.0' text-anchor='start'>→ mission score</text><path class='evo-super' data-k='s2' d='M406.8,256 C421.8,256 406.8,448.0 430.8,448.0 L2032.9,448.0'/><circle class='evo-endr' data-k='s2' cx='2032.9' cy='448.0' r='5'/><text class='evo-lab s' data-k='s2' x='438.8' y='438.0' text-anchor='start'>RunPod - rented 4090 pod</text><text class='evo-endlab s' data-k='s2' x='2043.9' y='452.0' text-anchor='start'>→ Modal</text><path class='evo-super' data-k='s3' d='M2032.9,256 C2047.9,256 2032.9,448.0 2056.9,448.0 L3933.4,448.0'/><circle class='evo-endr' data-k='s3' cx='3933.4' cy='448.0' r='5'/><text class='evo-lab s' data-k='s3' x='2064.9' y='438.0' text-anchor='start'>Modal A100 - serverless</text><text class='evo-endlab s' data-k='s3' x='3944.4' y='452.0' text-anchor='start'>credits out → local M1</text><path class='evo-super' data-k='s4' d='M1999.9,256 C2014.9,256 1999.9,512.0 2023.9,512.0 L2238.9,512.0'/><circle class='evo-endr' data-k='s4' cx='2238.9' cy='512.0' r='5'/><text class='evo-lab s' data-k='s4' x='2031.9' y='502.0' text-anchor='start'>Berlin-only scope cut</text><text class='evo-endlab s' data-k='s4' x='2249.9' y='516.0' text-anchor='start'>→ 4 areas restored</text><path class='evo-super' data-k='s5' d='M4507.1,256 C4517.4,256 4507.1,512.0 4523.6,512.0 L4538.1,512.0'/><circle class='evo-endr' data-k='s5' cx='4538.1' cy='512.0' r='5'/><text class='evo-lab s' data-k='s5' x='4531.6' y='502.0' text-anchor='start'>Geometric mean</text><text class='evo-endlab s' data-k='s5' x='4549.1' y='516.0' text-anchor='start'>→ mission score</text><path class='evo-pindot' data-k='i0' d='M638.3,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i0' x1='638.3' y1='455.0' x2='638.3' y2='468.0'/><text class='evo-pinlab' data-k='i0' x='638.3' y='479.0' text-anchor='middle'>pod disk full</text><path class='evo-pindot' data-k='i1' d='M1009.5,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i1' x1='1009.5' y1='455.0' x2='1009.5' y2='468.0'/><text class='evo-pinlab' data-k='i1' x='1009.5' y='479.0' text-anchor='middle'>Fable hits its cap</text><path class='evo-pindot' data-k='i2' d='M1213.7,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i2' x1='1213.7' y1='455.0' x2='1213.7' y2='468.0'/><text class='evo-pinlab' data-k='i2' x='1213.7' y='479.0' text-anchor='middle'>CI out of disk</text><path class='evo-pindot' data-k='i3' d='M1352.9,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i3' x1='1352.9' y1='455.0' x2='1352.9' y2='468.0'/><text class='evo-pinlab' data-k='i3' x='1352.9' y='479.0' text-anchor='middle'>two writers on main</text><path class='evo-pindot' data-k='i4' d='M2016.4,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i4' x1='2016.4' y1='455.0' x2='2016.4' y2='468.0'/><text class='evo-pinlab' data-k='i4' x='2016.4' y='479.0' text-anchor='middle'>pod won&#39;t resume</text><path class='evo-pindot' data-k='i5' d='M2366.5,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i5' x1='2366.5' y1='455.0' x2='2366.5' y2='468.0'/><text class='evo-pinlab' data-k='i5' x='2366.5' y='479.0' text-anchor='middle'>loop dies unnoticed</text><path class='evo-pindot' data-k='i6' d='M3933.4,442.5 l5.5,5.5 l-5.5,5.5 l-5.5,-5.5 z'/><line class='evo-pin' data-k='i6' x1='3933.4' y1='455.0' x2='3933.4' y2='468.0'/><text class='evo-pinlab' data-k='i6' x='3933.4' y='479.0' text-anchor='middle'>credits exhausted</text><path class='evo-merge' data-k='m0' d='M1143.3,192.0 L1377.3,192.0 C1392.3,192.0 1399.3,208.0 1399.3,247.0'/><path class='evo-arrow' data-k='m0' d='M1394.8,245.0 L1399.3,254.0 L1403.8,245.0 z'/><circle class='evo-mstart' data-k='m0' cx='1143.3' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m0' x='1373.3' y='183.0' text-anchor='end'>enforce it in the source, not the prompt</text><path class='evo-merge' data-k='m1' d='M1754.9,192.0 L2010.9,192.0 C2025.9,192.0 2032.9,208.0 2032.9,247.0'/><path class='evo-arrow' data-k='m1' d='M2028.4,245.0 L2032.9,254.0 L2037.4,245.0 z'/><circle class='evo-mstart' data-k='m1' cx='1754.9' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m1' x='2006.9' y='183.0' text-anchor='end'>the problem is two writers, not the platform</text><path class='evo-merge' data-k='m2' d='M3676.3,192.0 L3827.8,192.0 C3842.8,192.0 3849.8,208.0 3849.8,247.0'/><path class='evo-arrow' data-k='m2' d='M3845.3,245.0 L3849.8,254.0 L3854.3,245.0 z'/><circle class='evo-mstart' data-k='m2' cx='3676.3' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m2' x='3823.8' y='183.0' text-anchor='end'>stop guessing, profile it</text><path class='evo-merge' data-k='m3' d='M4177.5,192.0 L4433.5,192.0 C4448.5,192.0 4455.5,208.0 4455.5,247.0'/><path class='evo-arrow' data-k='m3' d='M4451.0,245.0 L4455.5,254.0 L4460.0,245.0 z'/><circle class='evo-mstart' data-k='m3' cx='4177.5' cy='192.0' r='3.5'/><text class='evo-mlab' data-k='m3' x='4429.5' y='183.0' text-anchor='end'>it is never shown the places it is tested on</text><path class='evo-merge' data-k='m4' d='M4276.6,128.0 L4516.1,128.0 C4531.1,128.0 4538.1,144.0 4538.1,247.0'/><path class='evo-arrow' data-k='m4' d='M4533.6,245.0 L4538.1,254.0 L4542.6,245.0 z'/><circle class='evo-mstart' data-k='m4' cx='4276.6' cy='128.0' r='3.5'/><text class='evo-mlab' data-k='m4' x='4512.1' y='119.0' text-anchor='end'>the score must BE the product requirement</text><path class='evo-merge' data-k='m5' d='M4405.2,64.0 L4567.7,64.0 C4582.7,64.0 4589.7,80.0 4589.7,247.0'/><path class='evo-arrow' data-k='m5' d='M4585.2,245.0 L4589.7,254.0 L4594.2,245.0 z'/><circle class='evo-mstart' data-k='m5' cx='4405.2' cy='64.0' r='3.5'/><text class='evo-mlab' data-k='m5' x='4563.7' y='55.0' text-anchor='end'>it was starved, not refuted</text><line class='evo-tick' x1='84.0' y1='256' x2='84.0' y2='271.0'/><circle class='evo-node' data-k='t0' cx='84.0' cy='256' r='6'/><text class='evo-tlab' data-k='t0' x='84.0' y='280'>Bootstrap</text><line class='evo-tick' x1='141.7' y1='256' x2='141.7' y2='244.0'/><circle class='evo-node' data-k='t1' cx='141.7' cy='256' r='6'/><text class='evo-tlab' data-k='t1' x='141.7' y='232'>1 m/px orthophotos</text><line class='evo-tick' x1='191.1' y1='256' x2='191.1' y2='271.0'/><circle class='evo-node' data-k='t2' cx='191.1' cy='256' r='6'/><text class='evo-tlab' data-k='t2' x='191.1' y='280'>Relighting rebuilt</text><line class='evo-tick' x1='461.5' y1='256' x2='461.5' y2='244.0'/><circle class='evo-node' data-k='t3' cx='461.5' cy='256' r='6'/><text class='evo-tlab' data-k='t3' x='461.5' y='232'>Goes public</text><line class='evo-tick' x1='1399.3' y1='256' x2='1399.3' y2='271.0'/><circle class='evo-node' data-k='t4' cx='1399.3' cy='256' r='6'/><text class='evo-tlab' data-k='t4' x='1399.3' y='280'>Pivot enforced in code</text><line class='evo-tick' x1='2032.9' y1='256' x2='2032.9' y2='271.0'/><circle class='evo-node' data-k='t5' cx='2032.9' cy='256' r='6'/><text class='evo-tlab' data-k='t5' x='2032.9' y='280'>One git writer</text><line class='evo-tick' x1='3849.8' y1='256' x2='3849.8' y2='271.0'/><circle class='evo-node' data-k='t6' cx='3849.8' cy='256' r='6'/><text class='evo-tlab' data-k='t6' x='3849.8' y='280'>PNG decode fix</text><line class='evo-tick' x1='4362.6' y1='256' x2='4362.6' y2='244.0'/><circle class='evo-node' data-k='t7' cx='4362.6' cy='256' r='6'/><text class='evo-tlab' data-k='t7' x='4362.6' y='232'>berlin-slim branch</text><line class='evo-tick' x1='4589.7' y1='256' x2='4589.7' y2='271.0'/><circle class='evo-node' data-k='t8' cx='4589.7' cy='256' r='6'/><text class='evo-tlab' data-k='t8' x='4589.7' y='280'>0.040 - 96.5% usable</text></svg>"""
+# Generated from data (autoresearch/evofig.py), not a pasted literal.
+EVOLUTION_SVG = evofig.build_svg()
 
 EVOLUTION_TIPS = r"""{"gap": {"t": "six days of silence", "d": "The loop had died at 00:25 on the 24th and nobody was watching. Git shows a quiet week; the transcripts show an abandonment. The only interaction in the whole window is a single /compact on the 29th.", "k": "silence"}, "d0": {"t": "Sentinel-2 10 m/px", "d": "The bootstrap's imagery source - too coarse for a 100 m-altitude camera footprint. Abandoned inside 20 minutes.", "k": "abandoned"}, "d1": {"t": "Prompt-only pivot rules", "d": "Four attempts to make 'pivot' mean something by instruction alone. Experiments 37, 38 and 40 all came back on the same backbone.", "k": "abandoned"}, "d2": {"t": "3D shadow relighting", "d": "Simulate real sun angles from 3D terrain instead of flat imagery. Raised and parked the same evening; still open.", "k": "abandoned"}, "d3": {"t": "Retrieval-index probe", "d": "Shipping a few MB of reference index - the project's most-defended constraint - was briefly on the table. Three rounds, ~2,700 m against the champion's 743 m. Parked, not disproven.", "k": "abandoned"}, "s0": {"t": "Region-holdout evaluation", "d": "In force for TEN of the project's eleven days. It left 28.2% of Berlin in no training crop and put 100% of test questions on ground the model had never seen - unanswerable for a memorisation system. Every result measured against it is void.", "k": "superseded"}, "s1": {"t": "Median error as the score", "d": "Rewards a model that guesses the map centre over one that genuinely memorises. It was caught reverting the only experiment that had begun to work.", "k": "superseded"}, "s2": {"t": "RunPod - rented 4090 pod", "d": "$200 committed eleven minutes after the question was asked; the entire loop moved onto the pod, headless agents included. Abandoned three days later - not for the GPU, for the process friction around it.", "k": "superseded"}, "s3": {"t": "Modal A100 - serverless", "d": "Chosen because a STATELESS trainer that never touches git makes the two-writer problem impossible by construction. $30 of credits, four areas fanned out in parallel, ~26 min/experiment after the decode fix. Ran until the credits ran out.", "k": "superseded"}, "s4": {"t": "Berlin-only scope cut", "d": "Narrowed for six hours to survive on an M1 - but state/best.json didn't follow, so the loop briefly scored four-area results against a Berlin-only yardstick.", "k": "superseded"}, "s5": {"t": "Geometric mean", "d": "Fixed the median's symptom but was still a research proxy, chosen to make progress visible rather than to state what the aircraft needs. Lasted two hours.", "k": "superseded"}, "i0": {"t": "pod disk full", "d": "A 5.7 GB-per-iteration render cache was being committed to Git LFS; the pod's 50 GB volume filled at 23:34. Two experiments recorded as 'gated fail' had not failed on their merits - they were disk crashes written into the research record as results.", "k": "incident"}, "i1": {"t": "Fable hits its cap", "d": "The design model hit 100% of its weekly quota. Three iterations burned 30-minute retry sleeps against a wall before anyone noticed; the design step was switched to Sonnet.", "k": "incident"}, "i2": {"t": "CI out of disk", "d": "GitHub Actions died on 1.45 GB of leftover debug PNGs - over half the repo's live LFS payload, a forgotten dump from early holdout work.", "k": "incident"}, "i3": {"t": "two writers on main", "d": "The pod and the laptop both committing to main all day: repeated rebase dances, and at least one merge that silently reverted the morning's pivot-enforcement work.", "k": "incident"}, "i4": {"t": "pod won't resume", "d": "RunPod's last act: a stopped pod could not restart because the host had no free GPU. Stopped pods don't reserve one. This is what turned a compromise into a full switch.", "k": "incident"}, "i5": {"t": "loop dies unnoticed", "d": "All four Modal calls returned 'cancelled by user or a failure' 27 minutes in, at 00:25. Nobody noticed for six days.", "k": "incident"}, "i6": {"t": "credits exhausted", "d": "$30 of Modal credits gone; the loop stopped two experiments short of its target and compute returned to the laptop.", "k": "incident"}, "m0": {"t": "enforce it in the source, not the prompt", "d": "Four rounds of instructing the loop to pivot had failed. The insight was that a prompt is not a guarantee: the check had to read the code that actually resulted. backbonecheck.py fingerprints the post-implementation source and rejects before training.", "k": "insight"}, "m1": {"t": "the problem is two writers, not the platform", "d": "Three days were spent blaming RunPod. The actual cause was the pod and the laptop both committing to main. Once that was named, the fix was a rule rather than a provider: one git writer, and a remote that only trains.", "k": "insight"}, "m2": {"t": "stop guessing, profile it", "d": "Two theories about the training bottleneck - batch transfer and GPU compute - were both wrong by an order of magnitude. Instrumenting it found a 120 MB PNG being re-decoded every epoch, 78% of wall-clock.", "k": "insight"}, "m3": {"t": "it is never shown the places it is tested on", "d": "One question about one roundabout: zero training crops contained the Grosser Stern, twelve eval questions did. Measured across the city, 100% of test questions stood on ground the model had never seen. The split was rebuilt around held-out viewpoints.", "k": "insight"}, "m4": {"t": "the score must BE the product requirement", "d": "A map full of green hits had been discarded while one with a single hit was kept. Median rewarded guessing the map centre; the geometric mean that replaced it was still a proxy. The score became what the aircraft actually needs: usable fixes minus dangerous ones.", "k": "insight"}, "m5": {"t": "it was starved, not refuted", "d": "The map-cell architecture had gate-failed at 84 seconds of training, seeing a fraction of the city. Given full-lattice coverage - the same architecture, nothing else changed - it took the mission score from 2.001 to 0.183.", "k": "insight"}, "t0": {"t": "Bootstrap", "d": "Spec, empty repo, MacBook Air. Frozen pipeline, naive baseline and the whole harness in one session.", "k": "kept"}, "t1": {"t": "1 m/px orthophotos", "d": "Sentinel-2 at 10 m/px rejected within 20 minutes; the fetch stage re-frozen 50x finer before any experiment ran.", "k": "kept"}, "t2": {"t": "Relighting rebuilt", "d": "Five of six lighting buckets were effectively identical - auto-exposure was re-brightening them all. Caught by eye, not by a test.", "k": "kept"}, "t3": {"t": "Goes public", "d": "GitHub Pages, the research trail published as it runs. North star set: anyone draws a box and gets their own model, freely.", "k": "kept"}, "t4": {"t": "Pivot enforced in code", "d": "Four prompt-level attempts failed to stop the loop rebuilding on the same backbone. backbonecheck.py fingerprints the post-implementation source instead.", "k": "kept"}, "t5": {"t": "One git writer", "d": "The rule that ended three days of chaos: the laptop commits, the remote only trains. Divergence becomes impossible by construction.", "k": "kept"}, "t6": {"t": "PNG decode fix", "d": "Each ~120 MB render was re-decoded every epoch: 78% of training wall-clock against 14.5% for the actual maths.", "k": "kept"}, "t7": {"t": "berlin-slim branch", "d": "Deliberate narrowing to buy iteration speed. What if overfitting is the feature?", "k": "kept"}, "t8": {"t": "0.040 - 96.5% usable", "d": "Four experiments on a corrected evaluation and a metric that states the product requirement. 96.5% of held-out frames give a usable fix, 0.5% are confidently wrong, median miss 27 m. The first of the four was the architecture the old metric had discarded as a failure.", "k": "kept"}, "o0": {"t": "Prignitz probe", "d": "The Berlin champion, unchanged, trained and scored on the rural box - no code change needed, the cell grid comes from the raster. 0.113 against Berlin's 0.040. But the loss is not where it was expected: abstention barely moved and usable fixes barely moved (92.5% vs 96.5%); almost all of it is FALSE fixes, 0.5% to 3.75%. Fields produce confidently wrong answers where city blocks do not. Deliberately kept out of the Berlin lineage - a different area is a different question, not a competing answer - and left standing as the baseline for a rural era, should one be opened.", "k": "open"}}"""
 
@@ -4106,9 +4109,14 @@ def evolution_era_bands(eras):
     # The canvas is wider than the drawing (the figure leaves scroll room past
     # the last node). Ending the final band at the viewBox edge would paint a
     # long stretch of empty canvas as though work happened there, so it stops
-    # where the trunk does.
-    trunk = re.search(r"<line class='evo-trunk'[^>]*x2='([\d.]+)'", EVOLUTION_SVG)
-    content_end = min(VW, float(trunk.group(1)) + 60) if trunk else VW
+    # where the drawing does.
+    #
+    # Read this from evofig, NOT by scraping the `evo-trunk` line: since the
+    # fork became part of layout, that line stops at the SPLIT (4362.6) and
+    # what continues to the right is the dormant-main line and the fork lane.
+    # Scraping it silently cut the last era band 207 px short of the work it
+    # was supposed to cover.
+    content_end = min(VW, evofig.TRUNK_X1 + 60)
 
     parts, prev_row = [], 1
     for i, era in enumerate(eras):
@@ -4159,85 +4167,10 @@ def evolution_era_bands(eras):
 # score, the result — happened ON that fork; main has not moved since. Drawing
 # it as trunk absorbed the fork into the mainline and quietly claimed the
 # result for a branch that never produced it.
-SPLIT_X = 4362.6          # the berlin-slim node
-BRANCH_Y = 216.0          # the fork's own lane, above the trunk
-TRUNK_Y = 256.0
-END_X = 4629.7           # where the trunk line stops
-RESULT_X = 4589.7        # the 0.040 result node (short of the line's end)
-
-
-def evolution_fork_svg(svg: str) -> str:
-    """Lift everything after the berlin-slim node onto its own branch lane.
-
-    Surgery on the generated figure rather than a redraw: the coordinates
-    below are read out of it above, and each edit is one element. Kept
-    together here so the whole fork is legible as one change."""
-    dy = TRUNK_Y - BRANCH_Y
-    subs = [
-        # Trunk stops at the fork; what continues is main, dormant since.
-        (f"<line class='evo-trunk' x1='52.0' y1='{TRUNK_Y:.0f}' "
-         f"x2='{END_X}' y2='{TRUNK_Y:.0f}'/>",
-         f"<line class='evo-trunk' x1='52.0' y1='{TRUNK_Y:.0f}' "
-         f"x2='{SPLIT_X}' y2='{TRUNK_Y:.0f}'/>"
-         f"<line class='evo-dormant' x1='{SPLIT_X}' y1='{TRUNK_Y:.0f}' "
-         f"x2='{END_X}' y2='{TRUNK_Y:.0f}'/>"
-         f"<text class='evo-dormantlab' x='{(SPLIT_X + END_X) / 2:.1f}' "
-         f"y='{TRUNK_Y + 15:.0f}' text-anchor='middle'>main — unchanged since</text>"
-         f"<path class='evo-branch' d='M{SPLIT_X},{TRUNK_Y:.0f} "
-         f"C{SPLIT_X + 15:.1f},{TRUNK_Y:.0f} {SPLIT_X + 22:.1f},{BRANCH_Y:.0f} "
-         f"{SPLIT_X + 40:.1f},{BRANCH_Y:.0f} L{END_X},{BRANCH_Y:.0f}'/>"),
-        # The fork node keeps the trunk's y — it IS the split — but its tick
-        # and label swap to the underside, since the lane above is now taken.
-        (f"<line class='evo-tick' x1='{SPLIT_X}' y1='{TRUNK_Y:.0f}' "
-         f"x2='{SPLIT_X}' y2='244.0'/>",
-         f"<line class='evo-tick' x1='{SPLIT_X}' y1='{TRUNK_Y:.0f}' "
-         f"x2='{SPLIT_X}' y2='271.0'/>"),
-        (f"<text class='evo-tlab' data-k='t7' x='{SPLIT_X}' y='232'>"
-         f"berlin-slim branch</text>",
-         f"<text class='evo-tlab' data-k='t7' x='{SPLIT_X}' y='280'>"
-         f"berlin-slim branch</text>"),
-        # The result now sits on the branch that produced it.
-        (f"<line class='evo-tick' x1='{RESULT_X}' y1='{TRUNK_Y:.0f}' "
-         f"x2='{RESULT_X}' y2='271.0'/>",
-         f"<line class='evo-tick' x1='{RESULT_X}' y1='{BRANCH_Y:.0f}' "
-         f"x2='{RESULT_X}' y2='{BRANCH_Y + 15:.0f}'/>"),
-        (f"<circle class='evo-node' data-k='t8' cx='{RESULT_X}' "
-         f"cy='{TRUNK_Y:.0f}' r='6'/>",
-         f"<circle class='evo-node' data-k='t8' cx='{RESULT_X}' "
-         f"cy='{BRANCH_Y:.0f}' r='6'/>"),
-        (f"<text class='evo-tlab' data-k='t8' x='{RESULT_X}' y='280'>",
-         f"<text class='evo-tlab' data-k='t8' x='{RESULT_X}' y='{BRANCH_Y + 24:.0f}'>"),
-    ]
-    # The three insights that arrived after the fork arrived ON the fork, so
-    # their arrows terminate at the branch lane rather than the trunk.
-    tip_y = BRANCH_Y - 9        # where the arrow's point lands
-    for x in ("4455.5", "4538.1", "4589.7"):
-        xf = float(x)
-        subs.append((f"{x},247.0'/>", f"{x},{tip_y:.1f}'/>"))
-        subs.append((f"d='M{xf - 4.5:.1f},245.0 L{x},254.0 L{xf + 4.5:.1f},245.0 z'",
-                     f"d='M{xf - 4.5:.1f},{tip_y - 2:.1f} L{x},{tip_y + 7:.1f} "
-                     f"L{xf + 4.5:.1f},{tip_y - 2:.1f} z'"))
-    # m3 descends from y=192 to a target that is now only 15px below it; its
-    # original second control point (208) would sit PAST that target and bow
-    # the elbow backwards, so it moves up with it.
-    subs.append(("C4448.5,192.0 4455.5,208.0", "C4448.5,192.0 4455.5,200.0"))
-    svg = _apply(svg, subs)
-    # The Prignitz probe leaves the fork AFTER the 0.040 result, so it is drawn
-    # here rather than in EVOLUTION_SVG: it has to hang off BRANCH_Y, and that
-    # lane only exists once the surgery above has run. Anchoring it in the raw
-    # figure would have pinned it to TRUNK_Y, which after the fork is the
-    # DORMANT main line — drawing the probe as a descendant of the abandoned
-    # branch rather than of the champion that actually produced it.
-    probe = (
-        f"<path class='evo-open' data-k='o0' d='M4600.0,{BRANCH_Y:.0f} "
-        f"C4612.0,{BRANCH_Y:.0f} 4600.0,128.0 4622.0,128.0 L4666.0,128.0'/>"
-        f"<circle class='evo-openend' data-k='o0' cx='4666.0' cy='128.0' r='5'/>"
-        f"<text class='evo-lab o' data-k='o0' x='4628.0' y='118.0' "
-        f"text-anchor='start'>Prignitz probe</text>"
-        f"<text class='evo-endlab o' data-k='o0' x='4677.0' y='132.0' "
-        f"text-anchor='start'>0.113</text>")
-    return svg.replace("</svg>", probe + "</svg>")
-
+# The fork -- berlin-slim lifted onto its own lane -- used to be eight
+# find-and-replace edits applied to the SVG literal after the fact. It is
+# now part of layout in evofig.build_svg(), so a new mark can simply ask
+# which line is live at its moment instead of inheriting the wrong one.
 
 def _apply(svg: str, subs) -> str:
     for a, b in subs:
@@ -4291,7 +4224,7 @@ def render_evolution(exps):
     bands = evolution_era_bands(eras)
     # Splice the bands in right after the opening <svg …> so they sit behind
     # every mark, and extend the key with one swatch per era.
-    forked = evolution_fork_svg(EVOLUTION_SVG)
+    forked = EVOLUTION_SVG
     evo_svg = (re.sub(r"(<svg\b[^>]*>)", lambda m: m.group(1) + bands,
                       forked, count=1) if bands else forked)
     if bands:
@@ -4328,8 +4261,9 @@ against them had to be thrown away.</p></div>
 {credits_html()}</body></html>"""
     EVOLUTION_OUT.parent.mkdir(exist_ok=True)
     EVOLUTION_OUT.write_text(body)
-    print(f"wrote {EVOLUTION_OUT} (graph: {len(TRUNK)} trunk nodes, "
-          f"{len(DEAD)} abandoned, {len(SUPER)} superseded)")
+    print(f"wrote {EVOLUTION_OUT} (graph: {len(evofig.TRUNK_NODES)} trunk nodes, "
+          f"{len(evofig.DEAD)} abandoned, {len(evofig.SUPER)} superseded, "
+          f"{len(evofig.OPEN)} open)")
 
 
 LINEAGE_OUT = REPO_ROOT / "gallery" / "research-lineage.html"
