@@ -1994,6 +1994,36 @@ one-in-thirty-two-block region stays genuinely untrained as a logged-only
 diagnostic, never allowed to touch the metric, to catch a model that is a
 lookup table with no spatial structure.</p></div>
 
+<div class="nb-pull"><span class="nb-time">14:30&ndash;15:10</span>
+<div class="nb-quote"><p><b>&ldquo;There is ONLY the product requirement.&rdquo;</b>
+Pressed on why the score was a statistic about errors at all, the answer does
+not survive contact: the geometric mean had been chosen to make research
+progress <i>visible</i>, which is the same species of mistake as the two bugs
+already found today &mdash; optimising something adjacent to the goal instead
+of the goal. So the metric becomes the goal. The aircraft takes a vision fix
+every 5&ndash;10&nbsp;s and it is its only drift correction, so per frame
+exactly three things can happen: <b>confident and within 100&nbsp;m</b> is a
+<b>usable fix</b>; <b>not confident</b> is an abstention, which is safe because
+it simply waits; <b>confident and wrong</b> is a <b>false fix</b>, which feeds
+a wrong position into navigation and is worse than saying nothing.
+<b>mission score = (1 &minus; usable-fix rate) + false-fix rate</b>: zero is
+perfect, 1.0 is abstaining on everything, 2.0 is being confidently wrong on
+everything. §6 had asserted since day one that honest abstention beats
+confident guessing; no metric until now actually encoded it.</p></div></div>
+
+<div class="nb-row"><span class="nb-time">15:10</span>
+<p class="nb-text"><b>The baseline&rsquo;s new score is the argument for the
+change.</b> The same naive model that the old rulers reported as
+&ldquo;1993&nbsp;m median&rdquo; &mdash; a number that sounds like a
+measurement &mdash; scores <b>2.001</b>: it is confident on every single frame
+and wrong on every single one. Zero usable fixes, a 100% false-fix rate, the
+worst value the scale can produce. Nothing about the model changed; only the
+question being asked of it. Error statistics stay logged as diagnostics, and
+the standing check is written into the scorer: <i>if the score improves while
+the usable-fix rate does not, the metric is wrong again.</i> The lineage is
+wiped a third time and the metric propagated through every prompt, document
+and page.</p></div>
+
 <div class="nb-pull"><span class="nb-time">13:10&ndash;13:40</span>
 <div class="nb-quote"><p><b>A second measurement bug, found the same way as the
 first &mdash; by looking at the map.</b> The human asks how an experiment whose
