@@ -29,7 +29,7 @@ from autoresearch import workedexample
 from autoresearch.db import REPO_ROOT, connect
 
 OUT = REPO_ROOT / "gallery" / "index.html"
-TARGET_M = 20.0
+TARGET_M = 100.0  # berlin-slim branch milestone (main-branch target is 20 m — see CLAUDE.md "BRANCH OVERRIDE")
 FAIL = 1e9
 PATIENCE = 4  # mirrors loop.sh's PATIENCE default; restated here since the
               # gallery only reads the DB, never the shell env the loop ran with
@@ -950,7 +950,7 @@ def chart_svg(exps):
     parts.append(f"<line x1='{ml}' x2='{W-mr}' y1='{y(TARGET_M):.1f}' y2='{y(TARGET_M):.1f}' "
                  f"stroke='#8c2f1f' stroke-width='1.5' stroke-dasharray='6 5'/>")
     parts.append(f"<text class='axis-lab' x='{W-mr}' y='{y(TARGET_M)-5:.1f}' "
-                 f"text-anchor='end' fill='#8c2f1f'>goal — locate the drone to within 20 m</text>")
+                 f"text-anchor='end' fill='#8c2f1f'>goal — locate the drone to within {TARGET_M:.0f} m</text>")
 
     # Running-best step line, one segment per evaluation era. Within an era
     # the line only ever steps DOWN (the loop keeps only improvements). A
@@ -1108,10 +1108,10 @@ def figures(artifacts_dir, metrics):
         out.append(
             "<div class='figs-h'>Where the model was tested — and how far off it was</div>"
             "<div class='figs-intro'>Each map is one full test area. Every dot is one "
-            "held-out test location (all six lighting conditions overlaid): the model was "
+            "held-out test location: the model was "
             "shown a 128 m crop centered there and asked for its position. Dot color = the "
-            "distance between its answer and the truth — <b style='color:#3c9c3c'>green ≤ 20 m "
-            "(at goal)</b>, <b style='color:#8a6a1e'>amber ≤ 50 m</b>, "
+            f"distance between its answer and the truth — <b style='color:#3c9c3c'>green ≤ {TARGET_M:.0f} m "
+            f"(at goal)</b>, <b style='color:#8a6a1e'>amber ≤ {TARGET_M*2.5:.0f} m</b>, "
             "<b style='color:#8c2f1f'>red beyond</b>. <i>A working model turns these maps "
             "green; spatial clusters of red reveal which parts of an area confuse it.</i></div>"
             f"<div class='thumbs maps'>{''.join(figs)}</div>")
@@ -1121,17 +1121,14 @@ def figures(artifacts_dir, metrics):
             area = p.stem.split("_")[0]
             by_area.setdefault(area, []).append(p)
         inner = [
-            "<div class='figs-intro'>Every frame in this project is rendered as a "
-            "<b>starlight-class low-light sensor</b> (Sony STARVIS2 / IMX585 class — the "
-            "airframe's chosen camera) would see it, not as a normal camera would. That is "
-            "why the <i>night</i> renders look uncannily close to daylight: at high gain such "
-            "a sensor recovers scene structure from moonlight, skyglow and artificial "
-            "lighting, paying for it in noise, lifted shadows and washed-out color — exactly "
-            "what these renders simulate. Below, one example 256 m patch per area under the "
-            "six lighting conditions the model must handle. These illustrate the "
+            "<div class='figs-intro'>On this branch (berlin-slim), training and eval use "
+            "the raw daytime reference imagery as fetched — no synthetic relighting, no "
+            "low-light sensor simulation (that machinery still exists in the frozen pipeline "
+            "and is used on the main branch's 6-lighting-condition setup, just disabled "
+            "here). Below, one example 256 m patch per area, as-is. This illustrates the "
             "<i>dataset</i>, not this experiment's performance — the actual training set is "
-            "thousands of distinct crops per area (see “training data” above), and these "
-            "renderings only change when the relighting method changes.</div>"]
+            "thousands of distinct crops (see “training data” above), and this "
+            "rendering only changes if the source imagery is re-fetched.</div>"]
         for area, ps in sorted(by_area.items()):
             figs = []
             for p in ps:
@@ -1141,9 +1138,8 @@ def figures(artifacts_dir, metrics):
                             f"<figcaption>{esc(area)} · {esc(bucket)}</figcaption></figure>")
             inner.append(f"<div class='figs-h'>{esc(area)}</div>"
                          f"<div class='thumbs'>{''.join(figs)}</div>")
-        out.append(f"<details class='trywrap'><summary>What the six lighting conditions "
-                   f"look like through the simulated low-light sensor (example patches — "
-                   f"illustration, not the training set)"
+        out.append(f"<details class='trywrap'><summary>What the training imagery "
+                   f"looks like (example patches — illustration, not the training set)"
                    f"</summary>{''.join(inner)}</details>")
     return f"<div class='figs'>{''.join(out)}</div>" if out else ""
 
@@ -1486,14 +1482,15 @@ def status_reason(e):
 HELP = f"""
 <details class="help"><summary>What do the columns and marks mean?</summary>
 <dl class="help-grid">
-<dt>Worst-case error</dt><dd>The single number the loop optimizes. Every
-experiment trains <b>one model per area</b>; each model is then tested on
-held-out map crops it never saw during training, under each of the
-<b>6 simulated lighting conditions</b> (morning → night). That gives a median
-position error for every area × lighting cell — and the score is the
-<b>worst</b> of those cells, not the average. An average would let a good
-Berlin-at-noon result hide a hopeless rural-night one; the worst cell can't
-hide anything. Mission target: <b>≤ 20 m</b>.</dd>
+<dt>Worst-case error</dt><dd>The single number the loop optimizes. On this
+branch (berlin-slim), every experiment trains <b>one model on Berlin only</b>,
+tested on held-out map crops it never saw during training, on the raw
+daytime imagery as fetched (no synthetic relighting). That gives a median
+position error, taken as the <b>worst</b> bucket's score, not an average —
+main-branch runs use the same worst-not-average logic across a 4-area ×
+6-lighting-bucket grid, so a good result in one cell can't hide a bad one
+elsewhere. Mission milestone on this branch: <b>≤ {TARGET_M:.0f} m</b> (main
+branch target: ≤ 20 m).</dd>
 <dt>gated fail (×)</dt><dd>The §6 score also enforces the aircraft's hard
 limits: the exported model must fit the ESP32-P4 flight computer
 (<b>≤ 4 MiB</b>) and answer within the latency budget (≤ 250 ms host proxy),
@@ -1776,6 +1773,100 @@ the rented GPU pod back to local hardware, then toward a scale-to-zero
 serverless GPU provider alongside a self-hosted always-on worker option
 &mdash; removing the recurring overhead of a persistent rented pod.</p></div>
 </section>
+
+<section class="nb-day">
+<h2>30 July 2026</h2>
+<p class="daysub">A four-experiment losing streak, still short of the 743&nbsp;m champion</p>
+
+<div class="nb-row"><span class="nb-time">19:26&ndash;19:41</span>
+<p class="nb-text"><b>Figure-checking gets stricter.</b> Mechanical checks
+for the architecture-diagram style contract land &mdash; palette, font,
+stroke-width, gradients/icons/emoji, red-consistency &mdash; then the SVG
+arcs get flattened so the line-crosses-label check can actually see curved
+elements.</p></div>
+
+<div class="nb-row"><span class="nb-time">17:15&ndash;20:42</span>
+<p class="nb-text"><b>Experiment&nbsp;60</b> retries exp&nbsp;38&rsquo;s
+illumination-invariant channel with a from-scratch trunk and a
+cross-lighting consistency loss. 963.42&nbsp;m &mdash; closer than most
+recent attempts, still reverted against the 743.07&nbsp;m champion.</p></div>
+
+<div class="nb-pull"><span class="nb-time">18:42&ndash;21:53</span>
+<div class="nb-quote"><p><b>The forced-pivot rule fires twice more, both
+gated failures.</b> A quantization-freed depthwise-separable trunk with a
+unified single-head field (experiment&nbsp;61) fails outright. Patience
+spent again, the champion&rsquo;s <code>mobilenet_v3_small</code> trunk is
+banned outright and a Fire-module SqueezeNet1.1 + FiLM-conditioned field
+(experiment&nbsp;62) is forced under that ban &mdash; also a gated
+failure.</p></div></div>
+
+<div class="nb-row"><span class="nb-time">21:57</span>
+<p class="nb-text"><b>A real training-speed bug gets fixed mid-streak.</b>
+Bucket/realization images were being re-decoded from disk every epoch
+&mdash; profiling shows this was ~78% of per-area wall-clock. Caching the
+decode once per process is the whole fix.</p></div>
+
+<div class="nb-row"><span class="nb-time">19:53&ndash;22:58</span>
+<p class="nb-text"><b>Experiment&nbsp;63</b> &mdash; another forced pivot
+under the mobilenet ban, this time a from-scratch trunk with
+domain-contrastive pretraining, a fixed retinex channel, D4 symmetry, and
+top-K-masked decode &mdash; scores 1074.76&nbsp;m. Four straight reverts;
+the day closes with the same 743.07&nbsp;m champion still standing.</p></div>
+</section>
+
+<section class="nb-day">
+<h2>31 July 2026</h2>
+<p class="daysub">The scope itself gets rethought &mdash; a slimmed, single-locale branch</p>
+
+<div class="nb-row"><span class="nb-time">morning</span>
+<p class="nb-text"><b>The human proposes deliberately narrowing scope.</b>
+After weeks of ~50&ndash;65-minute iterations optimizing a worst-case
+across 4&nbsp;areas &times; 6&nbsp;lighting buckets, still far from the
+20&nbsp;m target, the idea: one locale (Berlin), daytime imagery only,
+treat &ldquo;overfitting to one place&rdquo; as a feature rather than a
+failure mode, in exchange for much faster rounds &mdash; and re-derive a
+fair accuracy milestone from what the actual image resolution can support,
+rather than assuming the original number still applies.</p></div>
+
+<div class="nb-row"><span class="nb-time">morning</span>
+<p class="nb-text"><b>The plan gets grounded in real numbers before any
+code changes.</b> The champion&rsquo;s own Berlin-only daytime score
+(~650&ndash;720&nbsp;m) sets a realistic near-term milestone at
+100&nbsp;m, not the original 20&nbsp;m (~35&times; off). Per-experiment
+timing data shows the real speed levers aren&rsquo;t what they first
+seem: the agent-drawn architecture figure (~15&ndash;20&nbsp;min, the
+single largest non-training phase) and the six lighting buckets
+concatenated into one training set are the actual costs &mdash; dropping
+to one area is not, since areas already train in parallel.</p></div>
+
+<div class="nb-pull"><span class="nb-time">morning</span>
+<div class="nb-quote"><p><b>The berlin-slim branch is created and the whole
+slice implemented in one pass.</b> Relighting collapses to a single as-is
+daytime bucket (no synthetic ambient/gain/noise simulation), areas scope
+to Berlin only, and the pivot-gate, holdout check, and figure-drawing step
+are disabled as reversible one-line toggles, not deletions. The target
+milestone moves to 100&nbsp;m everywhere it&rsquo;s referenced in the
+gallery. Design and implementation are reassigned to Fable and Opus&nbsp;5
+&mdash; a deliberate reversal of both models&rsquo; standing bans, flagged
+before proceeding rather than silently applied.</p></div></div>
+
+<div class="nb-row"><span class="nb-time">morning</span>
+<p class="nb-text"><b>Two smoke tests catch real bugs before a live
+run.</b> A hardcoded <code>midday.png</code> heatmap background (missed by
+a substring grep) and a training-time realization generator that
+would&rsquo;ve kept applying synthetic sensor noise despite relighting
+being &ldquo;disabled&rdquo; both get fixed and reverified.</p></div>
+
+<div class="nb-row"><span class="nb-time">morning</span>
+<p class="nb-text"><b>A clean restart, at explicit request.</b> The
+champion architecture &mdash; shaped by 63 rounds against the old
+4-area/6-bucket problem, including machinery like a dark-lighting expert
+head that no longer applies &mdash; is retired in favor of the original
+from-scratch <code>TinyLocNet</code> baseline. The full experiment lineage
+is wiped, not just the comparison metric, so berlin-slim&rsquo;s research
+trail starts at Experiment&nbsp;1 with nothing to live up to; the old
+62-row history is archived, not deleted.</p></div>
+</section>
 """
 
 
@@ -1853,17 +1944,21 @@ computer</h1>
 <p class="psub lead">Where other aircraft ask satellites, this one would
 have to <i>remember</i>. <span style="color:var(--ink)">The open
 question: can a neural network small enough to fit in 4&nbsp;MiB memorize
-what its flight area looks like from above — by day, by dusk, by night —
-well enough to turn one glance of a low-light camera into
+what its flight area looks like from above
+well enough to turn one glance of a camera into
 <i>(lat,&nbsp;lon,&nbsp;confidence)</i>?</span> No
 satellites to jam or lose, no internet — if it can be done at all. Nobody
 knows yet; finding out is the project. And the research is not done by me:
 an <b>autonomous loop of coding agents</b> designs, trains, and scores one
 pre-registered experiment at a time, keeping only what measurably helps.
-This site is its live lab notebook.</p>
+This site is its live lab notebook. <b>This branch (berlin-slim)</b> is a
+deliberately narrowed, fast-iteration fork: one locale (Berlin), raw
+daytime imagery only, no synthetic low-light simulation — trading the
+main project's full scope for faster rounds while the loop searches for
+an architecture worth generalizing back out.</p>
 
 <div class="stats">
-  <div class="stat"><b>≤ 20 m</b><span>the goal</span></div>
+  <div class="stat"><b>≤ {TARGET_M:.0f} m</b><span>the goal</span></div>
   <div class="stat"><b>{best_s}</b><span>today — {factor} to go</span></div>
   <div class="stat"><b>{progress_s}</b><span>progress, log scale</span></div>
   <div class="stat"><b>{len(dev)}</b><span>experiments · {n_kept} kept</span></div>
@@ -1873,28 +1968,25 @@ This site is its live lab notebook.</p>
 <div class="pnote">
 <p>The model family is <b>scene-coordinate regression</b>: one compact
 network per flight area that encodes "what does this place look like from
-above, under which lighting" directly into its weights — the pipeline works
+above" directly into its weights — the frozen pipeline works
 for any bounding box on Earth, but each trained model knows exactly one
 patch of it by heart. No reference imagery on the aircraft, no retrieval,
-no matching. Training data comes
-from a frozen pipeline that fetches open-licensed aerial orthophotos for
-any bounding box and re-renders them under six lighting conditions, from
-morning to night, <b>as seen by a simulated starlight-class low-light
-sensor</b> (Sony STARVIS2 / IMX585 class — the aircraft's chosen camera).
-That sensor choice is the premise of the whole project: at high gain it
-keeps daylight-like scene structure deep into the night — trading it for
-noise and washed-out color, which is exactly what the night renders below
-show — so a single compact model can localize from morning to midnight.</p>
+no matching. Training data comes from a frozen pipeline that fetches
+open-licensed aerial orthophotos for any bounding box; on the main branch
+it also re-renders them under six lighting conditions, from morning to
+night, <b>as seen by a simulated starlight-class low-light sensor</b>
+(Sony STARVIS2 / IMX585 class — the aircraft's chosen camera) — that
+machinery is disabled on this branch, which trains on the raw daytime
+fetch as-is.</p>
 <p>The research loop is Karpathy-style autoresearch: each experiment, a
 headless coding agent reads the full experiment history, pre-registers ONE
-focused change — hypothesis, method, expected outcome, and a hand-drawn
-architecture figure — then the harness trains and scores it against a
-single frozen ruler: the <b>worst</b> median position error across 6
-lighting conditions × 4 German test areas (dense Berlin, rural Prignitz,
-Munich, Frankfurt), on held-out map crops. Improvements are kept as git
-commits; everything else is reverted but stays in the record. Hamburg is
-never touched by the loop — it exists only as a blind check that the
-method generalizes.</p>
+focused change — hypothesis, method, expected outcome — then the harness
+trains and scores it against a single frozen ruler: the <b>worst</b>
+median position error on held-out map crops (on this branch: Berlin only,
+one lighting condition; the main branch's ruler is the worst cell across
+6 lighting conditions × 4 German test areas — dense Berlin, rural
+Prignitz, Munich, Frankfurt). Improvements are kept as git commits;
+everything else is reverted but stays in the record.</p>
 </div>
 
 <div class="contract-fig static">{contract_svg()}
@@ -2455,13 +2547,13 @@ def render():
         status_line = "No scoreable model yet."
     elif best <= TARGET_M:
         status_line = (f"<b>Goal reached:</b> worst-case median miss "
-                       f"<b class='num'>{fmt_m(best)}</b> — at or under the 20 m goal.")
+                       f"<b class='num'>{fmt_m(best)}</b> — at or under the {TARGET_M:.0f} m goal.")
     else:
         status_line = (
-            f"Status: in its hardest area × lighting combination, the best model's "
+            f"Status: in its hardest cell, the best model's "
             f"<b>median miss is {fmt_m(best)}</b> — half its position estimates land "
             f"farther than that from the drone's true location. The goal is a median "
-            f"miss of <b class='num'>≤ 20 m</b> in <i>every</i> combination — "
+            f"miss of <b class='num'>≤ {TARGET_M:.0f} m</b> in <i>every</i> combination — "
             f"<b class='num'>{best/TARGET_M:,.0f}×</b> better than today.")
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -2470,7 +2562,7 @@ def render():
 <style>{CSS}</style><script>{JS}</script></head><body>
 {topnav('log')}
 {compute_banner()}
-{page_header("Where we are: The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a single GPU and measured against one frozen ruler: the <b>worst</b> median position error across 6 lighting conditions × 4 test areas, on held-out crops ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
+{page_header("Where we are: The experiment record", f"Every experiment the autonomous loop has run — kept <i>and</i> discarded. Each row was pre-registered before training (hypothesis, method, expected outcome, architecture figure), then trained on a single GPU and measured against one frozen ruler: the <b>worst</b> median position error on held-out crops ({size_note}). One agent designs, one implements; failures stay on the record, and this page re-publishes itself with every result. New here? Start with the <a href='../index.html'>overview</a>.")}
 <div class="status-callout">
   <div class="status-callout-h">Where we are right now</div>
   <p>{status_line}</p>
@@ -2481,10 +2573,10 @@ def render():
     <span class="k" title="This change improved the worst-case error and was committed."><span class="dot kept"></span>Kept improvement</span>
     <span class="k" title="No improvement — the code change was reverted; only the record remains."><span class="dot disc"></span>Discarded</span>
     <span class="k" title="Best worst-case error achieved so far."><span class="bar"></span>Running best</span>
-    <span class="k" title="Mission target: worst cell at or below 20 m."><span class="bar dash"></span>Target 20 m</span>
+    <span class="k" title="Mission target: worst cell at or below {TARGET_M:.0f} m."><span class="bar dash"></span>Target {TARGET_M:.0f} m</span>
     <span class="k" title="Violated a deployment gate (model size, latency, or abstained too much) — scored as failure regardless of accuracy."><span class="x">×</span>Gated fail</span>
     <span class="k" title="Blind Hamburg check — logged for honesty, never used to decide keep/revert."><span class="ring"></span>Holdout check</span>
-    <span class="k" title="This experiment ran after the design agent had gone 4+ consecutive tries without beating the running best — the harness injects a mandatory 'do not refine the champion again, pick an absent design family' directive into its prompt."><span class="tri"></span>Pivot-directed</span>
+    <span class="k" title="This experiment ran after the design agent had gone 4+ consecutive tries without beating the running best — the harness injects a mandatory 'do not refine the champion again, pick an absent design family' directive into its prompt. Disabled on this branch (berlin-slim) — will not appear until reintroduced."><span class="tri"></span>Pivot-directed</span>
     <span class="k" title="The frozen evaluation data itself was revised (bootstrap phase only). Scores before and after are measured on different test sets and cannot be compared; the running-best line restarts."><span class="vrule"></span>Eval-set reset</span>
     <span id="updated">updated {now}</span>
   </div>
