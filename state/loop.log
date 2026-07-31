@@ -13,3 +13,17 @@ wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/galle
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (2 nodes)
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
 wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
+=== Experiment 3 (2/10 recorded)  run=20260731_082113_experiment3  parent=67d6cebec640b957d5ce03745165d53c6aa0a927 ===
+agents finished (design: claude-fable-5, claude-haiku-4-5-20251001 287s, impl: claude-haiku-4-5-20251001, claude-opus-5 146s)
+--- train berlin:
+[berlin] epoch 96/96 loss=3.8460 extract=3.1s
+{"area": "berlin", "n_train_crops": 6000, "epochs": 96, "harness_epochs": 8, "epoch_mult": 12, "device": "mps", "train_seconds": 598.6, "onnx_bytes": 2539641, "init": "from-scratch"}
+PRIMARY worst-case median error: 810.02 m (target <= 100 m)
+samples -> runs/20260731_082113_experiment3/samples
+KEPT: 810.02 m (improved from 2674.93)
+3
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/index.html (3 experiments)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/inference-paths.html (0 figures)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/research-lineage.html (3 nodes)
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/index.html
+wrote /Users/alexisrondeau/Workshop/low-light-geolocalization-autoresearch/gallery/lab-notebook.html
