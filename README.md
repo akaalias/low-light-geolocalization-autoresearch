@@ -40,6 +40,8 @@ Bootstrap proving runs: experiment #1 (commit `15b43a2`) ran berlin +
 prignitz on 10 m Sentinel-2 data → 2926 m. Experiment #3 (commit `c0a1bdf`,
 pipeline **data v2**) re-proved the harness on 1 m/px DOP imagery across all
 four development areas → **2765.67 m** worst-case median error, coverage 1.0
+(historical: that bootstrap run predates the current metric — the primary
+score is now the §6 **mission score**, not a median; see `pipeline/score.py`)
 in all 24 area×bucket cells (target ≤ 20 m; a center-guess on a ~7 km box is
 ~2.8 km — the baseline is deliberately naive). All deployment gates passed.
 The §6 anti-abstention gate was exercised for real en route: two confidence

@@ -451,7 +451,36 @@ PYCHECK
     echo "agents finished (design: $AGENT_MODEL_DESIGN ${T_DESIGN}s, impl: $AGENT_MODEL_IMPL ${T_IMPL}s)"
   fi
   [ -f runs/pending_experiment.json ] && mv runs/pending_experiment.json "$RUN_DIR/experiment.json"
-  [ -f "$RUN_DIR/experiment.json" ] || echo '{"title":"(no experiment design provided)"}' > "$RUN_DIR/experiment.json"
+  # A SKIP_AGENT run is a real thing with a real purpose -- the baseline seed
+  # that establishes the number every later experiment must beat -- so it gets
+  # a proper self-describing record instead of "(no experiment design
+  # provided)", which reads like a broken row in the gallery. This used to be
+  # patched into the DB by hand after every lineage reset; now it is automatic.
+  if [ ! -f "$RUN_DIR/experiment.json" ]; then
+    if [ "${SKIP_AGENT:-0}" = "1" ]; then
+      $PY - "$RUN_DIR/experiment.json" <<'PYSEED'
+import json, sys
+json.dump({
+  "title": "Baseline seed: current model/ code, no design agent",
+  "category": "other",
+  "init_strategy": "from-scratch",
+  "hypothesis": "Not a hypothesis -- a starting line. Run with SKIP_AGENT=1 so no "
+                "design or implementation agent is involved: whatever is in model/ is "
+                "trained and scored as-is to establish the number later experiments "
+                "must beat, and to prove the harness works end to end.",
+  "method": "Train the current model/ code unchanged and score it with the frozen "
+            "scorer. No code change is proposed or applied.",
+  "expected_outcome": "An honest starting mission score on the current metric, so "
+                      "'kept' from here on means genuinely better.",
+  "eli5": "This row is the starting line, not an idea being tested. The model that "
+          "happens to be in the repo right now is trained and measured so there is a "
+          "real number on the board; everything after this is an attempt to beat it.",
+}, open(sys.argv[1], "w"))
+PYSEED
+    else
+      echo '{"title":"(no experiment design provided)"}' > "$RUN_DIR/experiment.json"
+    fi
+  fi
 
   # 2. Enforce frozen files — hard-revert any agent edits to them.
   FROZEN_TOUCHED="$(git diff --name-only | grep -xF -f FROZEN || true)"

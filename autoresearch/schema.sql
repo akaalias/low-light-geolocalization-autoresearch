@@ -16,7 +16,10 @@ CREATE TABLE IF NOT EXISTS experiments (
     result TEXT,                      -- measured outcome (harness-written)
     conclusion TEXT,                  -- kept/reverted + hypothesis supported? (harness-written)
     init_strategy TEXT,               -- from-scratch | pretrained:<name> (§9)
-    primary_metric REAL,              -- §6 worst-case median error (m); 1e9 = gated fail
+    primary_metric REAL,              -- §6 mission score, worst cell:
+                                      -- (1-usable_fix_rate)+false_fix_rate,
+                                      -- 0=perfect 1=abstains 2=confidently wrong;
+                                      -- 1e9 = gated fail
     kept INTEGER,                     -- 1 kept, 0 reverted, NULL = holdout check
     model_bytes_max INTEGER,          -- largest per-area ONNX
     latency_ms_host_proxy REAL,       -- worst per-area host latency proxy

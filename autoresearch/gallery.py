@@ -1518,15 +1518,23 @@ def status_reason(e):
         extra = ""
         if metric_s and best_s:
             try:
-                impr = (float(best_s) - float(metric_s)) / float(best_s) * 100
-                if impr > 0:
-                    extra = f" — a {impr:.0f}% improvement"
+                d = float(best_s) - float(metric_s)
+                if 0 < d < 1e14:
+                    extra = f" — {d:.3f} better"
             except (ValueError, ZeroDivisionError):
                 pass
+        first = (best_s is None) or (_m_str(best_s) == "no prior best")
+        if first:
+            return ("kept", f"starting line: mission score {got}",
+                    f"The first scoreable run of this lineage, so there was nothing to "
+                    f"beat — it sets the mission score ({got}) that every later "
+                    f"experiment must improve on. Its code is committed as the "
+                    f"starting point later experiments branch from.")
         return ("kept", f"new best: {_m_str(best_s)} → {got}",
-                f"The best design so far. It cut the worst-case error from {_m_str(best_s)} to {got}"
-                f"{extra}, beating the previous champion — so its code was committed as the new best, "
-                "and later experiments branch from here.")
+                f"The best design so far. It improved the mission score from "
+                f"{_m_str(best_s)} to {got}{extra}, beating the previous champion — so "
+                "its code was committed as the new best, and later experiments branch "
+                "from here.")
 
     return ("disc", f"worse than champion: {fmt_score(metric)} vs {_m_str(best_s)}",
             f"The change trained and scored cleanly, but at {fmt_score(metric)} it didn't beat the champion's "
