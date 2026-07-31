@@ -278,6 +278,12 @@ while :; do
   # commit message, run directory, and gallery entry all name the same
   # "Experiment N".
   N="$(sqlite3 experiments.sqlite "SELECT COALESCE(MAX(id),0)+1 FROM experiments;" 2>/dev/null || echo 1)"
+  # Drop any leftover design from the previous experiment before this one
+  # reports a phase: report_phase publishes whatever design file it finds, so a
+  # stale pending_experiment.json made the LIVE row show experiment N's
+  # hypothesis and eli5 under experiment N+1's number until the new design
+  # agent finished. Wrong attribution on a public page, not just a cosmetic lag.
+  rm -f runs/pending_experiment.json
   RUN_ID="$(date -u +%Y%m%d_%H%M%S)_experiment$N"
   RUN_DIR="runs/$RUN_ID"
   mkdir -p "$RUN_DIR"
