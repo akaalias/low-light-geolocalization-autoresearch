@@ -691,17 +691,28 @@ PYTIMES
   #    just logged into a terminal nobody's watching.
   quarantine_oversized "$RUN_DIR"
   git add -A "$RUN_DIR" experiments.sqlite state/ 2>/dev/null || true
-  git commit -q -m "Experiment $N record: $RUN_ID ($METRIC m, kept=$KEEP)" || true
-  # Rebase onto origin first: harness/docs commits pushed from the laptop
-  # while the loop runs would otherwise permanently diverge us from origin
-  # (tree is clean here — everything above is committed).
-  if git pull --rebase -q origin main 2>/dev/null && git push -q origin main 2>/dev/null; then
+  git commit -q -m "Experiment $N record: $RUN_ID (mission score $METRIC, kept=$KEEP)" || true
+  # Sync the branch we are ACTUALLY on, to its own remote branch.
+  #
+  # This used to hardcode `git pull --rebase origin main && git push origin
+  # main`. On any branch other than main that is wrong in both halves: the
+  # pull rebases the CURRENT branch onto origin/main (silently rewriting a
+  # feature branch's history if it ever succeeds), and the push pushes the
+  # local `main` ref, which the loop never touches — so the branch's own work
+  # is never backed up. It only looked harmless because it failed every time
+  # and logged a misleading "sync with origin/main failed".
+  #
+  # The laptop is the single writer here, so there is nothing to rebase onto:
+  # just fast-forward-push this branch. A rejected push means someone else
+  # moved the remote branch, which needs a human, not an automatic rebase.
+  SYNC_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
+  if git push -q origin "HEAD:refs/heads/$SYNC_BRANCH" 2>/dev/null; then
     PUSH_OK=1; PUSH_AHEAD=0
   else
-    git rebase --abort 2>/dev/null || true
     PUSH_OK=0
-    PUSH_AHEAD="$(git rev-list --count origin/main..HEAD 2>/dev/null || echo -1)"
-    echo "WARNING: sync with origin/main failed (conflict or offline) — $PUSH_AHEAD commit(s) ahead, record is committed locally only"
+    PUSH_AHEAD="$(git rev-list --count "origin/$SYNC_BRANCH..HEAD" 2>/dev/null \
+                  || git rev-list --count HEAD --not --remotes 2>/dev/null || echo -1)"
+    echo "WARNING: push to origin/$SYNC_BRANCH failed (offline, no remote branch, or rejected) — $PUSH_AHEAD commit(s) ahead, record is committed locally only"
   fi
   report_phase "synced"
 done
