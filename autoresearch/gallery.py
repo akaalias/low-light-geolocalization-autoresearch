@@ -393,33 +393,34 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 /* the one-frame-in / one-position-out contract: a SMALL fixed thumbnail beside
    a compact readout — deliberately not the .wex-* map layout, whose fluid
    flex:1 1 0 blew the 256px frame up to ~430px and stretched the row */
-/* align to the same 780px measure as .pnote, otherwise the row starts at the
-   container edge while the prose around it sits in a narrower column */
-.contract-row{display:flex;align-items:flex-start;gap:24px;
-  max-width:780px;margin:18px auto 34px;flex-wrap:wrap}
-.contract-frame{flex:none;width:200px;margin:0}
-.contract-frame img{width:200px;height:200px;display:block;
+/* Same composition as the two maps below: a pair of EQUAL boxes, centred,
+   with a caption under each. Earlier versions put a small square beside a
+   wider panel of a different height, left-aligned against the container edge,
+   which read as two unrelated elements rather than one before/after pair. */
+.contract-row{display:flex;justify-content:center;align-items:flex-start;
+  gap:26px;margin:20px auto 8px;flex-wrap:wrap}
+.contract-col{flex:none;width:260px;margin:0}
+.contract-col img{width:260px;height:260px;display:block;
   border:1px solid var(--rule)}
-.contract-frame figcaption{font-size:11.5px;color:var(--muted);line-height:1.55;
-  margin-top:8px;max-width:200px}
-.contract-frame figcaption b{color:var(--ink);font-feature-settings:"smcp" 1;
+.contract-col figcaption{font-size:11.5px;color:var(--muted);line-height:1.55;
+  margin-top:9px;width:260px}
+.contract-col figcaption b{color:var(--ink);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.05em;font-size:11px}
-.contract-arrow{flex:none;color:var(--accent);font-size:30px;line-height:200px;
+.contract-arrow{flex:none;color:var(--accent);font-size:30px;line-height:260px;
   opacity:.85}
-.contract-right{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;
-  gap:11px}
-.contract-out{border:1px solid var(--rule);background:var(--paper);
-  padding:13px 16px;display:flex;flex-direction:column;gap:8px;max-width:340px}
-.co-row{display:flex;justify-content:space-between;align-items:baseline;gap:20px;
-  border-bottom:1px dotted var(--rule);padding-bottom:6px}
+/* the readout is a box of the SAME 260px square as the frame beside it */
+.contract-out{width:260px;height:260px;box-sizing:border-box;
+  border:1px solid var(--rule);background:var(--paper);padding:20px 20px;
+  display:flex;flex-direction:column;justify-content:center;gap:14px}
+.co-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+  border-bottom:1px dotted var(--rule);padding-bottom:9px}
 .co-row:last-child{border-bottom:none;padding-bottom:0}
 .co-k{font:600 10px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
-.co-v{font-size:16.5px;color:var(--ink)}
-.contract-note{font-size:12.5px;color:var(--muted);line-height:1.62;max-width:56ch;
-  margin:0}
-.contract-note b{color:var(--ink);font-feature-settings:"smcp" 1;
-  text-transform:uppercase;letter-spacing:.05em;font-size:11.5px}
+.co-v{font-size:18px;color:var(--ink)}
+.contract-note{max-width:780px;margin:14px auto 30px;font-size:13px;
+  color:var(--muted);line-height:1.65;text-align:center}
+.contract-note b{color:var(--ink)}
 .wex-num{font-size:27px;line-height:1.1;color:var(--ink)}
 .wex-lab{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:2px}
@@ -995,26 +996,26 @@ def challenge_block(exps):
         fr = Path(base["artifacts_dir"]) / info["frame"]
         contract = (
             "<div class='contract-row'>"
-            f"<figure class='contract-frame'><a href='{fr}'>"
+            f"<figure class='contract-col'><a href='{fr}'>"
             f"<img src='{fr}' loading='lazy'></a>"
             "<figcaption><b>what the UAV sees</b> — one real 128 m frame. "
-            "No map aboard, no internet, no GPS.</figcaption>"
-            "</figure>"
+            "No map aboard, no internet, no GPS.</figcaption></figure>"
             "<div class='contract-arrow'>&rarr;</div>"
-            "<div class='contract-right'><div class='contract-out'>"
+            "<figure class='contract-col'><div class='contract-out'>"
             "<div class='co-row'><span class='co-k'>lat</span>"
             f"<span class='co-v num'>{info['lat_true']:.5f}</span></div>"
             "<div class='co-row'><span class='co-k'>lon</span>"
             f"<span class='co-v num'>{info['lon_true']:.5f}</span></div>"
             "<div class='co-row'><span class='co-k'>confidence</span>"
             "<span class='co-v num'>high</span></div></div>"
-            "<p class='contract-note'><b>what it must return</b> &mdash; the true "
-            "answer for that frame. Today the baseline replies "
+            "<figcaption><b>what it must return</b> — the true answer for that "
+            "frame, computed on board.</figcaption></figure>"
+            "</div>"
+            "<p class='contract-note'>Today the baseline replies "
             f"<span class='num'>{info['lat_pred']:.5f}, {info['lon_pred']:.5f}</span> "
-            f"at confidence <span class='num'>{info['conf']:.2f}</span> &mdash; about "
-            f"<b style='font-size:12.5px;letter-spacing:0;text-transform:none'>"
-            f"{fmt_m(info['miss_m'])}</b> away, stated almost certainly. Confident and "
-            "wrong is the one answer a drone must never get.</p></div></div>")
+            f"at confidence <span class='num'>{info['conf']:.2f}</span> — about "
+            f"<b>{fmt_m(info['miss_m'])}</b> away, stated almost certainly. "
+            "Confident and wrong is the one answer a drone must never get.</p>")
 
     return (
         "<div class='sec-h'>The challenge, in one picture</div>"
