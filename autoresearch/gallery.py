@@ -369,9 +369,9 @@ pre.howto{max-width:780px;margin:18px auto 0;padding:16px 20px;
 .design-grid{width:80vw;margin:26px 0 4px calc(50% - 40vw);
   columns:4;column-gap:18px}
 .design-grid figure{margin:0 0 18px;min-width:0;break-inside:avoid}
-.design-grid a{display:block;border:1px solid var(--rule);border-radius:2px;
-  background:#fff;padding:8px}
-.design-grid a:hover{border-color:var(--ink)}
+.design-grid .dg-fig{display:block;border:1px solid var(--rule);
+  border-radius:2px;background:#fff;padding:8px;cursor:zoom-in}
+.design-grid .dg-fig:hover{border-color:var(--ink)}
 .design-grid svg{width:100%;height:auto;display:block}
 .design-grid figcaption{margin-top:5px;font-size:11px;line-height:1.5;
   color:var(--muted);overflow:hidden;text-overflow:ellipsis;
@@ -3591,11 +3591,16 @@ def design_grid(hist):
     cells = []
     for r in rows:
         tag = "kept" if r["kept"] else "reverted"
+        no = f"{r['era_index'] + 1}.{r['src_id']}"
         title = esc((r["title"] or "").split(":")[0])
+        # data-ovfig: clicking opens the shared zoom/pan overlay in place —
+        # the same viewer the champion figure uses — instead of navigating
+        # away to the model-designs page.
         cells.append(
             f"<figure class='dg-cell {tag}'>"
-            f"<a href='gallery/inference-paths.html'>{r['arch_svg']}</a>"
-            f"<figcaption><b>{r['era_index'] + 1}.{r['src_id']}</b> "
+            f"<div class='dg-fig' data-ovfig data-no='{no}' "
+            f"data-title='{esc(r['title'] or '')}'>{r['arch_svg']}</div>"
+            f"<figcaption><b>{no}</b> "
             f"&middot; {tag} &middot; {title}</figcaption></figure>")
     return f"<div class='design-grid'>{''.join(cells)}</div>"
 
