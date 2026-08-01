@@ -3967,9 +3967,9 @@ imagery itself, retrieval against a stored fingerprint of the city, dense
 per-patch coordinate voting, learned relighting, calibrated abstention, and
 more.</p>
 
-<p class="bottom-line">Almost all of it failed. To make it work, we first had
-to discover and fix our research approach itself. Only then were we able to
-iterate towards our novel special-use memory-in-weights architecture.</p>
+<p class="bottom-line">Our first 76 experiments failed. Hard. The flaw was
+the harness itself; fixing it unlocked the &lsquo;memory-in-weights&rsquo;
+architecture.</p>
 
 <div class="stat-hero">
   <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
