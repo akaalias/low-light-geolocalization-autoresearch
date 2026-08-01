@@ -3562,19 +3562,40 @@ MASONRY_JS = """function dgpack(){
  var gap=18,N=window.innerWidth<=1000?3:6,W=g.clientWidth,
      colW=(W-(N-1)*gap)/N;
  g.classList.add('packed');
- var colH=[],i;for(i=0;i<N;i++)colH[i]=0;
+ var colH=[],holes=[],i;for(i=0;i<N;i++)colH[i]=0;
  g.querySelectorAll('.dg-cell').forEach(function(c){
   var span=c.classList.contains('sz3')?3:(c.classList.contains('sz2')?2:1);
   if(span>N)span=N;
   c.style.width=(span*colW+(span-1)*gap)+'px';
-  var h=c.offsetHeight,best=0,bestY=Infinity,s,k,y;
+  var h=c.offsetHeight,s,k,y;
+  /* A pure skyline cannot reach the space under a wide tile that bridged
+     columns of unequal height — measured on this very wall as seams of up
+     to ~1,100 px. So those rectangles are remembered as holes, and later
+     1-wide tiles drop into the topmost hole they fit before consulting
+     the skyline at all. */
+  if(span===1){
+   var hi=-1;
+   for(i=0;i<holes.length;i++)
+    if(holes[i].y1-holes[i].y0>=h&&(hi<0||holes[i].y0<holes[hi].y0))hi=i;
+   if(hi>=0){
+    var ho=holes[hi];
+    c.style.left=(ho.col*(colW+gap))+'px';c.style.top=ho.y0+'px';
+    ho.y0+=h+gap;
+    if(ho.y1-ho.y0<60)holes.splice(hi,1);
+    return;
+   }
+  }
+  var best=0,bestY=Infinity;
   for(s=0;s+span<=N;s++){
    for(y=0,k=s;k<s+span;k++)y=Math.max(y,colH[k]);
    if(y<bestY-0.5){bestY=y;best=s;}
   }
+  for(k=best;k<best+span;k++){
+   if(bestY-colH[k]>=60)holes.push({col:k,y0:colH[k],y1:bestY});
+   colH[k]=bestY+h+gap;
+  }
   c.style.left=(best*(colW+gap))+'px';
   c.style.top=bestY+'px';
-  for(k=best;k<best+span;k++)colH[k]=bestY+h+gap;
  });
  g.style.height=(Math.max.apply(null,colH)-gap)+'px';
 }
