@@ -1,4 +1,4 @@
-# UAV Low-Light Geolocalization — Autoresearch
+# Beeline — UAV Low-Light Geolocalization Autoresearch
 
 Given a geographic bounding box, this repo trains a compact per-area model
 that takes a single low-light camera frame from a UAV and returns

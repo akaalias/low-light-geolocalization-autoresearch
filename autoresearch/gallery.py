@@ -1554,8 +1554,8 @@ def topnav(active, root=False):
     for key, label in NAV_PAGES:
         cls = " class='on'" if key == active else ""
         links.append(f"<a href='{hrefs[key]}'{cls}>{label}</a>")
-    return ("<nav class='topnav'><span class='brand'>Can a UAV learn "
-            "a city by heart?</span>" + "".join(links) + "</nav>")
+    return ("<nav class='topnav'><span class='brand'>Beeline</span>"
+            + "".join(links) + "</nav>")
 
 
 def fmt_dur(s):
@@ -3543,8 +3543,8 @@ def render_notebook():
     topnav/page_header/CREDITS as every other page."""
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-{social_meta('gallery/lab-notebook.html', 'Lab notebook — Can a UAV learn a city by heart?', 'The dated narrative of the research: what happened, what broke, and what was learned, day by day.')}
-<title>Lab notebook &mdash; Can a UAV learn a city by heart?</title>
+{social_meta('gallery/lab-notebook.html', 'Lab notebook — Beeline', 'The dated narrative of the research: what happened, what broke, and what was learned, day by day.')}
+<title>Lab notebook &mdash; Beeline</title>
 <style>{CSS}</style></head><body>
 {topnav('notebook')}
 {compute_banner()}
@@ -3934,8 +3934,8 @@ def render_overview(exps):
 
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-{social_meta('', '“Not all who wander are lost”: Can a UAV learn a city by heart — no GPS, no map on board, just a $4 flight computer?', 'Yes: a from-scratch neural memory that knows Berlin by heart. One downward photo in, (lat, lon, confidence) out — the map is the weights, one city in 3.1 MB. Found by an autonomous loop of coding agents in 81 experiments for $364.')}
-<title>&ldquo;Not all who wander are lost&rdquo;: Can a UAV learn a city by heart &mdash; no GPS, no map on board, just a $4 flight computer?</title>
+{social_meta('', 'Beeline — “Not all who wander are lost”: Can a UAV learn a city by heart — no GPS, no map on board, just a $4 flight computer?', 'Yes: a from-scratch neural memory that knows Berlin by heart. One downward photo in, (lat, lon, confidence) out — the map is the weights, one city in 3.1 MB. Found by an autonomous loop of coding agents in 81 experiments for $364.')}
+<title>Beeline &mdash; &ldquo;Not all who wander are lost&rdquo;: Can a UAV learn a city by heart &mdash; no GPS, no map on board, just a $4 flight computer?</title>
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('overview', root=True)}
 {compute_banner()}
@@ -4370,8 +4370,8 @@ def render_paths(exps):
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-{social_meta('gallery/inference-paths.html', 'Model designs — Can a UAV learn a city by heart?', 'All 59 agent-drawn model designs in one shared visual language, kept and reverted alike.')}
-<title>Model Designs &mdash; Can a UAV learn a city by heart?</title>
+{social_meta('gallery/inference-paths.html', 'Model designs — Beeline', 'All 59 agent-drawn model designs in one shared visual language, kept and reverted alike.')}
+<title>Model Designs &mdash; Beeline</title>
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('paths')}
 {compute_banner()}
@@ -4799,8 +4799,8 @@ def render_evolution(exps):
             for e in eras)
     body = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-{social_meta('gallery/research-evolution.html', 'Research evolution — Can a UAV learn a city by heart?', 'How the research itself branched: twelve days of eras, dead ends, incidents and insights, drawn as one graph.')}
-<title>Research Evolution &mdash; Can a UAV learn a city by heart?</title>
+{social_meta('gallery/research-evolution.html', 'Research evolution — Beeline', 'How the research itself branched: twelve days of eras, dead ends, incidents and insights, drawn as one graph.')}
+<title>Research Evolution &mdash; Beeline</title>
 <style>{CSS}{EVOLUTION_CSS}</style></head><body>
 {topnav('evolution')}
 {compute_banner()}
@@ -5193,8 +5193,8 @@ def render_lineage(exps):
         lineage_era_key = ""
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-{social_meta('gallery/research-lineage.html', 'Experiment lineage — Can a UAV learn a city by heart?', 'The family tree of the search: every experiment as a node, arcs to the designs it built on.')}
-<title>Experiment Lineage &mdash; Can a UAV learn a city by heart?</title>
+{social_meta('gallery/research-lineage.html', 'Experiment lineage — Beeline', 'The family tree of the search: every experiment as a node, arcs to the designs it built on.')}
+<title>Experiment Lineage &mdash; Beeline</title>
 <style>{CSS}{LINEAGE_CSS}</style></head><body>
 {topnav('lineage')}
 {compute_banner()}
@@ -5323,8 +5323,8 @@ def render():
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-{social_meta('gallery/index.html', 'Research log — Can a UAV learn a city by heart?', 'Every experiment the autonomous loop ran, failures included: pre-registered hypotheses, results, and the exact agent prompts.')}
-<title>Research Log &mdash; Can a UAV learn a city by heart?</title>
+{social_meta('gallery/index.html', 'Research log — Beeline', 'Every experiment the autonomous loop ran, failures included: pre-registered hypotheses, results, and the exact agent prompts.')}
+<title>Research Log &mdash; Beeline</title>
 <style>{CSS}</style><script>{JS}</script></head><body>
 {topnav('log')}
 {compute_banner()}
