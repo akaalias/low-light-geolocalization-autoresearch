@@ -3544,21 +3544,23 @@ def render_overview(exps):
 <h1 class="home-h1">&ldquo;Not all who wander are lost&rdquo;</h1>
 <h2 class="home-q">Can a 5-inch drone learn to recognise a city from above
 &mdash; with no GPS, no maps on board, and a $4 flight computer?</h2>
-<p class="home-desc">A single-area visual-geolocalisation study, designed and
-run by an autonomous loop of coding agents</p>
-
 <div class="bl-h">The bottom line</div>
 <p class="bottom-line"><span class="hl">A drone can look down at Berlin and
 know where it is to within {med_s} &mdash; no GPS, no internet, no map on
-board, just a {best_mb:.1f}&nbsp;MB file of weights.</span> It works on
-{usable_pct} of camera frames, and it took {n_all_exp} experiments to find.
-We tried: ImageNet-pretrained backbones, separate day and night specialists
-behind a dispatcher, contrastive pretraining on the imagery itself,
-retrieval against a stored fingerprint of the city, dense per-patch
-coordinate voting, learned relighting, calibrated abstention, and more.</p>
+board, just a {best_mb:.1f}&nbsp;MB file of weights. It works on
+{usable_pct} of camera frames, and it took {n_all_exp} experiments and
+${int(cost_all):,} to find.</span></p>
+
+<div class="bl-h">What we tried</div>
+<p class="bottom-line">We tried: ImageNet-pretrained backbones, separate day
+and night specialists behind a dispatcher, contrastive pretraining on the
+imagery itself, retrieval against a stored fingerprint of the city, dense
+per-patch coordinate voting, learned relighting, calibrated abstention, and
+more.</p>
 
 <p class="bottom-line">Almost all of it failed.</p>
 
+<div class="bl-h">What worked</div>
 <p class="bottom-line">To make it work, we first had to discover and fix our
 research approach itself. Only then were we able to iterate towards our novel
 special-use memory-in-weights architecture.</p>
