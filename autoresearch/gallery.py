@@ -1483,6 +1483,35 @@ def page_header(title, sub_html):
             f"<p class='page-sub'>{sub_html}</p></header>")
 
 
+# Social sharing (Open Graph + Twitter cards). One shared card image — a
+# mosaic of real geo-tiles with the headline — generated once, locally, into
+# assets/social/card.jpg (CI has no raster; same scheme as the tile grids).
+SITE_URL = "https://alexisrondeau.me/low-light-geolocalization-autoresearch/"
+
+
+def social_meta(path, title, desc):
+    """OG/Twitter tags for one page. path is '' for the root overview or
+    'gallery/<page>.html'; the card image is shared across all pages."""
+    url = SITE_URL + path
+    img = SITE_URL + "assets/social/card.jpg"
+    return (
+        f'<meta property="og:type" content="website">\n'
+        f'<meta property="og:site_name" content="“Not all who wander are lost”">\n'
+        f'<meta property="og:title" content="{esc(title)}">\n'
+        f'<meta property="og:description" content="{esc(desc)}">\n'
+        f'<meta property="og:url" content="{url}">\n'
+        f'<meta property="og:image" content="{img}">\n'
+        f'<meta property="og:image:width" content="1200">\n'
+        f'<meta property="og:image:height" content="630">\n'
+        f'<meta property="og:image:alt" content="A mosaic of aerial tiles of '
+        f'Berlin around the question: Can a UAV learn a city by heart?">\n'
+        f'<meta name="twitter:card" content="summary_large_image">\n'
+        f'<meta name="twitter:title" content="{esc(title)}">\n'
+        f'<meta name="twitter:description" content="{esc(desc)}">\n'
+        f'<meta name="twitter:image" content="{img}">\n'
+        f'<meta name="description" content="{esc(desc)}">')
+
+
 def topnav(active, root=False):
     hrefs = {"overview": "index.html" if root else "../index.html",
              "log": "gallery/index.html" if root else "index.html",
@@ -1498,8 +1527,8 @@ def topnav(active, root=False):
     for key, label in NAV_PAGES:
         cls = " class='on'" if key == active else ""
         links.append(f"<a href='{hrefs[key]}'{cls}>{label}</a>")
-    return ("<nav class='topnav'><span class='brand'>Low-Light "
-            "Geolocalization</span>" + "".join(links) + "</nav>")
+    return ("<nav class='topnav'><span class='brand'>Can a UAV learn "
+            "a city by heart?</span>" + "".join(links) + "</nav>")
 
 
 def fmt_dur(s):
@@ -3487,7 +3516,8 @@ def render_notebook():
     topnav/page_header/CREDITS as every other page."""
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
-<title>Lab notebook &mdash; Low-Light Geolocalization</title>
+{social_meta('gallery/lab-notebook.html', 'Lab notebook — Can a UAV learn a city by heart?', 'The dated narrative of the research: what happened, what broke, and what was learned, day by day.')}
+<title>Lab notebook &mdash; Can a UAV learn a city by heart?</title>
 <style>{CSS}</style></head><body>
 {topnav('notebook')}
 {compute_banner()}
@@ -3877,7 +3907,8 @@ def render_overview(exps):
 
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
-<title>Not all who wander are lost — Low-Light Geolocalization</title>
+{social_meta('', '“Not all who wander are lost”: Can a UAV learn a city by heart — no GPS, no map on board, just a $4 flight computer?', 'Yes: a from-scratch neural memory that knows Berlin by heart. One downward photo in, (lat, lon, confidence) out — the map is the weights, one city in 3.1 MB. Found by an autonomous loop of coding agents in 81 experiments for $364.')}
+<title>&ldquo;Not all who wander are lost&rdquo;: Can a UAV learn a city by heart &mdash; no GPS, no map on board, just a $4 flight computer?</title>
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('overview', root=True)}
 {compute_banner()}
@@ -4033,6 +4064,17 @@ and <a href="gallery/lab-notebook.html">lab notebook</a> are rendered from
 that record, not written after the fact.</p></div>
 </div>
 
+<div class="sec-h">Our model designs</div>
+<div class="pnote">
+<p>Every experiment's model design, drawn by the design agent itself
+<i>before</i> it was allowed to train &mdash; camera frame entering on the
+left, (lat, lon, confidence) leaving on the right, red marking what that
+experiment changed. All fifty-nine that carry a figure, kept and reverted
+alike; the <a href="gallery/inference-paths.html">model designs</a> page
+has each at full size:</p>
+</div>
+{design_grid_html}
+
 <div class="sec-h">Our training data</div>
 <div class="pnote">
 <p>Everything the model knows, it learned from one picture: an open-licensed
@@ -4047,17 +4089,6 @@ positions and headings training never used. A hundred of the {n_cells:,}
 tiles:</p>
 </div>
 {train_grid_html}
-
-<div class="sec-h">Our model designs</div>
-<div class="pnote">
-<p>Every experiment's model design, drawn by the design agent itself
-<i>before</i> it was allowed to train &mdash; camera frame entering on the
-left, (lat, lon, confidence) leaving on the right, red marking what that
-experiment changed. All fifty-nine that carry a figure, kept and reverted
-alike; the <a href="gallery/inference-paths.html">model designs</a> page
-has each at full size:</p>
-</div>
-{design_grid_html}
 
 {rsec(4, "How to use it", "One file, one function, three steps.")}
 <div class="pnote">
@@ -4315,7 +4346,8 @@ def render_paths(exps):
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
-<title>Model Designs — Low-Light Geolocalization</title>
+{social_meta('gallery/inference-paths.html', 'Model designs — Can a UAV learn a city by heart?', 'All 59 agent-drawn model designs in one shared visual language, kept and reverted alike.')}
+<title>Model Designs &mdash; Can a UAV learn a city by heart?</title>
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('paths')}
 {compute_banner()}
@@ -4743,7 +4775,8 @@ def render_evolution(exps):
             for e in eras)
     body = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
-<title>Research Evolution — Low-Light Geolocalization</title>
+{social_meta('gallery/research-evolution.html', 'Research evolution — Can a UAV learn a city by heart?', 'How the research itself branched: twelve days of eras, dead ends, incidents and insights, drawn as one graph.')}
+<title>Research Evolution &mdash; Can a UAV learn a city by heart?</title>
 <style>{CSS}{EVOLUTION_CSS}</style></head><body>
 {topnav('evolution')}
 {compute_banner()}
@@ -5136,7 +5169,8 @@ def render_lineage(exps):
         lineage_era_key = ""
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
-<title>Experiment Lineage — Low-Light Geolocalization</title>
+{social_meta('gallery/research-lineage.html', 'Experiment lineage — Can a UAV learn a city by heart?', 'The family tree of the search: every experiment as a node, arcs to the designs it built on.')}
+<title>Experiment Lineage &mdash; Can a UAV learn a city by heart?</title>
 <style>{CSS}{LINEAGE_CSS}</style></head><body>
 {topnav('lineage')}
 {compute_banner()}
@@ -5265,7 +5299,8 @@ def render():
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=1100">
-<title>Research Log — Low-Light Geolocalization</title>
+{social_meta('gallery/index.html', 'Research log — Can a UAV learn a city by heart?', 'Every experiment the autonomous loop ran, failures included: pre-registered hypotheses, results, and the exact agent prompts.')}
+<title>Research Log &mdash; Can a UAV learn a city by heart?</title>
 <style>{CSS}</style><script>{JS}</script></head><body>
 {topnav('log')}
 {compute_banner()}
