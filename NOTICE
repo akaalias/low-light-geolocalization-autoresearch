@@ -1,0 +1,44 @@
+low-light-geolocalization-autoresearch
+Copyright (C) 2026 Alexis Rondeau
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. See the LICENSE file for the full text.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details.
+
+Prior to 2026-08-01 this repository was distributed under the MIT
+License; the relicense to GPL-3.0-or-later was made by the sole
+copyright holder.
+
+---
+
+NOTICE — imagery-derived artifacts
+
+The GPL covers the code and text of this repository. Image artifacts
+under runs/ and site_assets/ (training samples, error heatmaps,
+worked-example figures) are derivatives of open-licensed geodata and
+remain subject to their sources' attribution terms, independent of the
+code license:
+
+  © GeoBasis-DE/LGB, dl-de/by-2-0 (Brandenburg + Berlin orthophotos)
+  © Bayerische Vermessungsverwaltung, CC BY 4.0 (Bavaria orthophotos)
+  © HVBG Hessen, dl-de/by-2-0 (Hesse orthophotos)
+  © Freie und Hansestadt Hamburg, LGV, dl-de/by-2-0 (Hamburg orthophotos)
+  Contains modified Copernicus Sentinel data (Sentinel-2)
+
+The pretrained initialization weights in model/pretrained/ derive from
+torchvision's MobileNetV3-Small (BSD-3-Clause, © PyTorch contributors).
+They are not used by the current champion model, which trains from
+scratch.
+
+---
+
+Model weights you train with this pipeline are your own output; this
+repository claims no rights over them. The copyleft applies to the code:
+if you distribute a modified version of this pipeline, it must remain
+under the GPL.

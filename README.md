@@ -150,3 +150,24 @@ shows third-party sensor bring-up on the P4 is feasible.)
 then relight/train/score as above — nothing in the pipeline knows about
 specific areas. Only add entries to `areas.yaml` if it should become part of
 the frozen evaluation set (that's a human decision, not the loop's).
+
+## License
+
+**GPL-3.0-or-later** (see `LICENSE`). The choice is deliberate: the point of
+this project is that anyone can generate their own tiny, self-contained,
+geo-boxed localization model — so the pipeline that makes that possible must
+stay free. Copyleft guarantees it: you may use, study, modify and
+redistribute everything here, but a distributed fork — improved or otherwise
+— must remain under the GPL. Freedom is the priority here, not adoption.
+
+Two boundaries, spelled out in `NOTICE`:
+
+- **Model weights you train are yours.** They are your output, not a
+  derivative of this code in the license's sense; this repository claims no
+  rights over them.
+- **Imagery-derived figures** (under `runs/` and `site_assets/`) carry their
+  geodata sources' attribution terms (dl-de/by-2-0, CC BY 4.0, Copernicus)
+  independent of the code license.
+
+The repository was MIT-licensed before 2026-08-01; the relicense was made by
+the sole copyright holder.

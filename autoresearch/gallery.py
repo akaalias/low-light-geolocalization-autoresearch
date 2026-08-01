@@ -362,10 +362,13 @@ pre.howto{max-width:780px;margin:18px auto 0;padding:16px 20px;
   text-align:center;letter-spacing:.01em}
 @media (max-width:900px){.train-grid{grid-template-columns:repeat(5,1fr)}}
 
-/* ---- the model-designs grid: the last 30 agent-drawn figures, 4 up ------ */
+/* ---- the model-designs tapestry: the last 30 agent-drawn figures --------
+   CSS multi-columns, not a row grid — differently-tall figures pack down
+   each column (the 'Everything we tried' tapestry from the author's tada
+   FMDiscovery report), so a tall design doesn't punch a hole in its row. */
 .design-grid{width:80vw;margin:26px 0 4px calc(50% - 40vw);
-  display:grid;grid-template-columns:repeat(4,1fr);gap:18px 18px}
-.design-grid figure{margin:0;min-width:0}
+  columns:4;column-gap:18px}
+.design-grid figure{margin:0 0 18px;min-width:0;break-inside:avoid}
 .design-grid a{display:block;border:1px solid var(--rule);border-radius:2px;
   background:#fff;padding:8px}
 .design-grid a:hover{border-color:var(--ink)}
@@ -376,7 +379,7 @@ pre.howto{max-width:780px;margin:18px auto 0;padding:16px 20px;
 .design-grid figcaption b{color:var(--ink);
   font-variant-numeric:lining-nums tabular-nums}
 .design-grid .reverted figcaption{color:var(--faint)}
-@media (max-width:1000px){.design-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:1000px){.design-grid{columns:2}}
 
 /* ---- the autoresearch loop: prose left, the cycle right ----------------- */
 .approach{max-width:980px;margin:26px auto 0;padding:0 16px;
@@ -2830,7 +2833,9 @@ font-size:12.5px;line-height:1.5;border-top:1px solid #e6e4da;padding-top:10px">
 © GeoBasis-DE/LGB (dl-de/by-2-0) · © Bayerische Vermessungsverwaltung (CC BY 4.0)
 · © HVBG Hessen (dl-de/by-2-0) · © Freie und Hansestadt Hamburg, LGV (dl-de/by-2-0)
 · Contains modified Copernicus Sentinel data.
-Code: MIT License —
+Code: <a href="https://github.com/akaalias/low-light-geolocalization-autoresearch/blob/main/LICENSE"
+style="color:inherit">GPL-3.0-or-later</a> — free software; improved forks must
+stay free —
 <a href="https://github.com/akaalias/low-light-geolocalization-autoresearch"
 style="color:inherit">source repository</a>.</footer>
 <a id="gh-ribbon" href="https://github.com/akaalias/low-light-geolocalization-autoresearch"
