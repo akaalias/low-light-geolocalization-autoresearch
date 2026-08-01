@@ -322,6 +322,17 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
   text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:0 0 7px}
 .status-callout p{margin:0;font-size:15.5px;line-height:1.65;color:#33312b}
 .status-callout .status-meta{margin-top:7px;font-size:12.5px;color:var(--muted)}
+/* ---- the download CTA under the bottom line: quiet, one rule, no button - */
+.cta{max-width:780px;margin:18px auto 0;padding:12px 18px;
+  border:1px solid var(--rule);border-left:3px solid var(--accent);
+  border-radius:0 2px 2px 0;display:flex;flex-wrap:wrap;
+  align-items:baseline;gap:6px 18px}
+.cta-link{font:600 15px var(--serif);color:var(--accent);
+  text-decoration:none;border-bottom:1px solid transparent;white-space:nowrap}
+.cta-link:hover{border-bottom-color:var(--accent)}
+.cta-meta{font-size:12.5px;color:var(--muted);
+  font-variant-numeric:lining-nums tabular-nums}
+
 /* ---- the tile grid: eight real 128 m tiles, each with its coordinate ---- */
 .tile-grid{max-width:860px;margin:26px auto 4px;padding:0 16px;
   display:grid;grid-template-columns:repeat(4,1fr);gap:16px 16px}
@@ -332,6 +343,16 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .tg-idx{display:block;font-weight:600;color:var(--ink)}
 .tg-cap{max-width:780px;margin:14px auto 0;padding:0 16px;
   font:italic 14px/1.6 var(--serif);color:var(--muted);text-align:center}
+
+/* ---- the training-data grid: fifty tiles of the raster, full width ------ */
+.train-grid{max-width:1240px;margin:26px auto 4px;padding:0 16px;
+  display:grid;grid-template-columns:repeat(10,1fr);gap:9px 9px}
+.train-grid figure{margin:0}
+.train-grid img{width:100%;display:block;border:1px solid var(--rule)}
+.train-grid figcaption{margin-top:3px;font-size:8.5px;line-height:1.4;
+  color:var(--faint);font-variant-numeric:lining-nums tabular-nums;
+  text-align:center;letter-spacing:.01em}
+@media (max-width:900px){.train-grid{grid-template-columns:repeat(5,1fr)}}
 
 /* ---- the autoresearch loop: prose left, the cycle right ----------------- */
 .approach{max-width:980px;margin:26px auto 0;padding:0 16px;
@@ -1327,9 +1348,11 @@ def challenge_block(exps):
             "Green is a fix inside 100 m — close enough to correct the "
             "aircraft's drift. Nothing about the test changed; only the "
             "answers did.</figcaption></figure>")
-        lead = ("<b>Left is where this started. Right is where it is now.</b> "
-                "Same city, same test points, same renderer — only the answers "
-                "differ.")
+        lead = ("<b>This, on a map, is the goal.</b> Every dot is one held-out "
+                "viewpoint: ground the model trained on, framed from a position "
+                "and heading it has never seen. <b>Left is where this started. "
+                "Right is where it is now.</b> Turning red into green — without "
+                "ever being confidently wrong — is the whole project.")
     else:
         goal = ensure_goal_map()
         if not goal:
@@ -1344,9 +1367,10 @@ def challenge_block(exps):
             "every one were a usable fix (within 100 m). <i>No model produced "
             "this image</i> — it is the target, not an achievement.</figcaption>"
             "</figure>")
-        lead = ("<b>Left is where we are, measured. Right is what winning looks "
-                "like.</b> Same city, same test points, same renderer — only the "
-                "answers differ.")
+        lead = ("<b>This, on a map, is the goal.</b> Every dot is one held-out "
+                "viewpoint: ground the model trained on, framed from a position "
+                "and heading it has never seen. <b>Left is where we are, "
+                "measured. Right is what winning looks like.</b>")
 
     usable = _usable_of(base)
     usable_s = f"{100*usable:.0f}%" if usable is not None else "—"
@@ -1391,9 +1415,7 @@ def challenge_block(exps):
         # "The question" and the before/after maps in "The evidence", which is
         # where each of them is actually an answer to something.
         contract + "<!--SPLIT-->"
-        "<div class='pnote'><p>Run that over the whole city and you get the maps "
-        "below. Every dot is one held-out viewpoint: ground the model trained on, "
-        f"framed from a position and heading it has never seen. {lead}</p></div>"
+        f"<div class='pnote'><p>{lead}</p></div>"
         "<div class='wex-row'><div class='wex-imgs'>"
         f"<figure class='wex-frame'><a href='{rel_real}'>"
         f"<img src='{rel_real}' loading='lazy'></a>"
@@ -3478,6 +3500,24 @@ def tile_grid():
             "not to answer.</p>")
 
 
+def train_grid():
+    """Fifty tiles of the actual training raster, full width — 'Our training
+    data' at the end of the research section. Same static-asset scheme as
+    tile_grid(): crops + coordinates baked into assets/tiles/train/ by a
+    one-off local script, because CI has no raster."""
+    tj = REPO_ROOT / "assets" / "tiles" / "train" / "train.json"
+    if not tj.exists():
+        return ""
+    d = json.loads(tj.read_text())
+    cells = "".join(
+        f"<figure><img src='assets/tiles/train/{t['file']}' loading='lazy' "
+        f"alt='128 m aerial training tile at {t['lat']}, {t['lon']}'>"
+        f"<figcaption>{t['lat']:.5f} &middot; {t['lon']:.5f}</figcaption>"
+        f"</figure>"
+        for t in d["tiles"])
+    return f"<div class='train-grid'>{cells}</div>"
+
+
 def loop_cycle_svg():
     """The autoresearch loop as a four-step cycle — same figure vocabulary
     as the author's prior workshop site (approach.html), relabeled for this
@@ -3583,6 +3623,7 @@ def render_overview(exps):
     _chal = challenge_block(exps)
     chal_contract, _, chal_maps = _chal.partition("<!--SPLIT-->")
     tile_grid_html = tile_grid()
+    train_grid_html = train_grid()
 
     champ_fig = ""
     _csvg = (champ.get("arch_svg") or "") if champ else ""
@@ -3676,6 +3717,14 @@ miss is {med_s} &mdash; no GPS, no internet, no map on board, just a
 frames, and it took {n_all_exp} experiments and ${int(cost_all):,} to
 find.</span></p>
 
+<div class="cta">
+<a class="cta-link" href="assets/models/berlin.onnx" download>Download the
+Berlin model &darr;</a>
+<span class="cta-meta">berlin.onnx &middot; {best_mb:.1f}&nbsp;MB &middot;
+one function: <i>estimate_position(frame) &rarr; (lat, lon,
+confidence)</i></span>
+</div>
+
 <div class="bl-h">What we tried</div>
 <p class="bottom-line">We tried: ImageNet-pretrained backbones, separate day
 and night specialists behind a dispatcher, contrastive pretraining on the
@@ -3715,7 +3764,10 @@ it doesn't know.</p>
 </div>
 {chal_contract}
 
+{chal_maps}
+
 {rsec(2, "The answer", "Stop asking for a coordinate. Ask which tile.")}
+{champ_fig}
 <div class="pnote">
 <p>Ask a network for latitude and longitude and it fails badly: when it is
 unsure it has no way to say so, and hedging toward the middle of the map is
@@ -3729,8 +3781,6 @@ and the belief piles onto a single tile; lost, and it smears across the city
 a precise point inside the chosen tile.</p>
 </div>
 
-{tile_grid_html}
-
 <div class="pnote">
 <p>The result is one file of <b>{best_mb:.1f}&nbsp;MB</b> that answers in
 <b>{best_ms:.1f}&nbsp;ms</b>. Nothing is looked up, nothing is matched
@@ -3740,10 +3790,6 @@ figures on the <a href="gallery/inference-paths.html">model designs</a>
 page.</p>
 </div>
 
-{champ_fig}
-
-{chal_maps}
-
 <div class="pnote">
 <p><b>One model per area, by design.</b> Asked about a block of Berlin held
 out of training entirely, the same model returns <b>0% usable fixes</b>
@@ -3752,6 +3798,8 @@ it cannot place. The pipeline takes any bounding box; each trained model
 knows only its own. Night flying is scoped out for now: everything here is
 raw daytime imagery.</p>
 </div>
+
+{tile_grid_html}
 
 {rsec(3, "How our research works", "The model was found, not designed &mdash; by a loop of coding agents.")}
 
@@ -3807,6 +3855,20 @@ lineage</a>, <a href="gallery/research-evolution.html">evolution graph</a>
 and <a href="gallery/lab-notebook.html">lab notebook</a> are rendered from
 that record, not written after the fact.</p></div>
 </div>
+
+<div class="sec-h">Our training data</div>
+<div class="pnote">
+<p>Everything the model knows, it learned from one picture: an open-licensed
+aerial orthophoto mosaic of Berlin from the Berlin/Brandenburg geoportal
+(&copy;&nbsp;GeoBasis-DE/LGB, dl&#8209;de/by&#8209;2&#8209;0, modified),
+fetched by the frozen pipeline and resampled to 1&nbsp;m per pixel &mdash;
+6,939&nbsp;&times;&nbsp;6,828 pixels covering the whole bounding box. No
+Google or Bing tiles anywhere: only open geodata, so the entire project can
+be published. Training crops 128&nbsp;m frames from every position on that
+mosaic; the held-out eval frames stand on the same ground, framed from
+positions and headings training never used. Fifty of the {n_cells:,} tiles:</p>
+</div>
+{train_grid_html}
 
 {rsec(4, "Explore the record", "Every experiment, every design, every dead end.")}
 <div class="explore">
