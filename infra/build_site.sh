@@ -18,6 +18,9 @@ $PY -m autoresearch.gallery
 
 rm -rf "$OUT"; mkdir -p "$OUT"
 cp -R gallery "$OUT/gallery"
+# Committed static page assets (e.g. the overview's geo-tile grid) — plain
+# git, small, referenced as assets/... from the root index.html.
+[ -d assets ] && cp -R assets "$OUT/assets"
 
 # --- images -------------------------------------------------------------
 # Preferred path: site_assets/, the ~20 slimmed images the pages actually

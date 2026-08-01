@@ -322,6 +322,52 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
   text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:0 0 7px}
 .status-callout p{margin:0;font-size:15.5px;line-height:1.65;color:#33312b}
 .status-callout .status-meta{margin-top:7px;font-size:12.5px;color:var(--muted)}
+/* ---- the tile grid: eight real 128 m tiles, each with its coordinate ---- */
+.tile-grid{max-width:860px;margin:26px auto 4px;padding:0 16px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:16px 16px}
+.tile-grid figure{margin:0}
+.tile-grid img{width:100%;display:block;border:1px solid var(--rule)}
+.tile-grid figcaption{margin-top:5px;font-size:11px;line-height:1.5;
+  color:var(--muted);font-variant-numeric:lining-nums tabular-nums}
+.tg-idx{display:block;font-weight:600;color:var(--ink)}
+.tg-cap{max-width:780px;margin:14px auto 0;padding:0 16px;
+  font:italic 14px/1.6 var(--serif);color:var(--muted);text-align:center}
+
+/* ---- the autoresearch loop: prose left, the cycle right ----------------- */
+.approach{max-width:980px;margin:26px auto 0;padding:0 16px;
+  display:flex;gap:46px;align-items:center}
+.approach-text{flex:1 1 0;min-width:0}
+.approach-text p{font-size:14.5px;line-height:1.7;color:#33312b;margin:0 0 10px}
+.approach-cycle{flex:0 0 46%;max-width:470px}
+.cycle{display:block;width:100%;height:auto;margin:6px auto 4px}
+.carrow{fill:none;stroke:#8a857a;stroke-width:1.6}
+.cnode{fill:var(--paper);stroke:var(--ink);stroke-width:1.3}
+.cnum{fill:var(--ink);font:600 14px/1 var(--serif)}
+.clabel{fill:var(--ink);font:600 15px/1 var(--serif);letter-spacing:.05em}
+.csub{fill:var(--muted);font:italic 13px/1 var(--serif)}
+.ccenter{fill:var(--accent);font:600 12px/1 var(--serif);letter-spacing:.1em;
+  text-anchor:middle}
+.ccenter-sub{fill:var(--faint);font:italic 13px/1 var(--serif);text-anchor:middle}
+.cycle-cap{font:italic 13.5px/1.55 var(--serif);color:var(--muted);
+  text-align:center;margin-top:6px}
+.carrow-h{fill:none;stroke:var(--accent);stroke-width:1.8}
+.chuman{fill:var(--accent)}
+.chuman-lbl{fill:var(--accent);font:600 14px/1 var(--serif);letter-spacing:.05em}
+.chuman-sub{fill:var(--muted);font:italic 12.5px/1 var(--serif)}
+.carrow-e{fill:none;stroke:var(--ochre);stroke-width:1.8}
+.cexpert{fill:var(--ochre)}
+.cexpert-lbl{fill:var(--ochre);font:600 14px/1 var(--serif);letter-spacing:.05em}
+.cexpert-sub{fill:var(--muted);font:italic 12.5px/1 var(--serif)}
+@media (max-width:900px){.approach{flex-direction:column}}
+
+/* ---- the loop's research strategies, as a 2x2 grid ---------------------- */
+.strategies{max-width:860px;margin:26px auto 0;padding:0 16px;
+  display:grid;grid-template-columns:1fr 1fr;gap:30px 48px;align-items:start}
+.strategy-h{font:400 19px/1.3 var(--serif);color:var(--ink);margin:0 0 8px}
+.strategy p{font-size:14px;line-height:1.6;color:var(--muted);margin:0}
+.strategy p b{color:var(--ink)}
+@media (max-width:700px){.strategies{grid-template-columns:1fr}}
+
 .explore{max-width:780px;margin:0 auto}
 .explore a.card{display:block;border:1px solid var(--rule);border-radius:2px;
   padding:14px 18px;margin:0 0 12px;color:inherit}
@@ -1334,22 +1380,17 @@ def challenge_block(exps):
             "<figcaption><b>what it must return</b> — the true answer for that "
             "frame, computed on board.</figcaption></figure>"
             "</div>"
-            "<p class='contract-note'>The starting baseline replied "
-            f"<span class='num'>{info['lat_pred']:.5f}, {info['lon_pred']:.5f}</span> "
-            f"at confidence <span class='num'>{info['conf']:.2f}</span> — about "
-            f"<b>{fmt_m(info['miss_m'])}</b> away, stated almost certainly. "
-            "Confident and wrong is the one answer a drone must never get, "
-            "which is what the whole project is measured against."
+            "<p class='contract-note'>The first baseline answered this frame "
+            f"<b>{fmt_m(info['miss_m'])}</b> away at confidence "
+            f"<span class='num'>{info['conf']:.2f}</span> — confident and "
+            "wrong, the one answer a UAV must never get."
             + champ_answer + "</p>")
 
     return (
         # SPLIT MARKER — render_overview cuts here so the contract can sit in
         # "The question" and the before/after maps in "The evidence", which is
         # where each of them is actually an answer to something.
-        "<div class='pnote'><p>The contract is one frame in, one position out: "
-        "<i>estimate_position(frame) &rarr; (lat, lon, confidence)</i>, computed on "
-        "a $4 flight computer with no map aboard.</p></div>"
-        + contract + "<!--SPLIT-->"
+        contract + "<!--SPLIT-->"
         "<div class='pnote'><p>Run that over the whole city and you get the maps "
         "below. Every dot is one held-out viewpoint: ground the model trained on, "
         f"framed from a position and heading it has never seen. {lead}</p></div>"
@@ -1360,7 +1401,7 @@ def challenge_block(exps):
         f"<b class='num'>{fmt_score(base['primary_metric'])}</b> · usable fixes "
         f"<b class='num'>{usable_s}</b><br>Red is a miss beyond 250 m. The "
         "baseline is confident on every frame and wrong on every frame — the "
-        "worst value the metric allows, because for a drone a confident wrong "
+        "worst value the metric allows, because for a UAV a confident wrong "
         "answer is worse than silence.</figcaption></figure>"
         "<div class='wex-arr'>→</div>"
         + right + "</div></div>")
@@ -2546,7 +2587,7 @@ def _fail_detail(e):
         shorts = "; ".join(dict.fromkeys(short_map.get(f, f) for f in gate_fails))
         return (f"over deployment budget: {shorts}",
                 f"The model trained and scored, but it broke a hard aircraft limit: {longs}. A model "
-                "that can't physically run on the drone is failed regardless of how accurate it is, so "
+                "that can't physically run on the UAV is failed regardless of how accurate it is, so "
                 "it was rolled back.")
     return ("abstained on too many frames in a cell",
             "The model trained, but in at least one area × lighting combination it refused to answer on "
@@ -3409,6 +3450,87 @@ def rsec(n, title, sub=""):
             f"<h2 class='rsec-t'>{title}</h2></div>{s}")
 
 
+def tile_grid():
+    """Eight real 128 m Berlin tiles with their coordinates — the
+    multiple-choice question made concrete. The crops and their lat/lon are
+    baked as committed static files (assets/tiles/ — NOT gallery/, which is
+    gitignored render output) by a one-off script run where data/ exists,
+    because CI renders this page without the raster."""
+    tj = REPO_ROOT / "assets" / "tiles" / "tiles.json"
+    if not tj.exists():
+        return ""
+    d = json.loads(tj.read_text())
+    cells = "".join(
+        f"<figure class='tg-cell'>"
+        f"<img src='assets/tiles/{t['file']}' loading='lazy' "
+        f"alt='128 m aerial tile at {t['lat']}, {t['lon']}'>"
+        f"<figcaption><span class='tg-idx'>tile {t['idx']:,} of "
+        f"{d['n_cells']:,}</span>"
+        f"{t['lat']:.5f}&nbsp;N &middot; {t['lon']:.5f}&nbsp;E"
+        f"</figcaption></figure>"
+        for t in d["tiles"])
+    return (f"<div class='tile-grid'>{cells}</div>"
+            "<p class='tg-cap'>Eight of the 2,970 answers. Every tile is "
+            "128&nbsp;m of real Berlin and owns one coordinate, so "
+            "&ldquo;which tile is this?&rdquo; is the same question as "
+            "&ldquo;where am I?&rdquo; &mdash; a river bend is easy; the "
+            "empty field at the end is why the model must also know when "
+            "not to answer.</p>")
+
+
+def loop_cycle_svg():
+    """The autoresearch loop as a four-step cycle — same figure vocabulary
+    as the author's prior workshop site (approach.html), relabeled for this
+    project: PROPOSE / TRAIN / SCORE / KEEP, a human supervisor steering
+    into PROPOSE from outside, and the frozen ruler feeding SCORE."""
+    return """<svg class="cycle" viewBox="0 0 640 420" role="img"
+     aria-label="The loop: an agent proposes one change, the harness trains and scores it, and it is kept only if it beats the champion — while a human supervises from outside and a frozen ruler does the scoring">
+  <defs>
+    <marker id="cyc-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a857a"/>
+    </marker>
+    <marker id="cyc-arrow-h" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8c2f1f"/>
+    </marker>
+    <marker id="cyc-arrow-e" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a6a1e"/>
+    </marker>
+  </defs>
+  <path class="carrow" marker-end="url(#cyc-arrow)" d="M346.8,99.1 A125,125 0 0 1 415.9,168.2"/>
+  <path class="carrow" marker-end="url(#cyc-arrow)" d="M415.9,261.8 A125,125 0 0 1 346.8,330.9"/>
+  <path class="carrow" marker-end="url(#cyc-arrow)" d="M253.2,330.9 A125,125 0 0 1 184.1,261.8"/>
+  <path class="carrow" marker-end="url(#cyc-arrow)" d="M184.1,168.2 A125,125 0 0 1 253.2,99.1"/>
+  <text class="ccenter"     x="300" y="210">THE LOOP</text>
+  <text class="ccenter-sub" x="300" y="231">experiment after experiment</text>
+  <text class="clabel" x="300" y="50"  text-anchor="middle">PROPOSE</text>
+  <text class="csub"   x="300" y="67"  text-anchor="middle">one focused change</text>
+  <circle class="cnode" cx="300" cy="90" r="15"/>
+  <text class="cnum" x="300" y="95" text-anchor="middle">1</text>
+  <circle class="cnode" cx="425" cy="215" r="15"/>
+  <text class="cnum" x="425" y="220" text-anchor="middle">2</text>
+  <text class="clabel" x="448" y="211" text-anchor="start">TRAIN</text>
+  <text class="csub"   x="448" y="228" text-anchor="start">on the whole city</text>
+  <circle class="cnode" cx="300" cy="340" r="15"/>
+  <text class="cnum" x="300" y="345" text-anchor="middle">3</text>
+  <text class="clabel" x="300" y="374" text-anchor="middle">SCORE</text>
+  <text class="csub"   x="300" y="391" text-anchor="middle">the mission penalty</text>
+  <circle class="cnode" cx="175" cy="215" r="15"/>
+  <text class="cnum" x="175" y="220" text-anchor="middle">4</text>
+  <text class="clabel" x="152" y="211" text-anchor="end">KEEP</text>
+  <text class="csub"   x="152" y="228" text-anchor="end">only if it beats the champion</text>
+  <text class="chuman-lbl" x="632" y="58" text-anchor="end">HUMAN SUPERVISOR</text>
+  <text class="chuman-sub" x="632" y="76" text-anchor="end">sets the levers,</text>
+  <text class="chuman-sub" x="632" y="92" text-anchor="end">curates the inspiration</text>
+  <circle class="chuman" cx="505" cy="75" r="5"/>
+  <path class="carrow-h" marker-end="url(#cyc-arrow-h)" d="M505,75 C436,82 374,88 316,84"/>
+  <text class="cexpert-lbl" x="8" y="350" text-anchor="start">FROZEN RULER</text>
+  <text class="cexpert-sub" x="8" y="368" text-anchor="start">pipeline, eval set, scorer &mdash;</text>
+  <text class="cexpert-sub" x="8" y="384" text-anchor="start">read-only to the agents</text>
+  <circle class="cexpert" cx="172" cy="360" r="5"/>
+  <path class="carrow-e" marker-end="url(#cyc-arrow-e)" d="M172,360 C212,360 252,352 288,346"/>
+</svg>"""
+
+
 def render_overview(exps):
     """index.html at the repo root — the project's front door: what this is,
     live status numbers from the lineage DB, and links into the gallery
@@ -3460,6 +3582,7 @@ def render_overview(exps):
     # evidence for "The answer", so they are placed separately.
     _chal = challenge_block(exps)
     chal_contract, _, chal_maps = _chal.partition("<!--SPLIT-->")
+    tile_grid_html = tile_grid()
 
     champ_fig = ""
     _csvg = (champ.get("arch_svg") or "") if champ else ""
@@ -3542,10 +3665,11 @@ def render_overview(exps):
 {compute_banner()}
 <div class="paths-wrap">
 <h1 class="home-h1">&ldquo;Not all who wander are lost&rdquo;</h1>
-<h2 class="home-q">Can a 5-inch drone learn to recognise a city from above
+<h2 class="home-q">Can a UAV learn to find its way by memorising <i>all</i>
+geo-locations of a specific city
 &mdash; with no GPS, no maps on board, and a $4 flight computer?</h2>
 <div class="bl-h">The bottom line</div>
-<p class="bottom-line"><span class="hl">A drone can look down at Berlin and
+<p class="bottom-line"><span class="hl">A UAV can look down at Berlin and
 know where it is to within {med_s} &mdash; no GPS, no internet, no map on
 board, just a {best_mb:.1f}&nbsp;MB file of weights. It works on
 {usable_pct} of camera frames, and it took {n_all_exp} experiments and
@@ -3568,128 +3692,122 @@ special-use memory-in-weights architecture.</p>
 <div class="stat-hero">
   <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
   {scale_svg}
-  <p class="hero-sub">confident <i>and</i> within {TARGET_M:.0f}&nbsp;m &mdash; the number
-  the aircraft actually needs. What the loop <i>minimises</i> is the
-  <b>mission penalty</b>, which is just this failure written out:
+  <p class="hero-sub">confident <i>and</i> within {TARGET_M:.0f}&nbsp;m. The
+  loop minimises the <b>mission penalty</b>:
   <span class="pen">{pen_s}</span> = <span class="pen">{miss_s}</span> no fix
-  + <span class="pen">{false_s}</span> wrong fix. A confident error counts twice,
-  because for a drone it is worse than silence.</p>
+  + <span class="pen">{false_s}</span> wrong fix &mdash; a confident error
+  counts double.</p>
 </div>
 <div class="stats">
-  <div class="stat"><b>{n_eras}</b><span>research eras &mdash; each a rebuilt
-    evaluation or metric, and a lineage wiped</span></div>
-  <div class="stat"><b>{n_all_exp}</b><span>experiments designed, trained
-    and scored to get here</span></div>
-  <div class="stat"><b>{fmt_usd(cost_all)}</b><span>total cost &mdash; agent
-    tokens plus rented GPU</span></div>
+  <div class="stat"><b>{n_eras}</b><span>research eras</span></div>
+  <div class="stat"><b>{n_all_exp}</b><span>experiments</span></div>
+  <div class="stat"><b>{fmt_usd(cost_all)}</b><span>total cost</span></div>
 </div>
 
 {rsec(1, "The question", "One frame, no map, no internet &mdash; and it has to know when it doesn&rsquo;t know.")}
 <div class="pnote">
-<p>A drone is flying over a city it has been trained on. Its camera takes one
-picture straight down. From that picture alone &mdash; no GPS, no internet, no
-map stored on board, and a computer that costs four dollars &mdash; where is
-it, and how much should the aircraft trust the answer?</p>
-<p>The last part is what makes it hard. A position that is merely
-<i>probably</i> right is worse than no position at all: a drone that believes
-a wrong fix will fly into it. So the model has to know when it doesn't know.</p>
+<p>A UAV flies over a city it has trained on. Its camera takes one picture
+straight down. From that picture alone: where is it?</p>
+<p>And &mdash; how much should the aircraft trust the answer? A wrong fix
+flown with confidence is worse than no fix at all. The model has to know when
+it doesn't know.</p>
 </div>
 {chal_contract}
 
 {rsec(2, "The answer", "Stop asking for a coordinate. Ask which tile.")}
-{champ_fig}
 <div class="pnote">
-<p>The obvious design asks the network for two numbers: latitude and
-longitude. It fails badly. When such a network is unsure it has no way to
-<i>say</i> so, and the safest thing it can do to keep its average error down
-is drift toward the middle of the map. Our first attempt did exactly that
-&mdash; confident on every frame, wrong on every frame.</p>
-<p><b>So we stopped asking for a coordinate and started asking a
-multiple-choice question.</b> Berlin is cut into {n_cells:,} tiles of
-128&nbsp;m, and the network points at one of them. That one change is the
-whole idea, because now the answer carries its own certainty: if the network
-is sure, its choice piles onto a single tile; if it is lost, its belief
-smears across the city, and you can see that and say nothing instead. A
-second, smaller output nudges the fix to a precise point inside the chosen
-tile, so nothing is lost to the grid.</p>
-<p>Three refinements took it from working to reliable: showing the model
-<i>every</i> vantage in the city each pass rather than a sample; letting
-neighbouring tiles pool their votes, so a photo straddling a boundary counts
-as confident rather than confused; and training it on the same soft targets
-it is scored against. The
-<a href="gallery/inference-paths.html">model designs</a> page has the
-figures, and the <a href="gallery/index.html">research log</a> has each step
-as its own experiment.</p>
-<p>The result is one file of <b>{best_mb:.1f}&nbsp;MB</b> that answers in
-<b>{best_ms:.1f}&nbsp;ms</b>. Nothing is looked up and nothing is matched
-&mdash; the map <i>is</i> the weights.</p>
+<p>Ask a network for latitude and longitude and it fails badly: when it is
+unsure it has no way to say so, and hedging toward the middle of the map is
+what keeps its average error down. Our first attempt was confident on every
+frame and wrong on every frame.</p>
+<p><b>So we stopped asking for a coordinate and asked a multiple-choice
+question instead.</b> Berlin is cut into {n_cells:,} tiles of 128&nbsp;m and
+the network points at one. Now the answer carries its own certainty: sure,
+and the belief piles onto a single tile; lost, and it smears across the city
+&mdash; and the UAV says nothing instead. A second output nudges the fix to
+a precise point inside the chosen tile.</p>
 </div>
+
+{tile_grid_html}
+
+<div class="pnote">
+<p>The result is one file of <b>{best_mb:.1f}&nbsp;MB</b> that answers in
+<b>{best_ms:.1f}&nbsp;ms</b>. Nothing is looked up, nothing is matched
+&mdash; the map <i>is</i> the weights. Each refinement on the way is its own
+experiment in the <a href="gallery/index.html">research log</a>, with the
+figures on the <a href="gallery/inference-paths.html">model designs</a>
+page.</p>
+</div>
+
+{champ_fig}
 
 {chal_maps}
 
-{rsec(3, "The verdict", "What this shows, and what it deliberately does not.")}
 <div class="pnote">
-<p><b>Shown.</b> A {best_mb:.1f}&nbsp;MB network can memorise one city well
-enough that <b>{usable_pct}</b> of held-out viewpoints over it yield a fix
-inside 100&nbsp;m, with <b>{false_pct}</b> confidently wrong. Typical miss
-when it answers: <b>{med_s}</b>; best decile <b>{p10_s}</b>. Those frames are
-positions and headings the model never trained on, over ground it did.</p>
-<p><b>Not shown: generalisation, and deliberately so.</b> Asked about a
-1&#8209;in&#8209;32 block of Berlin held out of training entirely, the same
-model returns <b>0% usable fixes</b> and a median miss of
-<b>{holdout_med}</b>. That is the design behaving exactly as intended rather
-than a defect: the map lives in the weights, so ground it was never shown is
-ground it cannot place. It does mean this is <i>one model per area</i>, not a
-general localiser &mdash; the pipeline takes any bounding box, but each
-trained model knows only its own.</p>
-<p><b>Not shown yet: night.</b> The current configuration trains and tests on
-raw daytime imagery. The low-light premise the project is named for is scoped
-out for the moment, along with the other three areas; the harness for both is
-still in the frozen pipeline, switched off.</p>
+<p><b>One model per area, by design.</b> Asked about a block of Berlin held
+out of training entirely, the same model returns <b>0% usable fixes</b>
+&mdash; the map lives in the weights, so ground it was never shown is ground
+it cannot place. The pipeline takes any bounding box; each trained model
+knows only its own. Night flying is scoped out for now: everything here is
+raw daytime imagery.</p>
 </div>
 
-{rsec(4, "How it works", "Think globally, memorise locally &mdash; and let the loop do the searching.")}
-<div class="pnote">
-<p>The model family is <b>scene-coordinate regression</b>: one compact
-network per flight area that encodes "what does this place look like from
-above" directly into its weights — the frozen pipeline works
-for any bounding box on Earth, but each trained model knows exactly one
-patch of it by heart. No reference imagery on the aircraft, no retrieval,
-no matching. Training data comes from a frozen pipeline that fetches
-open-licensed aerial orthophotos for any bounding box, and under the full
-spec it also re-renders them under six lighting conditions, from morning to
-night, <b>as seen by a simulated starlight-class low-light sensor</b>
-(Sony STARVIS2 / IMX585 class — the aircraft's chosen camera). That
-machinery is switched off in the current configuration, which trains on the
-raw daytime fetch as-is.</p>
-<p>The research loop is Karpathy-style autoresearch: each experiment, a
-headless coding agent reads the full experiment history, pre-registers ONE
-focused change — hypothesis, method, expected outcome — then the harness
-trains and scores it against a single frozen ruler: the <b>mission score</b>
-on held-out <i>viewpoints</i>. That ruler is deliberately the product
-requirement rather than a statistic about errors &mdash; a frame counts only if
-the model is <i>confident and right</i>, an abstention is safe, and a confident
-wrong answer is penalised as worse than silence, because it would feed a false
-position into navigation. Training covers all of Berlin and the test frames sit
-11&ndash;17&nbsp;m off the nearest training vantage at their own rotation, so
-the ground is mapped but the view is new (currently Berlin only, one
-lighting condition; the full spec adds 6 lighting conditions × 4 German test
-areas — dense Berlin, rural Prignitz, Munich, Frankfurt). Improvements are kept
-as git commits; everything else is reverted but stays in the record.</p>
-</div>
+{rsec(3, "How our research works", "The model was found, not designed &mdash; by a loop of coding agents.")}
 
 <div class="contract-fig static">{contract_svg()}
-<p class="contract-cap">What the loop is actually allowed to search over.
-The gray endpoints are fixed by the harness — one camera crop in,
-one <i>(lat,&nbsp;lon,&nbsp;confidence)</i> answer out — and the dashed box
-is the entire search space: every experiment in the
+<p class="contract-cap">The search space. The gray endpoints are frozen
+&mdash; one camera crop in, one <i>(lat,&nbsp;lon,&nbsp;confidence)</i>
+answer out &mdash; and the dashed box is everything an experiment may
+change. Every design in the
 <a href="gallery/inference-paths.html">model designs</a> gallery is one way
-of filling it. The ochre lane underneath holds the training-only signals —
-losses, targets, samplers — that shape the weights but are torn down before
-anything flies.</p>
+of filling it.</p>
 </div>
 
-{rsec(5, "Explore the record", "Every experiment, every design, every dead end.")}
+<div class="approach">
+<div class="approach-text">
+<p>No human designed the champion. A
+<a href="https://github.com/karpathy/autoresearch">Karpathy-style
+autoresearch loop</a> did: each round, a coding agent reads the full
+experiment history, proposes <b>one</b> focused change, and pre-registers
+its hypothesis and expected outcome before any code is written. The harness
+trains it, scores it, and keeps it only if it beats the champion.</p>
+<p><b>Two roles, split clean.</b> The <i>agents</i> own the experiments. The
+<i>frozen harness</i> owns the exam: the data pipeline, the held-out
+viewpoints and the scorer are read-only, so the loop can rewrite the model
+but never the ruler it is measured by. <i>We</i> supervise from outside
+&mdash; set the levers, curate the inspiration, and decide when an era is
+over.</p>
+</div>
+<div class="approach-cycle">
+{loop_cycle_svg()}
+<p class="cycle-cap">Each round keeps only what beats the best so far, and
+the next experiment builds on it.</p>
+</div>
+</div>
+
+<div class="strategies">
+<div class="strategy"><h3 class="strategy-h">Pre-registered, one change at a time</h3>
+<p>Hypothesis, method and expected outcome are written down <b>before</b>
+implementation, and each experiment makes exactly one focused change &mdash;
+so every verdict in the record says something.</p></div>
+<div class="strategy"><h3 class="strategy-h">Pivoting on patience</h3>
+<p>A run has a <b>patience</b>: spend it on reverted experiments and the
+next design must abandon the current backbone for a genuinely different one
+&mdash; enforced by reading the resulting source, not by asking nicely.</p></div>
+<div class="strategy"><h3 class="strategy-h">A frozen ruler</h3>
+<p>The score is the <b>product requirement</b> &mdash; usable fixes minus
+confidently-wrong ones &mdash; and the agent cannot touch it. When a score
+and the product disagree, the ruler gets fixed and the lineage is re-measured,
+never quietly erased.</p></div>
+<div class="strategy"><h3 class="strategy-h">Everything is recorded</h3>
+<p>Every experiment is a git commit, a database row and a gallery entry
+&mdash; kept and reverted alike. The <a href="gallery/research-lineage.html">
+lineage</a>, <a href="gallery/research-evolution.html">evolution graph</a>
+and <a href="gallery/lab-notebook.html">lab notebook</a> are rendered from
+that record, not written after the fact.</p></div>
+</div>
+
+{rsec(4, "Explore the record", "Every experiment, every design, every dead end.")}
 <div class="explore">
 <a class="card" href="gallery/index.html"><b>The research log</b>
 <span>Every experiment ever run, failures included: pre-registered
@@ -3708,14 +3826,14 @@ agent itself before training, in one shared visual language — frozen
 endpoints aligned so you can scroll and compare designs directly.</span></a>
 </div>
 
-{rsec(6, "Proven alternatives", "GPS-denied localisation is not unsolved &mdash; this just walks a different road.")}
+{rsec(5, "Proven alternatives", "GPS-denied localisation is not unsolved &mdash; this just walks a different road.")}
 <div class="pnote">
 <p>GPS-denied visual localization is not an unsolved problem. The
 established, field-tested family matches live camera frames against
 <i>georeferenced reference imagery carried on the aircraft</i> — e.g.
 <a href="https://github.com/TIERS/wildnav">WildNav</a>
 (<a href="https://arxiv.org/abs/2210.09727">Vision-based GNSS-Free
-Localization for UAVs in the Wild</a>), which matches drone photographs
+Localization for UAVs in the Wild</a>), which matches UAV photographs
 against satellite tiles with deep feature matching and demonstrated
 GNSS-comparable accuracy in real flights. If you need working GPS-denied
 navigation today, start there, not here.</p>
@@ -4872,7 +4990,7 @@ def render():
             f"hardest cell. That number is <b>(1 &minus; usable-fix rate) + false-fix "
             f"rate</b>: a frame counts as a <b>usable fix</b> only when the model is "
             f"confident <i>and</i> within {TARGET_M:.0f} m; abstaining is safe; being "
-            f"confident and wrong is a <b>false fix</b>, which for a drone is worse than "
+            f"confident and wrong is a <b>false fix</b>, which for a UAV is worse than "
             f"saying nothing at all. <b>1.0</b> means it abstains on everything, "
             f"<b>2.0</b> means it is confidently wrong on everything, <b>0</b> is the goal.")
 
@@ -4909,7 +5027,7 @@ def render():
 <div class="tbl-card"><table class="main">
 <thead><tr><th></th><th>#</th><th>Experiment</th>
 <th title="Which lever the experiment pulls: architecture, loss, augmentation, relighting, training, quantization.">Category</th>
-<th title="Mission score on held-out Berlin daytime viewpoints: (1 - usable-fix rate) + false-fix rate. A frame is a usable fix only if the model is confident AND within 100 m; abstaining is safe; confident-but-wrong is a false fix, worse than silence for a drone. 0 = every frame usable, 1 = abstains everywhere, 2 = confidently wrong everywhere. The one number the loop optimizes -- deliberately the product requirement, not an error statistic.">Mission score</th>
+<th title="Mission score on held-out Berlin daytime viewpoints: (1 - usable-fix rate) + false-fix rate. A frame is a usable fix only if the model is confident AND within 100 m; abstaining is safe; confident-but-wrong is a false fix, worse than silence for a UAV. 0 = every frame usable, 1 = abstains everywhere, 2 = confidently wrong everywhere. The one number the loop optimizes -- deliberately the product requirement, not an error statistic.">Mission score</th>
 <th title="Wall time of the whole experiment: agent design + training all areas + scoring.">Time</th>
 <th title="Everything one experiment cost: the equivalent API cost of the tokens its design, implementation, figure and summary agents consumed - recorded by the harness at the time, not estimated from a price list - plus rented-GPU wall time during the pod window at $0.69/hr. The research ran on a claude.ai Max subscription, so the agent part is what it WOULD have cost billed per token, not money that left the account. An em dash means no accounting survives (the run directory was deleted), which is not the same as free.">Cost</th>
 <th>Status</th></tr></thead><tbody>"""]
