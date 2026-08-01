@@ -3512,7 +3512,8 @@ def tile_grid():
 # (1,3,128,128) float32/255 -> output "uvc" (u, v, conf), u/v normalised over
 # the training raster, mapped to WGS84 via the raster's UTM georeference
 # (data/berlin/meta.json), abstention below score.py's CONF_THRESHOLD = 0.3.
-HOWTO_CODE = """import cv2, numpy as np, onnxruntime as ort
+HOWTO_CODE = """# pip install onnxruntime opencv-python pyproj numpy
+import cv2, numpy as np, onnxruntime as ort
 from pyproj import Transformer
 
 # the Berlin model's georeference (from the training raster's metadata)
@@ -3849,11 +3850,10 @@ the whole client is this:</p>
 </div>
 <pre class="howto">{HOWTO_CODE}</pre>
 <div class="pnote">
-<p class="howto-note"><i>pip install onnxruntime opencv-python pyproj
-numpy</i> &mdash; the frame must look straight down over Berlin and cover
-roughly 128&nbsp;m of ground (about 100&nbsp;m altitude with a typical
-lens). Below confidence 0.3 the fix is discarded, exactly as the research
-scores it.</p>
+<p class="howto-note">The frame must look straight down over Berlin and
+cover roughly 128&nbsp;m of ground (about 100&nbsp;m altitude with a
+typical lens). Below confidence 0.3 the fix is discarded, exactly as the
+research scores it.</p>
 </div>
 
 {rsec(4, "How our research works", "The model was found, not designed &mdash; by a loop of coding agents.")}
