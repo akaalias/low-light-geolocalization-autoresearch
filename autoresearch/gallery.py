@@ -369,9 +369,15 @@ pre.howto{max-width:780px;margin:18px auto 0;padding:16px 20px;
 .design-grid{width:80vw;margin:26px 0 4px calc(50% - 40vw);
   columns:4;column-gap:18px}
 .design-grid figure{margin:0 0 18px;min-width:0;break-inside:avoid}
+/* Cells sit on the paper itself — no white card fill; a hairline is enough
+   to bound each figure, and the champion carries the only strong colour. */
 .design-grid .dg-fig{display:block;border:1px solid var(--rule);
-  border-radius:2px;background:#fff;padding:8px;cursor:zoom-in}
+  border-radius:2px;background:transparent;padding:8px;cursor:zoom-in}
 .design-grid .dg-fig:hover{border-color:var(--ink)}
+.design-grid .champ .dg-fig{border:1.5px solid var(--accent);
+  box-shadow:0 0 0 4px rgba(140,47,31,.07)}
+.design-grid .champ figcaption{color:var(--accent)}
+.design-grid .champ figcaption b{color:var(--accent)}
 .design-grid svg{width:100%;height:auto;display:block}
 .design-grid figcaption{margin-top:5px;font-size:11px;line-height:1.5;
   color:var(--muted);overflow:hidden;text-overflow:ellipsis;
@@ -3588,20 +3594,30 @@ def design_grid(hist):
             if (r.get("arch_svg") or "").lstrip().startswith("<svg")]
     if not rows:
         return ""
+    # Newest first, so the wall opens on where the search ENDED — and the
+    # champion (best re-scored mission score across every era) leads it,
+    # visibly set apart from the also-rans it beat.
+    rows = rows[::-1]
+    scored = [r for r in rows if r.get("mission_score") is not None
+              and r["mission_score"] < FAIL]
+    champ_seq = min(scored, key=lambda r: r["mission_score"])["seq"] \
+        if scored else None
     cells = []
     for r in rows:
+        champ = r["seq"] == champ_seq
         tag = "kept" if r["kept"] else "reverted"
         no = f"{r['era_index'] + 1}.{r['src_id']}"
         title = esc((r["title"] or "").split(":")[0])
+        label = "champion" if champ else tag
         # data-ovfig: clicking opens the shared zoom/pan overlay in place —
         # the same viewer the champion figure uses — instead of navigating
         # away to the model-designs page.
         cells.append(
-            f"<figure class='dg-cell {tag}'>"
+            f"<figure class='dg-cell {tag}{' champ' if champ else ''}'>"
             f"<div class='dg-fig' data-ovfig data-no='{no}' "
             f"data-title='{esc(r['title'] or '')}'>{r['arch_svg']}</div>"
             f"<figcaption><b>{no}</b> "
-            f"&middot; {tag} &middot; {title}</figcaption></figure>")
+            f"&middot; {label} &middot; {title}</figcaption></figure>")
     return f"<div class='design-grid'>{''.join(cells)}</div>"
 
 
