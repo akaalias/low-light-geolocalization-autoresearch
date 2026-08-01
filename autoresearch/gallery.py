@@ -344,6 +344,12 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .tg-cap{max-width:780px;margin:14px auto 0;padding:0 16px;
   font:italic 14px/1.6 var(--serif);color:var(--muted);text-align:center}
 
+/* ---- the how-to-use code block ------------------------------------------ */
+pre.howto{max-width:780px;margin:18px auto 0;padding:16px 20px;
+  font:12.5px/1.6 var(--mono);color:var(--ink);background:#fff;
+  border:1px solid var(--rule-soft);border-radius:2px;overflow-x:auto}
+.howto-note{font-size:13px;color:var(--muted)}
+
 /* ---- the training-data grid: fifty tiles of the raster, full width ------ */
 .train-grid{max-width:1240px;margin:26px auto 4px;padding:0 16px;
   display:grid;grid-template-columns:repeat(10,1fr);gap:9px 9px}
@@ -3500,6 +3506,38 @@ def tile_grid():
             "not to answer.</p>")
 
 
+# "How to use it" — the minimum real inference client. Kept as a plain string
+# (NOT inside render_overview's f-string body: it is full of braces) and kept
+# honest against the actual contract: model/model.py exports input "frame"
+# (1,3,128,128) float32/255 -> output "uvc" (u, v, conf), u/v normalised over
+# the training raster, mapped to WGS84 via the raster's UTM georeference
+# (data/berlin/meta.json), abstention below score.py's CONF_THRESHOLD = 0.3.
+HOWTO_CODE = """import cv2, numpy as np, onnxruntime as ort
+from pyproj import Transformer
+
+# the Berlin model's georeference (from the training raster's metadata)
+ORIGIN = (385883.0, 5821316.0)          # UTM 33N of the map's top-left corner
+SIZE   = (6939, 6828)                   # map size in px; 1 px = 1 m
+to_wgs84 = Transformer.from_crs("EPSG:32633", "EPSG:4326")
+
+sess = ort.InferenceSession("berlin.onnx")
+cam  = cv2.VideoCapture(0)              # the downward-facing camera
+
+ok, bgr = cam.read()                    # 1 - grab one frame
+rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+rgb = cv2.resize(rgb, (128, 128))       # frame should cover ~128 m of ground
+x = rgb.astype(np.float32).transpose(2, 0, 1)[None] / 255.0
+
+u, v, conf = sess.run(None, {"frame": x})[0][0]   # 2 - ask the network
+lat, lon = to_wgs84.transform(ORIGIN[0] + u * SIZE[0],
+                              ORIGIN[1] - v * SIZE[1])
+
+if conf &lt; 0.3:                          # 3 - trust it only when it is sure
+    print("no fix - the model abstains")
+else:
+    print(f"{lat:.5f}, {lon:.5f}  (confidence {conf:.2f})")"""
+
+
 def train_grid():
     """Fifty tiles of the actual training raster, full width — 'Our training
     data' at the end of the research section. Same static-asset scheme as
@@ -3801,7 +3839,24 @@ raw daytime imagery.</p>
 
 {tile_grid_html}
 
-{rsec(3, "How our research works", "The model was found, not designed &mdash; by a loop of coding agents.")}
+{rsec(3, "How to use it", "One file, one function, three steps.")}
+<div class="pnote">
+<p><b>1. Download the model:</b> <a href="assets/models/berlin.onnx"
+download>berlin.onnx</a> ({best_mb:.1f}&nbsp;MB). It runs anywhere ONNX
+runs &mdash; a laptop, a Raspberry&nbsp;Pi, the ESP32&#8209;P4 target.</p>
+<p><b>2. Feed it camera frames, 3. trust it only when it is sure</b> &mdash;
+the whole client is this:</p>
+</div>
+<pre class="howto">{HOWTO_CODE}</pre>
+<div class="pnote">
+<p class="howto-note"><i>pip install onnxruntime opencv-python pyproj
+numpy</i> &mdash; the frame must look straight down over Berlin and cover
+roughly 128&nbsp;m of ground (about 100&nbsp;m altitude with a typical
+lens). Below confidence 0.3 the fix is discarded, exactly as the research
+scores it.</p>
+</div>
+
+{rsec(4, "How our research works", "The model was found, not designed &mdash; by a loop of coding agents.")}
 
 <div class="contract-fig static">{contract_svg()}
 <p class="contract-cap">The search space. The gray endpoints are frozen
@@ -3870,7 +3925,7 @@ positions and headings training never used. Fifty of the {n_cells:,} tiles:</p>
 </div>
 {train_grid_html}
 
-{rsec(4, "Explore the record", "Every experiment, every design, every dead end.")}
+{rsec(5, "Explore the record", "Every experiment, every design, every dead end.")}
 <div class="explore">
 <a class="card" href="gallery/index.html"><b>The research log</b>
 <span>Every experiment ever run, failures included: pre-registered
@@ -3889,7 +3944,7 @@ agent itself before training, in one shared visual language — frozen
 endpoints aligned so you can scroll and compare designs directly.</span></a>
 </div>
 
-{rsec(5, "Proven alternatives", "GPS-denied localisation is not unsolved &mdash; this just walks a different road.")}
+{rsec(6, "Proven alternatives", "GPS-denied localisation is not unsolved &mdash; this just walks a different road.")}
 <div class="pnote">
 <p>GPS-denied visual localization is not an unsolved problem. The
 established, field-tested family matches live camera frames against
