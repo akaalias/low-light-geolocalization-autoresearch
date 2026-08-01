@@ -322,6 +322,33 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
   text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:0 0 7px}
 .status-callout p{margin:0;font-size:15.5px;line-height:1.65;color:#33312b}
 .status-callout .status-meta{margin-top:7px;font-size:12.5px;color:var(--muted)}
+/* ---- mobile (airloom-style device-width + breakpoints) ------------------
+   The pages now declare width=device-width, so small screens get REAL
+   layout instead of a zoomed-out 1100px desktop. Images are lazy-loaded
+   everywhere; these rules reflow the handful of side-by-side compositions
+   that would otherwise overflow a phone. */
+@media(max-width:640px){
+  .paths-wrap{padding:10px 14px 60px}
+  .paths-wrap h1.home-h1{font-size:28px}
+  .home-q{font-size:20px;line-height:1.35}
+  .topnav{flex-wrap:wrap;gap:6px 14px;row-gap:4px}
+  .stats{flex-wrap:wrap;gap:14px 22px}
+  .stat > b{font-size:26px}
+  .rsec{margin-top:40px}
+  .rsec-t{font-size:21px}
+  .contract-row{flex-direction:column;align-items:center;gap:10px}
+  .contract-arrow{line-height:1.2;transform:rotate(90deg)}
+  .wex-imgs{flex-direction:column}
+  .wex-arr{display:none}
+  .tile-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .train-grid{grid-template-columns:repeat(3,1fr);gap:6px}
+  .train-grid figcaption{font-size:7px}
+  pre.howto{font-size:10.5px;padding:10px 12px}
+  .cta{flex-direction:column;align-items:flex-start;gap:4px}
+  .approach{gap:18px}
+  .strategies{gap:22px}
+}
+
 /* ---- the download CTA under the bottom line: quiet, one rule, no button - */
 .cta{max-width:780px;margin:18px auto 0;padding:12px 18px;
   border:1px solid var(--rule);border-left:3px solid var(--accent);
@@ -3515,7 +3542,7 @@ def render_notebook():
     static (NOTEBOOK_HTML above); the page shell reuses the same shared
     topnav/page_header/CREDITS as every other page."""
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=1100">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 {social_meta('gallery/lab-notebook.html', 'Lab notebook — Can a UAV learn a city by heart?', 'The dated narrative of the research: what happened, what broke, and what was learned, day by day.')}
 <title>Lab notebook &mdash; Can a UAV learn a city by heart?</title>
 <style>{CSS}</style></head><body>
@@ -3589,7 +3616,7 @@ def tile_grid():
 # without JS the grid CSS remains as a gappy-but-sane fallback.
 MASONRY_JS = """function dgpack(){
  var g=document.querySelector('.design-grid');if(!g)return;
- var gap=18,N=window.innerWidth<=1000?3:6,W=g.clientWidth,
+ var gap=18,N=window.innerWidth<=640?2:(window.innerWidth<=1000?3:6),W=g.clientWidth,
      colW=(W-(N-1)*gap)/N;
  g.classList.add('packed');
  var colH=[],holes=[],i;for(i=0;i<N;i++)colH[i]=0;
@@ -3906,7 +3933,7 @@ def render_overview(exps):
         progress_s = "0%"
 
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=1100">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 {social_meta('', '“Not all who wander are lost”: Can a UAV learn a city by heart — no GPS, no map on board, just a $4 flight computer?', 'Yes: a from-scratch neural memory that knows Berlin by heart. One downward photo in, (lat, lon, confidence) out — the map is the weights, one city in 3.1 MB. Found by an autonomous loop of coding agents in 81 experiments for $364.')}
 <title>&ldquo;Not all who wander are lost&rdquo;: Can a UAV learn a city by heart &mdash; no GPS, no map on board, just a $4 flight computer?</title>
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
@@ -3940,12 +3967,9 @@ imagery itself, retrieval against a stored fingerprint of the city, dense
 per-patch coordinate voting, learned relighting, calibrated abstention, and
 more.</p>
 
-<p class="bottom-line">Almost all of it failed.</p>
-
-<div class="bl-h">What worked</div>
-<p class="bottom-line">To make it work, we first had to discover and fix our
-research approach itself. Only then were we able to iterate towards our novel
-special-use memory-in-weights architecture.</p>
+<p class="bottom-line">Almost all of it failed. To make it work, we first had
+to discover and fix our research approach itself. Only then were we able to
+iterate towards our novel special-use memory-in-weights architecture.</p>
 
 <div class="stat-hero">
   <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
@@ -4345,7 +4369,7 @@ def render_paths(exps):
         f"or open its full record in the <a href='index.html'>research log</a>.")
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=1100">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 {social_meta('gallery/inference-paths.html', 'Model designs — Can a UAV learn a city by heart?', 'All 59 agent-drawn model designs in one shared visual language, kept and reverted alike.')}
 <title>Model Designs &mdash; Can a UAV learn a city by heart?</title>
 <style>{CSS}</style><script>{PATHS_JS}</script></head><body>
@@ -4774,7 +4798,7 @@ def render_evolution(exps):
             f"<b>{esc(ERA_SHORT.get(e['key'], e['label']))}</b></span>"
             for e in eras)
     body = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=1100">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 {social_meta('gallery/research-evolution.html', 'Research evolution — Can a UAV learn a city by heart?', 'How the research itself branched: twelve days of eras, dead ends, incidents and insights, drawn as one graph.')}
 <title>Research Evolution &mdash; Can a UAV learn a city by heart?</title>
 <style>{CSS}{EVOLUTION_CSS}</style></head><body>
@@ -5168,7 +5192,7 @@ def render_lineage(exps):
                        f"<a href='index.html'>research log</a>.")
         lineage_era_key = ""
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=1100">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 {social_meta('gallery/research-lineage.html', 'Experiment lineage — Can a UAV learn a city by heart?', 'The family tree of the search: every experiment as a node, arcs to the designs it built on.')}
 <title>Experiment Lineage &mdash; Can a UAV learn a city by heart?</title>
 <style>{CSS}{LINEAGE_CSS}</style></head><body>
@@ -5298,7 +5322,7 @@ def render():
             f"<b>2.0</b> means it is confidently wrong on everything, <b>0</b> is the goal.")
 
     body = [f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=1100">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 {social_meta('gallery/index.html', 'Research log — Can a UAV learn a city by heart?', 'Every experiment the autonomous loop ran, failures included: pre-registered hypotheses, results, and the exact agent prompts.')}
 <title>Research Log &mdash; Can a UAV learn a city by heart?</title>
 <style>{CSS}</style><script>{JS}</script></head><body>
