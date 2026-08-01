@@ -350,8 +350,10 @@ pre.howto{max-width:780px;margin:18px auto 0;padding:16px 20px;
   border:1px solid var(--rule-soft);border-radius:2px;overflow-x:auto}
 .howto-note{font-size:13px;color:var(--muted)}
 
-/* ---- the training-data grid: fifty tiles of the raster, full width ------ */
-.train-grid{max-width:1240px;margin:26px auto 4px;padding:0 16px;
+/* ---- the training-data grid: 100 tiles of the raster ---------------------
+   80% of the BROWSER, not of the 1080px page column: width:80vw with the
+   calc() margin breaks it out of .paths-wrap so the data gets the room. */
+.train-grid{width:80vw;margin:26px 0 4px calc(50% - 40vw);
   display:grid;grid-template-columns:repeat(10,1fr);gap:9px 9px}
 .train-grid figure{margin:0}
 .train-grid img{width:100%;display:block;border:1px solid var(--rule)}
@@ -359,6 +361,22 @@ pre.howto{max-width:780px;margin:18px auto 0;padding:16px 20px;
   color:var(--faint);font-variant-numeric:lining-nums tabular-nums;
   text-align:center;letter-spacing:.01em}
 @media (max-width:900px){.train-grid{grid-template-columns:repeat(5,1fr)}}
+
+/* ---- the model-designs grid: the last 30 agent-drawn figures, 4 up ------ */
+.design-grid{width:80vw;margin:26px 0 4px calc(50% - 40vw);
+  display:grid;grid-template-columns:repeat(4,1fr);gap:18px 18px}
+.design-grid figure{margin:0;min-width:0}
+.design-grid a{display:block;border:1px solid var(--rule);border-radius:2px;
+  background:#fff;padding:8px}
+.design-grid a:hover{border-color:var(--ink)}
+.design-grid svg{width:100%;height:auto;display:block}
+.design-grid figcaption{margin-top:5px;font-size:11px;line-height:1.5;
+  color:var(--muted);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.design-grid figcaption b{color:var(--ink);
+  font-variant-numeric:lining-nums tabular-nums}
+.design-grid .reverted figcaption{color:var(--faint)}
+@media (max-width:1000px){.design-grid{grid-template-columns:1fr 1fr}}
 
 /* ---- the autoresearch loop: prose left, the cycle right ----------------- */
 .approach{max-width:980px;margin:26px auto 0;padding:0 16px;
@@ -3557,6 +3575,26 @@ def train_grid():
     return f"<div class='train-grid'>{cells}</div>"
 
 
+def design_grid(hist):
+    """The last 30 agent-drawn model-design figures as a 4-per-row grid —
+    a visual census of what the search actually tried, feeding the
+    inference-paths page for anyone who wants one at full size."""
+    rows = [r for r in hist
+            if (r.get("arch_svg") or "").lstrip().startswith("<svg")][-30:]
+    if not rows:
+        return ""
+    cells = []
+    for r in rows:
+        tag = "kept" if r["kept"] else "reverted"
+        title = esc((r["title"] or "").split(":")[0])
+        cells.append(
+            f"<figure class='dg-cell {tag}'>"
+            f"<a href='gallery/inference-paths.html'>{r['arch_svg']}</a>"
+            f"<figcaption><b>{r['era_index'] + 1}.{r['src_id']}</b> "
+            f"&middot; {tag} &middot; {title}</figcaption></figure>")
+    return f"<div class='design-grid'>{''.join(cells)}</div>"
+
+
 def loop_cycle_svg():
     """The autoresearch loop as a four-step cycle — same figure vocabulary
     as the author's prior workshop site (approach.html), relabeled for this
@@ -3663,6 +3701,7 @@ def render_overview(exps):
     chal_contract, _, chal_maps = _chal.partition("<!--SPLIT-->")
     tile_grid_html = tile_grid()
     train_grid_html = train_grid()
+    design_grid_html = design_grid(_hist)
 
     champ_fig = ""
     _csvg = (champ.get("arch_svg") or "") if champ else ""
@@ -3921,9 +3960,21 @@ fetched by the frozen pipeline and resampled to 1&nbsp;m per pixel &mdash;
 Google or Bing tiles anywhere: only open geodata, so the entire project can
 be published. Training crops 128&nbsp;m frames from every position on that
 mosaic; the held-out eval frames stand on the same ground, framed from
-positions and headings training never used. Fifty of the {n_cells:,} tiles:</p>
+positions and headings training never used. A hundred of the {n_cells:,}
+tiles:</p>
 </div>
 {train_grid_html}
+
+<div class="sec-h">Our model designs</div>
+<div class="pnote">
+<p>Every experiment's model design, drawn by the design agent itself
+<i>before</i> it was allowed to train &mdash; camera frame entering on the
+left, (lat, lon, confidence) leaving on the right, red marking what that
+experiment changed. The last thirty, kept and reverted alike; the
+<a href="gallery/inference-paths.html">model designs</a> page has each at
+full size:</p>
+</div>
+{design_grid_html}
 
 {rsec(5, "Explore the record", "Every experiment, every design, every dead end.")}
 <div class="explore">
