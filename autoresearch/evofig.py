@@ -34,18 +34,27 @@ regenerates it rather than redrawing it.
 
 # --- the time axis -------------------------------------------------------
 # Left edge of each day, and how wide that day is drawn. Activity-weighted.
+# Days are numbered from 20 July; 32 is 1 August, which is why DAY_LABEL
+# exists rather than an f-string that assumes the month.
 DAY_W = {20: 824.0, 21: 304.0, 22: 928.0, 23: 824.0, 24: 200.0, 25: 96.0,
-         26: 96.0, 27: 96.0, 28: 96.0, 29: 96.0, 30: 928.0, 31: 1031.8}
+         26: 96.0, 27: 96.0, 28: 96.0, 29: 96.0, 30: 928.0, 31: 1031.8,
+         32: 346.7}
 DAY_X = {21: 306.5}
-for _d in range(22, 32):
+for _d in range(22, 33):
     DAY_X[_d] = DAY_X[_d - 1] + DAY_W[_d - 1]
 DAY_X[20] = DAY_X[21] - DAY_W[20]
+LAST_DAY = 32
+
+
+def DAY_LABEL(d: int) -> str:
+    return f"{d} Jul" if d <= 31 else f"{d - 31} Aug"
+
 
 VIEW_W, VIEW_H = 5349, 608
 TRUNK_Y = 256.0
 BRANCH_Y = 216.0          # the berlin-slim fork's own lane
 TRUNK_X0 = 52.0
-TRUNK_X1 = 4629.7         # where the line stops
+TRUNK_X1 = 5060.0         # where the line stops
 SPLIT_D = 31.38           # berlin-slim: the trunk forks here
 GAP = (24.0200, 30.7700, "six days of silence")
 
@@ -68,6 +77,7 @@ TRUNK_NODES = [
     (30.8699, "PNG decode fix", "below"),
     (31.38, "berlin-slim branch", "below"),
     (31.6001, "0.040 - 96.5% usable", "below"),
+    (32.10, "back to berlin-slim", "below"),
 ]
 
 # (from_day, to_day, lane_y, label, end_label) -- tried, then abandoned
@@ -76,6 +86,12 @@ DEAD = [
     (22.50, 22.85, 128, "Prompt-only pivot rules", "never worked"),
     (30.88, 30.91, 64, "3D shadow relighting", "parked"),
     (30.90, 30.94, 128, "Retrieval-index probe", "parked, not disproven"),
+    # The Prignitz probe and the era it opened are ONE line, because the
+    # probe's 0.113 is the only reason the era existed. It ran three
+    # experiments in four hours and was rewound to the commit before it on
+    # 1 August; the trunk it left continues past its terminator, which is
+    # the whole point of drawing it up here rather than as the live line.
+    (31.6100, 31.9200, 128, "Prignitz probe · 0.113", "era opened, then closed"),
 ]
 
 # (from_day, to_day, lane_y, label, end_label) -- ran as mainline, replaced
@@ -109,19 +125,14 @@ MERGES = [
     (31.4213, 31.6001, 64, "it was starved, not refuted"),
 ]
 
-# --- the second fork: Prignitz becomes the live line ---------------------
-# The probe that measured the Berlin champion on rural ground (0.113) did not
-# stay a side-branch: its RESULT opened an era, so the line it runs on is the
-# one work continues along. Berlin's lane ends at 0.040, complete rather than
-# abandoned -- there is no × on it, because nothing about it failed.
-PRIGNITZ_SPLIT_D = 31.6100   # the probe leaves the berlin-slim lane here
-PRIGNITZ_Y = 128.0           # and the era continues on its own lane
-PRIGNITZ_END_X = 4980.0   # runs on past the last node: work continues here
-BERLIN_DONE_LABEL = "berlin era · complete at 0.040"
-PRIGNITZ_NODES = [
-    (31.6740, "Prignitz probe · 0.113", "above"),
-    (31.7800, "prignitz era opens", "below"),
-]
+# (from_day, to_day, lane_y, label, end_label) -- ran, still open.
+# Hangs off whichever line is live at from_day, which after SPLIT_D is the
+# fork lane -- the distinction that was got wrong by hand twice.
+# Empty since 1 August: the Prignitz probe was the only entry and it is now
+# a closed detour in DEAD. Kept as a list rather than deleted because the
+# category is real and the next side-branch belongs here; render_evolution
+# drops the legend swatch when it is empty.
+OPEN = []
 
 
 def _f(v):
@@ -166,11 +177,12 @@ def build_svg() -> str:
          f"height='{VIEW_H}' role='img' "
          f"aria-label='research process as a branching graph'>"]
 
-    for d in range(21, 32):                       # day rules
+    for d in range(21, LAST_DAY + 1):             # day rules
         gx = x(d)
         p.append(f"<line class='evo-grid' x1='{_f(gx)}' y1='30' "
                  f"x2='{_f(gx)}' y2='574'/>")
-        p.append(f"<text class='evo-day' x='{_f(gx + 6)}' y='22'>{d} Jul</text>")
+        p.append(f"<text class='evo-day' x='{_f(gx + 6)}' y='22'>"
+                 f"{DAY_LABEL(d)}</text>")
 
     g0, g1, glab = x(GAP[0]), x(GAP[1]), GAP[2]   # the silence
     p.append(f"<rect class='evo-gap' x='{_f(g0)}' y='242' "
@@ -192,19 +204,8 @@ def build_svg() -> str:
              f"L{_f(TRUNK_X1)},{BRANCH_Y:.0f}'/>")
 
     def base_y(day):
-        """Which line is live at this instant.
-
-        Two forks now, so a mark can no longer assume the trunk. Asking this
-        instead of hard-coding a y is the whole point of the module: the
-        Prignitz probe was hand-placed on TRUNK_Y twice, which after the first
-        fork is the DORMANT main line, drawing it as a descendant of an
-        abandoned branch rather than of the champion that produced it.
-        """
-        if day > PRIGNITZ_SPLIT_D:
-            return PRIGNITZ_Y
-        if day > SPLIT_D:
-            return BRANCH_Y
-        return TRUNK_Y
+        """Which line is live at this instant -- trunk, or the fork lane."""
+        return BRANCH_Y if day > SPLIT_D else TRUNK_Y
 
     for i, (d0, d1, lane, lab, end) in enumerate(DEAD):
         p.append(_branch("dead", f"d{i}", x(d0), base_y(d0), x(d1), lane,
@@ -252,31 +253,8 @@ def build_svg() -> str:
         p.append(f"<text class='evo-tlab' data-k='t{i}' x='{_f(px)}' "
                  f"y='{ly:.0f}'>{lab}</text>")
 
-    # The second fork. Drawn in the trunk's own weight, not a branch's: the
-    # Prignitz line is where work continues, so it has to read as the live
-    # line rather than as another thing hanging off Berlin's.
-    px0 = x(PRIGNITZ_SPLIT_D)
-    p.append(f"<path class='evo-branch' data-k='p-fork' d='M{_f(px0)},"
-             f"{BRANCH_Y:.0f} C{_f(px0 + 15)},{BRANCH_Y:.0f} {_f(px0 + 22)},"
-             f"{PRIGNITZ_Y:.0f} {_f(px0 + 40)},{PRIGNITZ_Y:.0f} "
-             f"L{_f(x(PRIGNITZ_NODES[0][0]))},{PRIGNITZ_Y:.0f}'/>")
-    p.append(f"<line class='evo-trunk' x1='{_f(x(PRIGNITZ_NODES[0][0]))}' "
-             f"y1='{PRIGNITZ_Y:.0f}' x2='{_f(PRIGNITZ_END_X)}' "
-             f"y2='{PRIGNITZ_Y:.0f}'/>")
-    # Berlin's lane is finished, not abandoned -- no × terminator, which in
-    # this figure's vocabulary would say it failed. It reached its number.
-    p.append(f"<text class='evo-dormantlab' x='{_f(TRUNK_X1 + 12)}' "
-             f"y='{BRANCH_Y + 4:.0f}' text-anchor='start'>"
-             f"{BERLIN_DONE_LABEL}</text>")
-    for i, (d, lab, side) in enumerate(PRIGNITZ_NODES):
-        nx = x(d)
-        tick = PRIGNITZ_Y + 15 if side == "below" else PRIGNITZ_Y - 12
-        p.append(f"<line class='evo-tick' x1='{_f(nx)}' y1='{PRIGNITZ_Y:.0f}' "
-                 f"x2='{_f(nx)}' y2='{_f(tick)}'/>")
-        p.append(f"<circle class='evo-node' data-k='p{i}' cx='{_f(nx)}' "
-                 f"cy='{PRIGNITZ_Y:.0f}' r='6'/>")
-        ly = PRIGNITZ_Y + 24 if side == "below" else PRIGNITZ_Y - 24
-        p.append(f"<text class='evo-tlab' data-k='p{i}' x='{_f(nx)}' "
-                 f"y='{ly:.0f}'>{lab}</text>")
+    for i, (d0, d1, lane, lab, end) in enumerate(OPEN):
+        p.append(_branch("open", f"o{i}", x(d0), base_y(d0), x(d1), lane,
+                         lab, end, "openend"))
 
     return "".join(p) + "</svg>"

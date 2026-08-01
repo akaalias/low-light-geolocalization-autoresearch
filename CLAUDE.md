@@ -1,5 +1,93 @@
 # UAV Low-Light Geolocalization — Autoresearch Bootstrap Spec
 
+## THE PRIGNITZ DETOUR — opened and rewound, 2026-07-31 → 08-01
+
+On the evening of 31 July a rural era was opened on Prignitz (`AREAS=prignitz`).
+It ran three experiments in four hours. **On 1 August the repository was rewound
+to `db470da`, the commit before the era opened**, and its rows were removed from
+`experiments.sqlite`. Everything below this section — the berlin-slim
+configuration, the 0.040 champion, `AREAS=berlin` — is therefore current again,
+exactly as it was. Do not read the state block below as stale; it is the state.
+
+**Do not re-open the rural era as though it were a fresh idea, and do not
+re-derive what it already measured.** What it established, in order:
+
+- **The Berlin champion applied unchanged to Prignitz scores 0.113** (Berlin
+  0.040). The loss is almost entirely **false fixes**: 3.75% vs 0.50%, a 7.5x
+  rise, while usable (92.5% vs 96.5%), abstention (3.8% vs 3.0%) and median
+  error (29.5 m vs 27.1 m) barely move. Precision is intact; calibration is
+  not. Belief pooling defends against mass split across *adjacent* cells and
+  against mass scattered across *distant* ones, but not against mass landing
+  confidently on one wrong field that looks exactly like the right one.
+- **The rural confusions are rotation-stable — refuted, and this is the useful
+  part.** Experiment 2 averaged the belief map across the frame's four 90°
+  rotations before decoding, on the theory that a look-alike match rides
+  view-specific micro-texture. False fixes went *up* (3.75% → 4.25%), usable
+  down (92.5% → 92.0%), mission 0.113 → 0.123. Two fields that fool the model
+  fool it from every heading, so this is not a viewing-angle artefact and no
+  decode-time consensus can reach it. **Whatever fixes it must act during
+  training.** Do not re-run a decode-side consensus variant.
+- **Untried, and the natural next move if it is reopened:** continuous-vantage
+  training — jitter each training framing ±12 px so vantages tile the ground
+  instead of standing on the 24 m lattice, since every eval view stands
+  8–16 px off-lattice. Designed and implemented; never trained.
+- **One model over Berlin + Prignitz** was proposed and dropped the same
+  evening before any experiment ran. §1's one-model-per-bbox rule stands
+  unamended. The union of the two boxes is 88 x 71 km of which only 1.6% is
+  imaged; a grid over just the two imaged boxes is 5,995 cells. Size was never
+  the obstacle (see the open finding below) — it was dropped because unifying
+  is a different question from the one Prignitz poses.
+
+**Nothing about the era failed on its merits.** It was closed to keep pushing
+one question rather than run two. The record lives in three places and nowhere
+else: the lab-notebook entries for 31 July evening and 1 August, the closed
+detour branch on the evolution graph, and the git tag
+**`prignitz-detour-record`** (= old `463eeb2`), which holds the three run
+directories, exported models and agent transcripts. Do not delete that tag.
+
+### OPEN FINDING: the size gate measures the wrong artifact
+
+Found during the detour, independent of it, and **still open**.
+
+`MODEL_MAX_BYTES = 4 * 1024 * 1024` in `pipeline/score.py` was set in the
+**bootstrap commit** (`15b43a2`) and never revisited — `git log -S` returns
+that one commit. There is no derivation behind it, and §9 still lists
+ESP32-P4 validation as open.
+
+It also weighs the **fp32** ONNX, while the README's own documented path is
+esp-video → esp-dl, and esp-dl ingests the ONNX for **int8** quantization.
+Measured: the Berlin champion is 2.94 MB fp32 and **0.78 MB int8** — the gate
+overstates every model by ~3.8x. Nothing in `pipeline/` or `model/` quantizes
+anything, so §3's "quantization-aware training approach" is a line in the spec
+no experiment can currently act on.
+
+**Not changed yet, deliberately.** It binds on nothing today (the Berlin
+champion passes either way), and changing a frozen gate changes the ruler for
+every archived era at once — `rescore_history` re-scores old models with the
+*current* scorer, so some of the 17 gated fails could flip. Worth doing as its
+own deliberate step, with that effect measured first, not as a side-effect of
+something else.
+
+### KNOWN HAZARD: a lineage wipe resets the overview to a baseline
+
+`render_overview()` takes its headline figures (median error, model size,
+usable rate, the champion architecture figure) from **the last kept experiment
+in `experiments.sqlite`** — i.e. the current era's champion. That is right only
+while one era is the whole story. The moment the lineage is wiped for a new
+era, "champion" becomes that era's day-one baseline and the front page
+advertises a *weaker* result than the project has already achieved, under
+prose that still names Berlin. This happened on 31 July: the overview briefly
+showed 92.5% / 29 m rural numbers under a Berlin sentence, with nothing
+warning, because the figures were correct and only the noun was wrong.
+
+A fix exists in the rewound commit `f7ce820` — read the best row across all
+eras out of `lineage_history.sqlite` instead, and derive the area name from
+its own `metrics.json`. It was not carried across the rewind because it is a
+no-op today (the Berlin champion *is* the best across all eras). **Port it
+before the next lineage wipe, not after.**
+
+---
+
 ## STATE AS OF 2026-07-31 — read this before doing anything
 
 **Branch `berlin-slim`, pushed to origin. Loop stopped, tree clean.**
@@ -132,98 +220,6 @@ It refuses rather than publishing a broken image if any referenced file is
 missing or is still an unhydrated pointer. The full-resolution originals in
 `runs/` remain the research record and are untouched; `site_assets/` is a
 derived artifact, reproducible byte-for-byte by re-running the script.
-
----
-
-## SCOPE OVERRIDE — the `prignitz` era (2026-07-31, evening)
-
-**Supersedes the `berlin-slim` override below wherever the two conflict.**
-`AREAS=prignitz`. Everything else about berlin-slim still holds: one area,
-daytime only, no synthetic relighting, 100 m usable radius, figures off,
-pivot gate off, Hamburg holdout off.
-
-**§1 is NOT amended. One trained model = one bounding box, as always.** A
-two-area unified model was proposed and set aside the same evening, before
-any experiment ran — see "Considered and dropped" below, so it is not
-re-proposed as though new.
-
-### Why Prignitz, and what the era is actually for
-
-Berlin is done to 0.040 — 96.5% of frames give a usable fix. Applying that
-champion unchanged to rural Prignitz scores **0.113**, and the shape of the
-loss is the whole point:
-
-| | Berlin | Prignitz |
-|---|---:|---:|
-| mission score | 0.040 | **0.113** |
-| usable fix rate | 96.5% | 92.5% |
-| **false fix rate** | 0.50% | **3.75%** |
-| abstain rate | 3.0% | 3.8% |
-| median error | 27.1 m | 29.5 m |
-
-Usable fixes barely moved. Abstention barely moved. **Almost the entire gap
-is false fixes — a 7.5x rise in the one outcome §6 treats as worse than
-silence.** Median error is nearly unchanged, so precision is intact and the
-problem is purely calibration: belief pooling defends against mass split
-across *adjacent* cells and against mass scattered across *distant* ones, but
-not against mass landing confidently on one wrong field that looks exactly
-like the right one. Berlin never presents that case. Prignitz does constantly.
-
-The unseen-region diagnostic confirms it from the other side: coverage
-*rises* to 64.2% (Berlin 38.2%) while staying 0% usable — on ground it has
-never seen, the rural model answers more readily and is wrong every time.
-
-**So the era's question is not "can it work at all" — it already half does.
-It is: cut false fixes without spending usable ones.** That is sharper than
-Berlin's question ever was, and it is the one that matters for an aircraft.
-
-### Baseline
-
-Experiment 1 is a `SKIP_AGENT=1` seed of the current unmodified `model/` code
-trained on Prignitz — the Berlin champion's architecture, which is where
-0.113 came from. The era starts there.
-
-### Considered and dropped: one model over Berlin + Prignitz
-
-Proposed and reversed the same evening, before any experiment ran. Recorded so
-it is not rediscovered as a fresh idea:
-
-- It would have amended §1's one-model-per-bbox rule, which now stands.
-- The two boxes are 90 km apart, so their union is 88 x 71 km of which only
-  **1.6% is imaged**; a union grid is 384,196 cells, nearly all empty ground.
-  A grid over just the two imaged boxes is 5,995 cells (2,970 + 3,025).
-- Measured, not estimated: that shared grid exports at **4.88 MB fp32**
-  against `MODEL_MAX_BYTES` = 4 MB — but **1.29 MB once int8-quantized**,
-  which is what esp-dl actually flashes. So size was never the real obstacle.
-  See "The size gate measures the wrong artifact" below, which is a live
-  finding independent of this dropped idea.
-- It needed no frozen-file change: `score.py` loads `<area>.onnx` per area, so
-  one shared trunk exported twice, each framed to its own raster, satisfies
-  the interface.
-
-Reversed because unifying is a different research question from the one
-Prignitz actually poses, and doing both at once would have confounded them.
-
-### OPEN FINDING: the size gate measures the wrong artifact
-
-`MODEL_MAX_BYTES = 4 * 1024 * 1024` in `pipeline/score.py` was set in the
-**bootstrap commit** (`15b43a2`) and never revisited — `git log -S` returns
-that one commit. There is no derivation behind it, and §9 still lists
-ESP32-P4 validation as open.
-
-It also weighs the **fp32** ONNX, while the README's own documented path is
-esp-video -> esp-dl, and esp-dl ingests the ONNX for **int8** quantization.
-Measured: the Berlin champion is 2.94 MB fp32 and **0.78 MB int8** — the gate
-overstates every model by ~3.8x. Nothing in `pipeline/` or `model/`
-quantizes anything, so §3's "quantization-aware training approach" is a line
-in the spec no experiment can currently act on.
-
-**Not changed yet, deliberately.** It binds on nothing in this era (a
-Prignitz model is ~0.8 MB int8, ~3 MB fp32; it passes either way), and
-changing a frozen gate changes the ruler for every archived era at once —
-`rescore_history` re-scores old models with the *current* scorer, so some of
-the 17 gated fails could flip. Worth doing as its own deliberate step, with
-that effect measured first, not as a side-effect of opening an era.
 
 ---
 
