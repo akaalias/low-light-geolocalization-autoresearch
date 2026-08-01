@@ -3952,6 +3952,21 @@ No GPS, no internet, no map on board, just a
 frames, and it took {n_all_exp} experiments and ${int(cost_all):,} to
 find.</p>
 
+<div class="stat-hero">
+  <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
+  {scale_svg}
+  <p class="hero-sub">confident <i>and</i> within {TARGET_M:.0f}&nbsp;m. The
+  loop minimises the <b>mission penalty</b>:
+  <span class="pen">{pen_s}</span> = <span class="pen">{miss_s}</span> no fix
+  + <span class="pen">{false_s}</span> wrong fix &mdash; a confident error
+  counts double.</p>
+</div>
+<div class="stats">
+  <div class="stat"><b>{n_eras}</b><span>research eras</span></div>
+  <div class="stat"><b>{n_all_exp}</b><span>experiments</span></div>
+  <div class="stat"><b>{fmt_usd(cost_all)}</b><span>total cost</span></div>
+</div>
+
 <div class="cta">
 <a class="cta-link" href="assets/models/berlin.onnx" download>Download the
 Berlin model &darr;</a>
@@ -3970,21 +3985,6 @@ more.</p>
 <p class="bottom-line">Our first 76 experiments failed. Hard. The flaw was
 the harness itself; fixing it unlocked the &lsquo;memory-in-weights&rsquo;
 architecture.</p>
-
-<div class="stat-hero">
-  <b>{usable_s2}</b><span>of camera frames give a usable position fix</span>
-  {scale_svg}
-  <p class="hero-sub">confident <i>and</i> within {TARGET_M:.0f}&nbsp;m. The
-  loop minimises the <b>mission penalty</b>:
-  <span class="pen">{pen_s}</span> = <span class="pen">{miss_s}</span> no fix
-  + <span class="pen">{false_s}</span> wrong fix &mdash; a confident error
-  counts double.</p>
-</div>
-<div class="stats">
-  <div class="stat"><b>{n_eras}</b><span>research eras</span></div>
-  <div class="stat"><b>{n_all_exp}</b><span>experiments</span></div>
-  <div class="stat"><b>{fmt_usd(cost_all)}</b><span>total cost</span></div>
-</div>
 
 {rsec(1, "The question", "One frame, no map, no internet &mdash; and it has to know when it doesn&rsquo;t know.")}
 <div class="pnote">
