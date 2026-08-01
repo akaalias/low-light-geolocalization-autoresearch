@@ -3957,23 +3957,7 @@ raw daytime imagery.</p>
 
 {tile_grid_html}
 
-{rsec(3, "How to use it", "One file, one function, three steps.")}
-<div class="pnote">
-<p><b>1. Download the model:</b> <a href="assets/models/berlin.onnx"
-download>berlin.onnx</a> ({best_mb:.1f}&nbsp;MB). It runs anywhere ONNX
-runs &mdash; a laptop, a Raspberry&nbsp;Pi, the ESP32&#8209;P4 target.</p>
-<p><b>2. Feed it camera frames, 3. trust it only when it is sure</b> &mdash;
-the whole client is this:</p>
-</div>
-<pre class="howto">{HOWTO_CODE}</pre>
-<div class="pnote">
-<p class="howto-note">The frame must look straight down over Berlin and
-cover roughly 128&nbsp;m of ground (about 100&nbsp;m altitude with a
-typical lens). Below confidence 0.3 the fix is discarded, exactly as the
-research scores it.</p>
-</div>
-
-{rsec(4, "How our research works", "The model was found, not designed &mdash; by a loop of coding agents.")}
+{rsec(3, "How our research works", "The model was found, not designed &mdash; by a loop of coding agents.")}
 
 <div class="contract-fig static">{contract_svg()}
 <p class="contract-cap">The search space. The gray endpoints are frozen
@@ -4053,6 +4037,22 @@ alike; the <a href="gallery/inference-paths.html">model designs</a> page
 has each at full size:</p>
 </div>
 {design_grid_html}
+
+{rsec(4, "How to use it", "One file, one function, three steps.")}
+<div class="pnote">
+<p><b>1. Download the model:</b> <a href="assets/models/berlin.onnx"
+download>berlin.onnx</a> ({best_mb:.1f}&nbsp;MB). It runs anywhere ONNX
+runs &mdash; a laptop, a Raspberry&nbsp;Pi, the ESP32&#8209;P4 target.</p>
+<p><b>2. Feed it camera frames, 3. trust it only when it is sure</b> &mdash;
+the whole client is this:</p>
+</div>
+<pre class="howto">{HOWTO_CODE}</pre>
+<div class="pnote">
+<p class="howto-note">The frame must look straight down over Berlin and
+cover roughly 128&nbsp;m of ground (about 100&nbsp;m altitude with a
+typical lens). Below confidence 0.3 the fix is discarded, exactly as the
+research scores it.</p>
+</div>
 
 {rsec(5, "Explore the record", "Every experiment, every design, every dead end.")}
 <div class="explore">
