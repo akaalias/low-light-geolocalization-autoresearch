@@ -362,13 +362,20 @@ pre.howto{max-width:780px;margin:18px auto 0;padding:16px 20px;
   text-align:center;letter-spacing:.01em}
 @media (max-width:900px){.train-grid{grid-template-columns:repeat(5,1fr)}}
 
-/* ---- the model-designs tapestry: the last 30 agent-drawn figures --------
-   CSS multi-columns, not a row grid — differently-tall figures pack down
-   each column (the 'Everything we tried' tapestry from the author's tada
-   FMDiscovery report), so a tall design doesn't punch a hole in its row. */
+/* ---- the model-designs mosaic -------------------------------------------
+   A Pinterest-style masonry: a 6-column grid with grid-auto-flow:dense, so
+   differently-SIZED tiles flow around each other. Tile width encodes the
+   verdict (reverted 1 col, kept 2, champion 3); vertical packing comes from
+   per-cell grid-row spans that MASONRY_JS measures at load/resize — CSS
+   alone cannot span rows for content of unknown height. */
 .design-grid{width:80vw;margin:26px 0 4px calc(50% - 40vw);
-  columns:4;column-gap:18px}
-.design-grid figure{margin:0 0 18px;min-width:0;break-inside:avoid}
+  display:grid;grid-template-columns:repeat(6,1fr);
+  grid-auto-rows:8px;grid-auto-flow:dense;column-gap:18px;row-gap:0}
+.design-grid figure{margin:0;min-width:0;padding-bottom:18px}
+.design-grid .sz1{grid-column:span 1}
+.design-grid .sz2{grid-column:span 2}
+.design-grid .sz3{grid-column:span 3}
+.design-grid .sz1 figcaption{white-space:normal;font-size:10px}
 /* Cells sit on the paper itself — no white card fill; a hairline is enough
    to bound each figure, and the champion carries the only strong colour. */
 .design-grid .dg-fig{display:block;border:1px solid var(--rule);
@@ -385,7 +392,9 @@ pre.howto{max-width:780px;margin:18px auto 0;padding:16px 20px;
 .design-grid figcaption b{color:var(--ink);
   font-variant-numeric:lining-nums tabular-nums}
 .design-grid .reverted figcaption{color:var(--faint)}
-@media (max-width:1000px){.design-grid{columns:2}}
+@media (max-width:1000px){.design-grid{grid-template-columns:repeat(3,1fr)}
+  .design-grid .sz3{grid-column:span 3}
+  .design-grid .sz2{grid-column:span 2}}
 
 /* ---- the autoresearch loop: prose left, the cycle right ----------------- */
 .approach{max-width:980px;margin:26px auto 0;padding:0 16px;
@@ -3535,6 +3544,23 @@ def tile_grid():
             "not to answer.</p>")
 
 
+# The masonry spanner for the model-designs mosaic. CSS grid cannot give a
+# row-span to content of unknown height, so each cell measures itself and
+# claims ceil(height / auto-row) rows; grid-auto-flow:dense then packs the
+# differently-sized tiles around each other. Re-runs on resize because the
+# figures' rendered heights are viewport-proportional.
+MASONRY_JS = """function dgspan(){var g=document.querySelector('.design-grid');
+if(!g)return;var unit=parseFloat(getComputedStyle(g).gridAutoRows)||8;
+g.querySelectorAll('.dg-cell').forEach(function(c){
+  var h=0;Array.prototype.forEach.call(c.children,function(ch){
+    h+=ch.getBoundingClientRect().height+
+       parseFloat(getComputedStyle(ch).marginTop||0)+
+       parseFloat(getComputedStyle(ch).marginBottom||0)});
+  c.style.gridRowEnd='span '+Math.max(1,Math.ceil((h+18)/unit));});}
+window.addEventListener('load',dgspan);
+window.addEventListener('resize',dgspan);"""
+
+
 # "How to use it" — the minimum real inference client. Kept as a plain string
 # (NOT inside render_overview's f-string body: it is full of braces) and kept
 # honest against the actual contract: model/model.py exports input "frame"
@@ -3609,11 +3635,15 @@ def design_grid(hist):
         no = f"{r['era_index'] + 1}.{r['src_id']}"
         title = esc((r["title"] or "").split(":")[0])
         label = "champion" if champ else tag
+        # Tile size IS the verdict: reverted designs are one grid column,
+        # kept designs two, the champion three — the mosaic's texture is
+        # small failures packing around the ideas that survived.
+        size = "sz3" if champ else ("sz2" if r["kept"] else "sz1")
         # data-ovfig: clicking opens the shared zoom/pan overlay in place —
         # the same viewer the champion figure uses — instead of navigating
         # away to the model-designs page.
         cells.append(
-            f"<figure class='dg-cell {tag}{' champ' if champ else ''}'>"
+            f"<figure class='dg-cell {size} {tag}{' champ' if champ else ''}'>"
             f"<div class='dg-fig' data-ovfig data-no='{no}' "
             f"data-title='{esc(r['title'] or '')}'>{r['arch_svg']}</div>"
             f"<figcaption><b>{no}</b> "
@@ -4060,6 +4090,7 @@ megabytes you own.</p>
 machine; the loop commits every result to git as it goes</p>
 </div>
 {OVERLAY_HTML}
+<script>{MASONRY_JS}</script>
 {credits_html()}</body></html>"""
     OVERVIEW_OUT.write_text(html_page)
     print(f"wrote {OVERVIEW_OUT}")
