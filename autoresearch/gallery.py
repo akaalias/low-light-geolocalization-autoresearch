@@ -3946,11 +3946,11 @@ on board, just a $4 flight computer?</h2>
 <div class="bl-h">The bottom line</div>
 <p class="bottom-line"><span class="hl">Yes! We found a special-purpose
 neural memory architecture that &lsquo;remembers&rsquo; an exact
-geo-location, given an in-flight daytime picture of Berlin. The typical
-miss is {med_s} &mdash; no GPS, no internet, no map on board, just a
+geo-location, given an in-flight daytime picture of Berlin.</span>
+No GPS, no internet, no map on board, just a
 {best_mb:.1f}&nbsp;MB file of weights. It works on {usable_pct} of camera
 frames, and it took {n_all_exp} experiments and ${int(cost_all):,} to
-find.</span></p>
+find.</p>
 
 <div class="cta">
 <a class="cta-link" href="assets/models/berlin.onnx" download>Download the

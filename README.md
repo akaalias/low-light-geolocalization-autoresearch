@@ -1,7 +1,8 @@
-# Beeline — UAV Low-Light Geolocalization Autoresearch
+# Beeline
 
-Given a geographic bounding box, this repo trains a compact per-area model
-that takes a single low-light camera frame from a UAV and returns
+**Can a UAV learn a city by heart?** Given a geographic bounding box, this
+repo trains a compact per-area model that takes a single downward camera
+frame from a UAV and returns
 `estimate_position(frame) -> (lat, lon, confidence)` — no reference imagery
 on the aircraft, no connectivity, targeting an ESP32-P4 companion board.
 The interesting part: the model-side code is improved by an **autonomous
@@ -13,7 +14,7 @@ metric. Full context: `CLAUDE.md`.
 
 | Path | Status | What |
 |---|---|---|
-| `pipeline/` | **FROZEN** | bbox-generic fetch (Sentinel-2, open-licensed), 6-bucket synthetic low-light relighting, deterministic split holding out **viewpoints, not regions** (training covers the whole bbox; eval frames sit 11-17 m off the nearest training vantage — see `pipeline/dataset.py` for why a region-based holdout was wrong), §6 scoring — the mission score, (1 - usable_fix_rate) + false_fix_rate, which is the product requirement rather than an error statistic — with ESP32-P4 deployment gates |
+| `pipeline/` | **FROZEN** | bbox-generic fetch (Sentinel-2, open-licensed), 6-bucket synthetic low-light relighting (collapsed to a daytime pass-through in the current berlin-slim configuration), deterministic split holding out **viewpoints, not regions** (training covers the whole bbox; eval frames sit 11-17 m off the nearest training vantage — see `pipeline/dataset.py` for why a region-based holdout was wrong), §6 scoring — the mission score, (1 - usable_fix_rate) + false_fix_rate, which is the product requirement rather than an error statistic — with ESP32-P4 deployment gates |
 | `areas.yaml` | **FROZEN** | 4 development areas + hamburg blind holdout |
 | `model/` | agent-editable | model architecture + training procedure (the loop's playground) |
 | `autoresearch/` | mostly frozen | `loop.sh` harness, SQLite schema + logger, gallery renderer, per-iteration agent prompt |
@@ -49,9 +50,11 @@ calibrations collapsed dark-bucket coverage and were correctly scored FAIL.
 
 ## Phase 2 — running the autoresearch loop (run this yourself, separately)
 
-> **Current branch: `berlin-slim`.** Berlin only, raw daytime imagery, no
-> synthetic relighting, figures off, pivot gate off. See CLAUDE.md's
-> "BRANCH OVERRIDE" for what it supersedes and why.
+> **Current configuration: `berlin-slim`** (merged into `main` 2026-07-31).
+> Berlin only, raw daytime imagery, no synthetic relighting, figures off,
+> pivot gate off. See CLAUDE.md's "SCOPE OVERRIDE" for what it supersedes
+> and why — low-light is the full spec's goal, out of scope in this
+> configuration, and the relighting machinery is kept, not deleted.
 
 ```bash
 ./autoresearch/loop.sh 12               # run until the DB holds 12 experiments
