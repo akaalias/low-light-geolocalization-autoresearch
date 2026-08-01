@@ -3581,11 +3581,11 @@ def train_grid():
 
 
 def design_grid(hist):
-    """The last 30 agent-drawn model-design figures as a 4-per-row grid —
-    a visual census of what the search actually tried, feeding the
-    inference-paths page for anyone who wants one at full size."""
+    """Every agent-drawn model-design figure as a packed tapestry — a
+    visual census of the whole search, feeding the inference-paths page
+    for anyone who wants one at full size."""
     rows = [r for r in hist
-            if (r.get("arch_svg") or "").lstrip().startswith("<svg")][-30:]
+            if (r.get("arch_svg") or "").lstrip().startswith("<svg")]
     if not rows:
         return ""
     cells = []
@@ -3975,9 +3975,9 @@ tiles:</p>
 <p>Every experiment's model design, drawn by the design agent itself
 <i>before</i> it was allowed to train &mdash; camera frame entering on the
 left, (lat, lon, confidence) leaving on the right, red marking what that
-experiment changed. The last thirty, kept and reverted alike; the
-<a href="gallery/inference-paths.html">model designs</a> page has each at
-full size:</p>
+experiment changed. All fifty-nine that carry a figure, kept and reverted
+alike; the <a href="gallery/inference-paths.html">model designs</a> page
+has each at full size:</p>
 </div>
 {design_grid_html}
 
