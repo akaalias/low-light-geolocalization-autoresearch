@@ -376,6 +376,10 @@ pre.howto{max-width:780px;margin:18px auto 0;padding:16px 20px;
 .design-grid .sz2{grid-column:span 2}
 .design-grid .sz3{grid-column:span 3}
 .design-grid .sz1 figcaption{white-space:normal;font-size:10px}
+/* MASONRY_JS re-lays the grid as a true skyline packing: the container goes
+   block/relative and every cell absolute at a JS-computed spot. */
+.design-grid.packed{display:block;position:relative}
+.design-grid.packed .dg-cell{position:absolute;padding-bottom:0}
 /* Cells sit on the paper itself — no white card fill; a hairline is enough
    to bound each figure, and the champion carries the only strong colour. */
 .design-grid .dg-fig{display:block;border:1px solid var(--rule);
@@ -3544,21 +3548,39 @@ def tile_grid():
             "not to answer.</p>")
 
 
-# The masonry spanner for the model-designs mosaic. CSS grid cannot give a
-# row-span to content of unknown height, so each cell measures itself and
-# claims ceil(height / auto-row) rows; grid-auto-flow:dense then packs the
-# differently-sized tiles around each other. Re-runs on resize because the
-# figures' rendered heights are viewport-proportional.
-MASONRY_JS = """function dgspan(){var g=document.querySelector('.design-grid');
-if(!g)return;var unit=parseFloat(getComputedStyle(g).gridAutoRows)||8;
-g.querySelectorAll('.dg-cell').forEach(function(c){
-  var h=0;Array.prototype.forEach.call(c.children,function(ch){
-    h+=ch.getBoundingClientRect().height+
-       parseFloat(getComputedStyle(ch).marginTop||0)+
-       parseFloat(getComputedStyle(ch).marginBottom||0)});
-  c.style.gridRowEnd='span '+Math.max(1,Math.ceil((h+18)/unit));});}
-window.addEventListener('load',dgspan);
-window.addEventListener('resize',dgspan);"""
+# The masonry packer for the model-designs mosaic — a real skyline layout,
+# what Pinterest/Masonry.js actually do, replacing a first attempt with CSS
+# grid row-spans + dense flow. The grid version left holes by construction:
+# a 2-wide tile can only start where BOTH its columns are free, and the dead
+# space that creates under uneven neighbours is unreachable to later tiles.
+# Here each tile is measured at its real width and dropped at the lowest
+# spot the skyline offers (leftmost on ties), so later small tiles fall into
+# every valley. Cells go position:absolute inside the container ('packed');
+# without JS the grid CSS remains as a gappy-but-sane fallback.
+MASONRY_JS = """function dgpack(){
+ var g=document.querySelector('.design-grid');if(!g)return;
+ var gap=18,N=window.innerWidth<=1000?3:6,W=g.clientWidth,
+     colW=(W-(N-1)*gap)/N;
+ g.classList.add('packed');
+ var colH=[],i;for(i=0;i<N;i++)colH[i]=0;
+ g.querySelectorAll('.dg-cell').forEach(function(c){
+  var span=c.classList.contains('sz3')?3:(c.classList.contains('sz2')?2:1);
+  if(span>N)span=N;
+  c.style.width=(span*colW+(span-1)*gap)+'px';
+  var h=c.offsetHeight,best=0,bestY=Infinity,s,k,y;
+  for(s=0;s+span<=N;s++){
+   for(y=0,k=s;k<s+span;k++)y=Math.max(y,colH[k]);
+   if(y<bestY-0.5){bestY=y;best=s;}
+  }
+  c.style.left=(best*(colW+gap))+'px';
+  c.style.top=bestY+'px';
+  for(k=best;k<best+span;k++)colH[k]=bestY+h+gap;
+ });
+ g.style.height=(Math.max.apply(null,colH)-gap)+'px';
+}
+window.addEventListener('load',dgpack);
+var dgrt;window.addEventListener('resize',function(){
+ clearTimeout(dgrt);dgrt=setTimeout(dgpack,120)});"""
 
 
 # "How to use it" — the minimum real inference client. Kept as a plain string
