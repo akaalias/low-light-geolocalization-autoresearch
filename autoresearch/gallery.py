@@ -272,8 +272,8 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
   font:16px/1.5 var(--serif);color:var(--faint)}
 .bl-h{max-width:780px;margin:38px auto 0;font:700 11px var(--serif);
   font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.1em;
-  color:var(--accent)}
-.bottom-line{max-width:780px;margin:8px auto 0;
+  color:var(--accent);text-align:center}
+.bottom-line{max-width:780px;margin:8px auto 0;text-align:center;
   font:italic 19px/1.62 var(--serif);color:#4a473e}
 .bottom-line .hl{background:#f4ecd2;box-decoration-break:clone;
   -webkit-box-decoration-break:clone;padding:1px 2px;color:var(--ink)}
@@ -344,7 +344,7 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
   .train-grid{grid-template-columns:repeat(3,1fr);gap:6px}
   .train-grid figcaption{font-size:7px}
   pre.howto{font-size:10.5px;padding:10px 12px}
-  .cta{flex-direction:column;align-items:flex-start;gap:4px}
+  .cta{flex-direction:column;align-items:center;gap:4px}
   .approach{gap:18px}
   .strategies{gap:22px}
 }
@@ -353,7 +353,7 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
 .cta{max-width:780px;margin:18px auto 0;padding:12px 18px;
   border:1px solid var(--rule);border-left:3px solid var(--accent);
   border-radius:0 2px 2px 0;display:flex;flex-wrap:wrap;
-  align-items:baseline;gap:6px 18px}
+  align-items:baseline;justify-content:center;gap:6px 18px}
 .cta-link{font:600 15px var(--serif);color:var(--accent);
   text-decoration:none;border-bottom:1px solid transparent;white-space:nowrap}
 .cta-link:hover{border-bottom-color:var(--accent)}
