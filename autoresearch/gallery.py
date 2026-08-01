@@ -3665,15 +3665,16 @@ def render_overview(exps):
 {compute_banner()}
 <div class="paths-wrap">
 <h1 class="home-h1">&ldquo;Not all who wander are lost&rdquo;</h1>
-<h2 class="home-q">Can a UAV learn to find its way by memorising <i>all</i>
-geo-locations of a specific city
-&mdash; with no GPS, no maps on board, and a $4 flight computer?</h2>
+<h2 class="home-q">Can a UAV learn a city by heart &mdash; no GPS, no map
+on board, just a $4 flight computer?</h2>
 <div class="bl-h">The bottom line</div>
-<p class="bottom-line"><span class="hl">A UAV can look down at Berlin and
-know where it is to within {med_s} &mdash; no GPS, no internet, no map on
-board, just a {best_mb:.1f}&nbsp;MB file of weights. It works on
-{usable_pct} of camera frames, and it took {n_all_exp} experiments and
-${int(cost_all):,} to find.</span></p>
+<p class="bottom-line"><span class="hl">Yes! We found a special-purpose
+neural memory architecture that &lsquo;remembers&rsquo; an exact
+geo-location, given an in-flight daytime picture of Berlin. The typical
+miss is {med_s} &mdash; no GPS, no internet, no map on board, just a
+{best_mb:.1f}&nbsp;MB file of weights. It works on {usable_pct} of camera
+frames, and it took {n_all_exp} experiments and ${int(cost_all):,} to
+find.</span></p>
 
 <div class="bl-h">What we tried</div>
 <p class="bottom-line">We tried: ImageNet-pretrained backbones, separate day
