@@ -15,6 +15,7 @@ OUT="${1:-_site}"
 PY="${PY:-.venv/bin/python}"; [ -x "$PY" ] || PY=python3
 
 $PY -m autoresearch.gallery
+$PY -m sim.render_flightpath
 
 rm -rf "$OUT"; mkdir -p "$OUT"
 cp -R gallery "$OUT/gallery"

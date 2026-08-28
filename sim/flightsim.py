@@ -235,6 +235,8 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--no-vision", action="store_true",
                     help="dead-reckoning-only control: no fixes taken at all")
+    ap.add_argument("--start", help="fixed start 'x,y' raster px (default: random)")
+    ap.add_argument("--target", help="fixed target 'x,y' raster px (default: random)")
     ap.add_argument("--save-crops", action="store_true",
                     help="save each fix's camera crop next to the output JSON")
     ap.add_argument("--out", type=Path, required=True)
@@ -253,6 +255,10 @@ def main():
     flights = []
     for i in range(args.flights):
         start, target = sample_endpoints(meta, rng)
+        if args.start:
+            start = [float(v) for v in args.start.split(",")]
+        if args.target:
+            target = [float(v) for v in args.target.split(",")]
         f = simulate_flight(sess, img, meta, start, target, rng,
                             vision=not args.no_vision, save_crops_dir=crops_dir)
         f["flight_id"] = i

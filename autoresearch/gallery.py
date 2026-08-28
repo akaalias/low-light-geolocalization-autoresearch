@@ -1123,6 +1123,7 @@ NAV_PAGES = (("overview", "overview"),
              ("paths", "model designs"),
              ("lineage", "experiment lineage"),
              ("evolution", "research evolution"),
+             ("flight", "flight path"),
              ("notebook", "lab notebook"))
 
 
@@ -1548,6 +1549,8 @@ def topnav(active, root=False):
                          else "research-lineage.html"),
              "evolution": ("gallery/research-evolution.html" if root
                            else "research-evolution.html"),
+             "flight": ("gallery/flight-path.html" if root
+                        else "flight-path.html"),
              "notebook": ("gallery/lab-notebook.html" if root
                           else "lab-notebook.html")}
     links = []
@@ -3531,6 +3534,48 @@ either; they stay reachable at the git tag
 <code>prignitz-detour-record</code>. The rule the project already had for
 wiped eras applies here too: <i>re-measure or record, never quietly
 erase</i>.</p></div>
+
+</section>
+
+<section class="nb-day">
+<h2>28 August 2026</h2>
+<p class="daysub">The flight test &mdash; a virtual UAV flies the champion from a to b</p>
+
+<div class="nb-row"><span class="nb-time">morning</span>
+<p class="nb-text"><b>The champion is put to the product&rsquo;s own
+test.</b> A flight simulator (<code>sim/flightsim.py</code>, outside the
+frozen pipeline, reading it untouched) flies a point-mass fixed-wing
+through wind, gusts and gyro bias it cannot see, with the exported
+champion&rsquo;s vision fixes as the only position correction &mdash;
+camera frames are real orthophoto crops at the true pose, thresholds are
+the frozen scorer&rsquo;s own, false fixes are accepted like any other,
+and arrival is declared on the navigator&rsquo;s estimate but scored
+against the truth. The commitment, fixed before the first run: whatever
+the number is, it ships.</p></div>
+
+<div class="nb-row"><span class="nb-time">&nbsp;</span>
+<p class="nb-text"><b>The first Monte Carlo scores 53/100 &mdash; and the
+bug is in the simulator, not the model.</b> Flights with perfect position
+fixes still spiral off the map: the hand-built navigator had no heading
+reference, so gyro bias integrated unbounded and guidance chased a
+believed heading 100&deg;+ from the true one. Every real flight controller
+carries a magnetometer; adding one (yaw aiding only &mdash; vision stays
+the sole position source) takes the result to <b>91/100 flights arriving
+within 100&nbsp;m</b>, median declared miss 45&nbsp;m. The control run
+&mdash; same flights, vision disabled &mdash; arrives 0/100.</p></div>
+
+<div class="nb-row"><span class="nb-time">&nbsp;</span>
+<p class="nb-text"><b>The failures decompose cleanly.</b> 167 of 207
+in-flight false fixes stand on the ~3% of Berlin the harness deliberately
+never trained (the region-holdout diagnostic blocks); all three
+catastrophic misses had their target on or beside that ground. Excluding
+it, the in-flight false-fix rate is 0.77% &mdash; consistent with the
+frozen eval&rsquo;s 0.5%. A deployed model trains on 100% of its box, so
+the catastrophes are an artifact of flying over the research
+configuration; they are reported as flown on the new
+<a href="flight-path.html">flight path</a> page, which replays a
+corner-to-corner 9&nbsp;km flight &mdash; one 6.5&nbsp;km false fix
+survived, arrival 25.5&nbsp;m &mdash; over the Berlin orthophoto.</p></div>
 
 </section>
 """
