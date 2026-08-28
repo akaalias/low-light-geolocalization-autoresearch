@@ -4016,20 +4016,6 @@ find.</p>
   + <span class="pen">{false_s}</span> wrong fix &mdash; a confident error
   counts double.</p>
 </div>
-<div class="stats">
-  <div class="stat"><b>{n_eras}</b><span>research eras</span></div>
-  <div class="stat"><b>{n_all_exp}</b><span>experiments</span></div>
-  <div class="stat"><b>{fmt_usd(cost_all)}</b><span>total cost</span></div>
-</div>
-
-<div class="cta">
-<a class="cta-link" href="assets/models/berlin.onnx" download>Download the
-Berlin model &darr;</a>
-<span class="cta-meta">berlin.onnx &middot; {best_mb:.1f}&nbsp;MB &middot;
-one function: <i>estimate_position(frame) &rarr; (lat, lon,
-confidence)</i></span>
-</div>
-
 {flight_html}
 
 {rsec(2, "The question", "One frame, no map, no internet &mdash; and it has to know when it doesn&rsquo;t know.")}
@@ -4066,6 +4052,20 @@ a precise point inside the chosen tile.</p>
 experiment in the <a href="gallery/index.html">research log</a>, with the
 figures on the <a href="gallery/inference-paths.html">model designs</a>
 page.</p>
+</div>
+
+<div class="stats">
+  <div class="stat"><b>{n_eras}</b><span>research eras</span></div>
+  <div class="stat"><b>{n_all_exp}</b><span>experiments</span></div>
+  <div class="stat"><b>{fmt_usd(cost_all)}</b><span>total cost</span></div>
+</div>
+
+<div class="cta">
+<a class="cta-link" href="assets/models/berlin.onnx" download>Download the
+Berlin model &darr;</a>
+<span class="cta-meta">berlin.onnx &middot; {best_mb:.1f}&nbsp;MB &middot;
+one function: <i>estimate_position(frame) &rarr; (lat, lon,
+confidence)</i></span>
 </div>
 
 <div class="pnote">
