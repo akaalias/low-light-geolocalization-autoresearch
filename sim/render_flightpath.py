@@ -33,6 +33,85 @@ CROPS_SRC = REPO_ROOT / "sim" / "out" / "showcase_crops"
 
 BASEMAP_W = 1600
 
+# Styles for the shared "One flight, replayed" section (embedded on both the
+# flight-path page and the root overview via flight_section()).
+FP_CSS = """
+.fp-legend{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;
+  font:13px var(--serif);color:var(--muted);margin:10px 0 4px}
+.fp-legend span{display:inline-flex;align-items:center;gap:7px}
+.fp-legend i{font-style:normal;display:inline-block}
+.k-true{width:22px;height:0;border-top:2.5px solid var(--ink)}
+.k-est{width:22px;height:0;border-top:2.5px dashed var(--ochre)}
+.k-usable{width:9px;height:9px;border-radius:50%;background:var(--ink)}
+.k-abstain{width:9px;height:9px;border-radius:50%;border:1.6px solid var(--faint);background:transparent}
+.k-false{width:9px;height:9px;border-radius:50%;border:2px solid var(--accent);background:transparent}
+.fp-stage{display:flex;gap:22px;align-items:flex-start;margin-top:12px}
+.fp-map{flex:1 1 640px;min-width:0;position:relative}
+.fp-map svg{display:block;width:100%;height:auto;border:1px solid var(--rule)}
+.fp-side{flex:0 0 240px;position:sticky;top:14px}
+.fp-cam{border:1px solid var(--rule);background:#f7f4e6;padding:10px}
+.fp-cam img{width:100%;height:auto;aspect-ratio:1/1;image-rendering:auto;
+  display:block;border:1px solid var(--rule-soft)}
+.fp-cam .cam-h{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 7px}
+.fp-cam .cam-out{margin:8px 0 0;font:14px/1.5 var(--serif)}
+.fp-cam .cam-out b.usable{color:var(--ink)}
+.fp-cam .cam-out b.abstain{color:var(--faint)}
+.fp-cam .cam-out b.false_fix{color:var(--accent)}
+.fp-cam .cam-sub{margin:2px 0 0;font:12.5px/1.5 var(--serif);color:var(--muted)}
+.fp-read{margin-top:12px;font:13px/1.7 var(--serif);color:var(--muted)}
+.fp-read b{color:var(--ink);font-variant-numeric:lining-nums tabular-nums}
+.fp-controls{display:flex;gap:12px;align-items:center;margin:12px 0 0;
+  font:13px var(--serif);color:var(--muted)}
+.fp-controls button{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.07em;color:var(--paper);
+  background:var(--ink);border:none;padding:7px 16px;cursor:pointer}
+.fp-controls button:hover{background:var(--accent)}
+.fp-controls input[type=range]{flex:1;accent-color:#8c2f1f}
+.fp-controls select{font:13px var(--serif);color:var(--ink);background:var(--paper);
+  border:1px solid var(--rule);padding:3px 6px}
+.fp-controls .t-read{font-variant-numeric:lining-nums tabular-nums;min-width:88px;text-align:right}
+.fp-note{max-width:780px;margin:14px auto 0;font:14.5px/1.7 var(--serif);color:#4a473e}
+.fp-note p{margin:0 0 10px}
+.fp-note b{color:var(--ink)}
+.fp-tip{position:fixed;z-index:60;pointer-events:none;background:var(--paper);
+  border:1px solid var(--rule);box-shadow:0 2px 10px rgba(0,0,0,.09);
+  font:12.5px/1.5 var(--serif);color:var(--ink);padding:7px 10px;display:none;max-width:250px}
+.fp-tip .tt-h{font-weight:600}
+.fp-tip .tt-m{color:var(--muted)}
+@media(max-width:820px){
+  .fp-stage{flex-direction:column}
+  .fp-side{flex:none;width:100%;position:static;display:flex;gap:14px}
+  .fp-cam{flex:1}
+}
+"""
+
+# Styles used only by the flight-path page's own sections (charts, failure
+# table, honesty grid).
+FP_PAGE_CSS = """
+.fp-wrap{max-width:1020px;margin:0 auto;padding:14px 28px 96px}
+.fp-chart{margin-top:8px}
+.fp-chart svg{display:block;width:100%;height:auto}
+table.fp-fail{margin:18px auto 0;border-collapse:collapse;font:14px/1.55 var(--serif)}
+table.fp-fail th{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+  border-bottom:1px solid var(--rule);padding:4px 14px;text-align:left}
+table.fp-fail td{border-bottom:1px solid var(--rule-soft);padding:5px 14px}
+table.fp-fail td.num{font-variant-numeric:lining-nums tabular-nums}
+table.fp-fail .hold{color:var(--ochre);font-size:12.5px}
+.fp-honest{max-width:780px;margin:16px auto 0;display:grid;
+  grid-template-columns:1fr 1fr;gap:6px 34px;font:14.5px/1.65 var(--serif)}
+.fp-honest h3{grid-column:span 1;font:600 11px var(--serif);
+  font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--muted);margin:14px 0 2px;border-bottom:1px solid var(--rule-soft);padding-bottom:4px}
+.fp-honest ul{margin:4px 0 0;padding-left:20px}
+.fp-honest li{margin:0 0 7px;color:#33312b}
+.fp-honest li b{color:var(--ink)}
+@media(max-width:820px){
+  .fp-honest{grid-template-columns:1fr}
+}
+"""
+
 
 def build_basemap(meta_w, meta_h):
     """Downsampled, desaturated orthophoto so the overlays carry the page.
@@ -101,6 +180,85 @@ def mc_compact(mc):
     return rows
 
 
+def flight_section(rel, record_note, n=1):
+    """The complete "One flight, replayed" section — heading, narrative,
+    legend, replay stage and its script — shared by the flight-path page
+    (rel='../') and the root overview (rel=''). Reads only committed inputs
+    (sim/out/showcase.json + assets/sim/), so any page can embed it without
+    the research machine's data/ or a prior asset build.
+
+    record_note: the closing sentence of the disclosure footnote — the two
+    pages point at the 100-flight record differently ("below" vs a link).
+    """
+    showcase = json.loads(SHOWCASE.read_text())["flights"][0]
+    for fx in showcase["fixes"]:
+        if "crop" in fx:
+            fx["crop"] = Path(fx["crop"]).stem + ".jpg"
+    first_crop = next((fx["crop"] for fx in showcase["fixes"] if "crop" in fx), "")
+    meta_w, meta_h = 6939, 6828  # berlin raster (data/berlin/meta.json)
+    data = {
+        "w": meta_w, "h": meta_h,
+        "flight": {k: showcase[k] for k in
+                   ("start_px", "target_px", "direct_m", "flight_s", "wind",
+                    "declared_miss_m", "fix_counts", "fixes", "track")},
+    }
+    return f"""
+{rsec(n, "One flight, replayed",
+      "Corner to corner — 9.2 km in ten minutes, seven false fixes survived, arrival at 25.5 m.")}
+<div class="fp-note">
+<p>North-west corner to south-east corner, 9 km. At
+<b>t&thinsp;=&thinsp;85&thinsp;s</b> a
+<b style="color:var(--accent)">false fix</b> &mdash; barely confident,
+<b>6.5 km wrong</b> (the red line points to its claim, marked
+<span style="color:var(--accent)">&times;</span>) &mdash; yanks the dashed
+believed path across the city while the true path barely bends; usable
+fixes haul it back. A late burst of false fixes on final approach does
+little harm: by then the estimate is fresh, so wrong answers get little
+weight. The flight lands <b>25.5 m</b> from the target.</p>
+<p style="font-size:13px;color:var(--muted)">Seed 6, disclosed: three of
+six seeds on this route overshot the corner out of the mapped box and were
+lost &mdash; beyond the edge there is no imagery and no way back.
+{record_note}</p></div>
+
+<div class="fp-legend">
+<span><i class="k-true"></i>true path</span>
+<span><i class="k-est"></i>believed path (navigator&rsquo;s estimate)</span>
+<span><i class="k-usable"></i>usable fix</span>
+<span><i class="k-abstain"></i>abstention</span>
+<span><i class="k-false"></i>false fix</span>
+<span><i style="color:var(--accent);font-weight:700">&times;</i>where the false fix claimed to be</span>
+</div>
+
+<div class="fp-stage">
+<div class="fp-map">
+<svg id="map" viewBox="0 0 {meta_w} {meta_h}" role="img"
+     aria-label="Berlin orthophoto with the simulated flight path from start to target">
+<image href="{rel}assets/sim/berlin-base.jpg" x="0" y="0" width="{meta_w}" height="{meta_h}"/>
+<g id="mapg"></g>
+</svg>
+<div class="fp-controls">
+<button id="play">Play</button>
+<input id="scrub" type="range" min="0" max="1000" value="0" aria-label="flight time">
+<span class="t-read num" id="tread">0.0 s</span>
+<select id="speed" aria-label="replay speed">
+<option value="4">4&times;</option><option value="10" selected>10&times;</option>
+<option value="25">25&times;</option></select>
+</div>
+</div>
+<div class="fp-side">
+<div class="fp-cam">
+<p class="cam-h">Bottom camera &mdash; what the model saw</p>
+<img id="cam" src="{rel}assets/sim/crops/{first_crop}" alt="camera crop at the latest fix" width="128" height="128">
+<p class="cam-out" id="camout">&mdash;</p>
+<p class="cam-sub" id="camsub">128&thinsp;&times;&thinsp;128 px &middot; 1 m/px &middot; ~100 m AGL</p>
+</div>
+<div class="fp-read" id="read"></div>
+</div>
+</div>
+<div class="fp-tip" id="tip"></div>
+<script>{replay_js(json.dumps(data, separators=(',', ':')), json.dumps(rel))}</script>"""
+
+
 def main():
     showcase = json.loads(SHOWCASE.read_text())["flights"][0]
     mc = json.loads(MC.read_text())
@@ -108,11 +266,7 @@ def main():
     meta_w, meta_h = 6939, 6828  # berlin raster (data/berlin/meta.json)
 
     build_basemap(meta_w, meta_h)
-    crop_names = build_crops(showcase["fixes"])
-    for i, fx in enumerate(showcase["fixes"]):
-        fx.pop("crop", None)
-        if i in crop_names:
-            fx["crop"] = crop_names[i]
+    build_crops(showcase["fixes"])
 
     rows = mc_compact(mc)
     s = mc["summary"]
@@ -124,14 +278,6 @@ def main():
     ff_rate_nonhold = 100.0 * (ff_total - ff_hold) / n_conf_or_abst
     misses = sorted(r["miss"] for r in rows if r["result"] == "arrived")
     p10, p90 = misses[9], misses[89] if len(misses) > 89 else misses[-1]
-
-    data = {
-        "w": meta_w, "h": meta_h,
-        "flight": {k: showcase[k] for k in
-                   ("start_px", "target_px", "direct_m", "flight_s", "wind",
-                    "declared_miss_m", "fix_counts", "fixes", "track")},
-        "mc": rows,
-    }
 
     failure_rows = "\n".join(
         f"<tr><td class='num'>{r['id']}</td>"
@@ -147,75 +293,8 @@ def main():
              'A virtual fixed-wing UAV flies Berlin from a to b with the champion model as its only position source. 91 of 100 flights arrive within 100 m; the failures are shown, not averaged away.')}
 <title>Flight path &mdash; Beeline</title>
 <style>{CSS}
-/* ---- flight-path page ---- */
-.fp-wrap{{max-width:1020px;margin:0 auto;padding:14px 28px 96px}}
-.fp-legend{{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;
-  font:13px var(--serif);color:var(--muted);margin:10px 0 4px}}
-.fp-legend span{{display:inline-flex;align-items:center;gap:7px}}
-.fp-legend i{{font-style:normal;display:inline-block}}
-.k-true{{width:22px;height:0;border-top:2.5px solid var(--ink)}}
-.k-est{{width:22px;height:0;border-top:2.5px dashed var(--ochre)}}
-.k-usable{{width:9px;height:9px;border-radius:50%;background:var(--ink)}}
-.k-abstain{{width:9px;height:9px;border-radius:50%;border:1.6px solid var(--faint);background:transparent}}
-.k-false{{width:9px;height:9px;border-radius:50%;border:2px solid var(--accent);background:transparent}}
-.fp-stage{{display:flex;gap:22px;align-items:flex-start;margin-top:12px}}
-.fp-map{{flex:1 1 640px;min-width:0;position:relative}}
-.fp-map svg{{display:block;width:100%;height:auto;border:1px solid var(--rule)}}
-.fp-side{{flex:0 0 240px;position:sticky;top:14px}}
-.fp-cam{{border:1px solid var(--rule);background:#f7f4e6;padding:10px}}
-.fp-cam img{{width:100%;height:auto;aspect-ratio:1/1;image-rendering:auto;
-  display:block;border:1px solid var(--rule-soft)}}
-.fp-cam .cam-h{{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
-  text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 7px}}
-.fp-cam .cam-out{{margin:8px 0 0;font:14px/1.5 var(--serif)}}
-.fp-cam .cam-out b.usable{{color:var(--ink)}}
-.fp-cam .cam-out b.abstain{{color:var(--faint)}}
-.fp-cam .cam-out b.false_fix{{color:var(--accent)}}
-.fp-cam .cam-sub{{margin:2px 0 0;font:12.5px/1.5 var(--serif);color:var(--muted)}}
-.fp-read{{margin-top:12px;font:13px/1.7 var(--serif);color:var(--muted)}}
-.fp-read b{{color:var(--ink);font-variant-numeric:lining-nums tabular-nums}}
-.fp-controls{{display:flex;gap:12px;align-items:center;margin:12px 0 0;
-  font:13px var(--serif);color:var(--muted)}}
-.fp-controls button{{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
-  text-transform:uppercase;letter-spacing:.07em;color:var(--paper);
-  background:var(--ink);border:none;padding:7px 16px;cursor:pointer}}
-.fp-controls button:hover{{background:var(--accent)}}
-.fp-controls input[type=range]{{flex:1;accent-color:#8c2f1f}}
-.fp-controls select{{font:13px var(--serif);color:var(--ink);background:var(--paper);
-  border:1px solid var(--rule);padding:3px 6px}}
-.fp-controls .t-read{{font-variant-numeric:lining-nums tabular-nums;min-width:88px;text-align:right}}
-.fp-chart{{margin-top:8px}}
-.fp-chart svg{{display:block;width:100%;height:auto}}
-.fp-note{{max-width:780px;margin:14px auto 0;font:14.5px/1.7 var(--serif);color:#4a473e}}
-.fp-note p{{margin:0 0 10px}}
-.fp-note b{{color:var(--ink)}}
-.fp-tip{{position:fixed;z-index:60;pointer-events:none;background:var(--paper);
-  border:1px solid var(--rule);box-shadow:0 2px 10px rgba(0,0,0,.09);
-  font:12.5px/1.5 var(--serif);color:var(--ink);padding:7px 10px;display:none;max-width:250px}}
-.fp-tip .tt-h{{font-weight:600}}
-.fp-tip .tt-m{{color:var(--muted)}}
-table.fp-fail{{margin:18px auto 0;border-collapse:collapse;font:14px/1.55 var(--serif)}}
-table.fp-fail th{{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
-  text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
-  border-bottom:1px solid var(--rule);padding:4px 14px;text-align:left}}
-table.fp-fail td{{border-bottom:1px solid var(--rule-soft);padding:5px 14px}}
-table.fp-fail td.num{{font-variant-numeric:lining-nums tabular-nums}}
-table.fp-fail .hold{{color:var(--ochre);font-size:12.5px}}
-.fp-honest{{max-width:780px;margin:16px auto 0;display:grid;
-  grid-template-columns:1fr 1fr;gap:6px 34px;font:14.5px/1.65 var(--serif)}}
-.fp-honest h3{{grid-column:span 1;font:600 11px var(--serif);
-  font-feature-settings:"smcp" 1;text-transform:uppercase;letter-spacing:.08em;
-  color:var(--muted);margin:14px 0 2px;border-bottom:1px solid var(--rule-soft);padding-bottom:4px}}
-.fp-honest ul{{margin:4px 0 0;padding-left:20px}}
-.fp-honest li{{margin:0 0 7px;color:#33312b}}
-.fp-honest li b{{color:var(--ink)}}
-@media(max-width:820px){{
-  .fp-stage{{flex-direction:column}}
-  .fp-side{{flex:none;width:100%;position:static;display:flex;gap:14px}}
-  .fp-cam{{flex:1}}
-  .fp-honest{{grid-template-columns:1fr}}
-}}
-</style></head><body>
+{FP_CSS}
+{FP_PAGE_CSS}</style></head><body>
 {topnav('flight')}
 {compute_banner()}
 
@@ -246,58 +325,7 @@ champion (<span class="mono">berlin.onnx</span>) run on a real orthophoto
 crop at the aircraft&rsquo;s true position and heading, classified with the
 frozen scorer&rsquo;s own thresholds.</p>
 
-{rsec(1, "One flight, replayed",
-      "Corner to corner — 9.2 km in ten minutes, seven false fixes survived, arrival at 25.5 m.")}
-<div class="fp-note">
-<p>North-west corner to south-east corner, 9 km. At
-<b>t&thinsp;=&thinsp;85&thinsp;s</b> a
-<b style="color:var(--accent)">false fix</b> &mdash; barely confident,
-<b>6.5 km wrong</b> (the red line points to its claim, marked
-<span style="color:var(--accent)">&times;</span>) &mdash; yanks the dashed
-believed path across the city while the true path barely bends; usable
-fixes haul it back. A late burst of false fixes on final approach does
-little harm: by then the estimate is fresh, so wrong answers get little
-weight. The flight lands <b>25.5 m</b> from the target.</p>
-<p style="font-size:13px;color:var(--muted)">Seed 6, disclosed: three of
-six seeds on this route overshot the corner out of the mapped box and were
-lost &mdash; beyond the edge there is no imagery and no way back. The
-100-flight record below uses random routes, failures included.</p></div>
-
-<div class="fp-legend">
-<span><i class="k-true"></i>true path</span>
-<span><i class="k-est"></i>believed path (navigator&rsquo;s estimate)</span>
-<span><i class="k-usable"></i>usable fix</span>
-<span><i class="k-abstain"></i>abstention</span>
-<span><i class="k-false"></i>false fix</span>
-<span><i style="color:var(--accent);font-weight:700">&times;</i>where the false fix claimed to be</span>
-</div>
-
-<div class="fp-stage">
-<div class="fp-map">
-<svg id="map" viewBox="0 0 {meta_w} {meta_h}" role="img"
-     aria-label="Berlin orthophoto with the simulated flight path from start to target">
-<image href="../assets/sim/berlin-base.jpg" x="0" y="0" width="{meta_w}" height="{meta_h}"/>
-<g id="mapg"></g>
-</svg>
-<div class="fp-controls">
-<button id="play">Play</button>
-<input id="scrub" type="range" min="0" max="1000" value="0" aria-label="flight time">
-<span class="t-read num" id="tread">0.0 s</span>
-<select id="speed" aria-label="replay speed">
-<option value="4">4&times;</option><option value="10" selected>10&times;</option>
-<option value="25">25&times;</option></select>
-</div>
-</div>
-<div class="fp-side">
-<div class="fp-cam">
-<p class="cam-h">Bottom camera &mdash; what the model saw</p>
-<img id="cam" src="../assets/sim/crops/{crop_names.get(0, '')}" alt="camera crop at the latest fix" width="128" height="128">
-<p class="cam-out" id="camout">&mdash;</p>
-<p class="cam-sub" id="camsub">128&thinsp;&times;&thinsp;128 px &middot; 1 m/px &middot; ~100 m AGL</p>
-</div>
-<div class="fp-read" id="read"></div>
-</div>
-</div>
+{flight_section("../", "The 100-flight record below uses random routes, failures included.")}
 
 {rsec(2, "The estimate against the truth",
       "How far the navigator's belief is from the aircraft's true position, second by second.")}
@@ -378,25 +406,25 @@ is on the page, three of them explained by ground the research harness
 deliberately never taught it.</p>
 
 </div>
-<div class="fp-tip" id="tip"></div>
-<script>
-const D = {json.dumps(data, separators=(',', ':'))};
-{page_js()}
-</script>
+<script>{charts_js(json.dumps(rows, separators=(',', ':')))}</script>
 {credits_html()}</body></html>"""
 
     OUT.write_text(html)
     print(f"wrote {OUT} ({len(html) / 1024:.0f} KB)")
 
 
-def page_js():
-    """The replay + charts. Kept as a plain string so the HTML f-string above
-    stays free of brace-escaping noise."""
-    return r"""
+def replay_js(data_json, rel_json):
+    """The shared replay script (map, markers, controls, tooltip, autostart),
+    wrapped in an IIFE so it declares NO page globals — the overview's own
+    scripts already use names like `playing`, and a top-level collision is a
+    SyntaxError that kills the whole script. The one deliberate export is
+    window.FP, the handle charts_js() uses to follow the replay clock."""
+    return "(()=>{const D=" + data_json + ";const REL=" + rel_json + ";" + r"""
 const NS='http://www.w3.org/2000/svg';
 const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e};
 const F=D.flight, T=F.track, dur=T[T.length-1][0];
 const INK='#111111', OCHRE='#8a6a1e', ACCENT='#8c2f1f', FAINT='#9b998c', PAPER='#fffff8', MUTED='#6b6a60', RULE='#d9d5c3';
+const tickHooks=[];
 
 /* ---------- map ---------- */
 const g=document.getElementById('mapg');
@@ -479,7 +507,7 @@ function render(t){
   F.fixes.forEach((fx,j)=>{if(fx.t<=cur){fixMark(fx,j);last=[fx,j];if(counts[fx.outcome]!==undefined)counts[fx.outcome]++;}});
   if(last){
     const [fx,j]=last;
-    if(fx.crop)cam.src='../assets/sim/crops/'+fx.crop;
+    if(fx.crop)cam.src=REL+'assets/sim/crops/'+fx.crop;
     const oCls=fx.outcome, oTxt={usable:'usable fix',abstain:'abstained — not confident',false_fix:'false fix — confidently wrong'}[oCls];
     camout.innerHTML=`t = ${fx.t.toFixed(0)} s · <b class="${oCls}">${oTxt}</b>`+
       (fx.err_m!==undefined&&fx.outcome!=='abstain'?`<br><span style="color:${MUTED}">model's answer was ${fmt(fx.err_m)} from the truth</span>`:'');
@@ -491,7 +519,7 @@ function render(t){
     `fixes so far: <b>${counts.usable}</b> usable · <b>${counts.abstain}</b> abstained · <b>${counts.false_fix}</b> false`;
   scrub.value=Math.round(1000*cur/dur);
   tread.textContent=cur.toFixed(1)+' s';
-  cursor.setAttribute('x1',X(cur));cursor.setAttribute('x2',X(cur));
+  tickHooks.forEach(f=>f(cur));
 }
 function tick(ts){
   if(!playing)return;
@@ -508,6 +536,35 @@ playBtn.addEventListener('click',()=>{
 scrub.addEventListener('input',()=>{playing=false;playBtn.textContent='Play';render(+scrub.value/1000*dur);});
 const seek=t=>{playing=false;playBtn.textContent='Play';render(t);};
 
+/* ---------- tooltip ---------- */
+const tipEl=document.getElementById('tip');
+function tip(e,html){tipEl.innerHTML=html;tipEl.style.display='block';
+  const w=tipEl.offsetWidth;
+  tipEl.style.left=Math.min(window.innerWidth-w-8,e.clientX+14)+'px';
+  tipEl.style.top=(e.clientY+16)+'px';}
+function hideTip(){tipEl.style.display='none';}
+
+render(0);
+// autostart the replay the first time the map comes into view
+const io=new IntersectionObserver(es=>{
+  if(es.some(e=>e.isIntersecting)&&!playing&&cur===0){
+    playing=true;lastTs=0;playBtn.textContent='Pause';requestAnimationFrame(tick);
+    io.disconnect();
+  }
+},{threshold:0.45});
+io.observe(document.getElementById('map'));
+window.FP={el,T,F,dur,idxAt,fmt,tip,hideTip,seek,tickHooks,
+           INK,OCHRE,ACCENT,FAINT,PAPER,MUTED,RULE};
+})();"""
+
+
+def charts_js(rows_json):
+    """The flight-path page's own charts (sawtooth + Monte-Carlo dot strip).
+    IIFE-wrapped like replay_js; everything shared comes in through the
+    window.FP handle that script exports."""
+    return ("(()=>{const MCROWS=" + rows_json + ";"
+            "const {el,T,F,dur,idxAt,fmt,tip,hideTip,seek,tickHooks,"
+            "INK,OCHRE,ACCENT,FAINT,PAPER,MUTED,RULE}=window.FP;" + r"""
 /* ---------- sawtooth: estimation error over time ---------- */
 const CW=900, CH=290, ML=52, MR=14, MT=26, MB=34;
 const errAt0=i=>Math.hypot(T[i][1]-T[i][3],T[i][2]-T[i][4]);
@@ -540,6 +597,7 @@ F.fixes.forEach((fx,i)=>{
 const tl=el('text',{x:ML,y:12,'font-size':11,fill:MUTED,'font-family':'Palatino,Georgia,serif'},chart);
 tl.textContent='fixes:  | usable   ○ abstained   ○ false';
 const cursor=el('line',{x1:X(0),x2:X(0),y1:MT,y2:CH-MB,stroke:ACCENT,'stroke-width':1,'stroke-opacity':.7},chart);
+tickHooks.push(t=>{cursor.setAttribute('x1',X(t));cursor.setAttribute('x2',X(t));});
 // hover: nearest point + seek on click
 const hitRect=el('rect',{x:ML,y:MT,width:CW-ML-MR,height:CH-MT-MB,fill:'transparent'},chart);
 hitRect.style.cursor='crosshair';
@@ -567,7 +625,7 @@ const mc=el('svg',{viewBox:`0 0 ${MW} ${MH}`,role:'img','aria-label':'true miss 
 const t1=el('text',{x:MX(9),y:MMT-16,'font-size':11.5,'font-style':'italic',fill:MUTED,'font-family':'Palatino,Georgia,serif'},mc);t1.textContent='true miss at declared arrival →';
 // deterministic vertical spread so dots don't stack
 const seen=[];
-D.mc.slice().sort((a,b)=>a.miss-b.miss).forEach(r=>{
+MCROWS.slice().sort((a,b)=>a.miss-b.miss).forEach(r=>{
   const x=MX(r.miss);
   let lane=0;while(seen.some(s=>s.lane===lane&&Math.abs(s.x-x)<11))lane++;
   seen.push({x,lane});
@@ -584,25 +642,7 @@ D.mc.slice().sort((a,b)=>a.miss-b.miss).forEach(r=>{
     (r.ff_hold?` (${r.ff_hold} on never-trained ground)`:'')+`</div>`));
   hit.addEventListener('mouseleave',hideTip);
 });
-
-/* ---------- tooltip ---------- */
-const tipEl=document.getElementById('tip');
-function tip(e,html){tipEl.innerHTML=html;tipEl.style.display='block';
-  const w=tipEl.offsetWidth;
-  tipEl.style.left=Math.min(window.innerWidth-w-8,e.clientX+14)+'px';
-  tipEl.style.top=(e.clientY+16)+'px';}
-function hideTip(){tipEl.style.display='none';}
-
-render(0);
-// autostart the replay the first time the map comes into view
-const io=new IntersectionObserver(es=>{
-  if(es.some(e=>e.isIntersecting)&&!playing&&cur===0){
-    playing=true;lastTs=0;playBtn.textContent='Pause';requestAnimationFrame(tick);
-    io.disconnect();
-  }
-},{threshold:0.45});
-io.observe(document.getElementById('map'));
-"""
+})();""")
 
 
 if __name__ == "__main__":

@@ -3977,11 +3977,21 @@ def render_overview(exps):
     else:
         progress_s = "0%"
 
+    # The "One flight, replayed" section is owned by sim/render_flightpath.py
+    # and embedded here verbatim (rel='' because this page lives at the repo
+    # root). Imported lazily: that module imports this one for the page shell.
+    from sim.render_flightpath import FP_CSS, flight_section
+    flight_html = flight_section(
+        "", "The full 100-flight record &mdash; the estimation-error chart, "
+        "every arrival and every failure &mdash; is on the "
+        "<a href='gallery/flight-path.html'>flight path</a> page.")
+
     html_page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 {social_meta('', 'Beeline — “Not all who wander are lost”: Can a UAV learn a city by heart — no GPS, no map on board, just a $4 flight computer?', 'Yes: a from-scratch neural memory that knows Berlin by heart. One downward photo in, (lat, lon, confidence) out — the map is the weights, one city in 3.1 MB. Found by an autonomous loop of coding agents in 81 experiments for $364.')}
 <title>Beeline &mdash; &ldquo;Not all who wander are lost&rdquo;: Can a UAV learn a city by heart &mdash; no GPS, no map on board, just a $4 flight computer?</title>
-<style>{CSS}</style><script>{PATHS_JS}</script></head><body>
+<style>{CSS}
+{FP_CSS}</style><script>{PATHS_JS}</script></head><body>
 {topnav('overview', root=True)}
 {compute_banner()}
 <div class="paths-wrap">
@@ -4031,7 +4041,9 @@ more.</p>
 the harness itself; fixing it unlocked the &lsquo;memory-in-weights&rsquo;
 architecture.</p>
 
-{rsec(1, "The question", "One frame, no map, no internet &mdash; and it has to know when it doesn&rsquo;t know.")}
+{flight_html}
+
+{rsec(2, "The question", "One frame, no map, no internet &mdash; and it has to know when it doesn&rsquo;t know.")}
 <div class="pnote">
 <p>A UAV flies over a city it has trained on. Its camera takes one picture
 straight down. From that picture alone: where is it?</p>
@@ -4043,7 +4055,7 @@ it doesn't know.</p>
 
 {chal_maps}
 
-{rsec(2, "The answer", "Stop asking for a coordinate. Ask which tile.")}
+{rsec(3, "The answer", "Stop asking for a coordinate. Ask which tile.")}
 {champ_fig}
 <div class="pnote">
 <p>Ask a network for latitude and longitude and it fails badly: when it is
@@ -4078,7 +4090,7 @@ raw daytime imagery.</p>
 
 {tile_grid_html}
 
-{rsec(3, "How our research works", "The model was found, not designed &mdash; by a loop of coding agents.")}
+{rsec(4, "How our research works", "The model was found, not designed &mdash; by a loop of coding agents.")}
 
 <div class="contract-fig static">{contract_svg()}
 <p class="contract-cap">The search space. The gray endpoints are frozen
@@ -4159,7 +4171,7 @@ tiles:</p>
 </div>
 {train_grid_html}
 
-{rsec(4, "How to use it", "One file, one function, three steps.")}
+{rsec(5, "How to use it", "One file, one function, three steps.")}
 <div class="pnote">
 <p><b>1. Download the model:</b> <a href="assets/models/berlin.onnx"
 download>berlin.onnx</a> ({best_mb:.1f}&nbsp;MB). It runs anywhere ONNX
@@ -4175,7 +4187,7 @@ typical lens). Below confidence 0.3 the fix is discarded, exactly as the
 research scores it.</p>
 </div>
 
-{rsec(5, "Explore the record", "Every experiment, every design, every dead end.")}
+{rsec(6, "Explore the record", "Every experiment, every design, every dead end.")}
 <div class="explore">
 <a class="card" href="gallery/index.html"><b>The research log</b>
 <span>Every experiment ever run, failures included: pre-registered
@@ -4194,7 +4206,7 @@ agent itself before training, in one shared visual language — frozen
 endpoints aligned so you can scroll and compare designs directly.</span></a>
 </div>
 
-{rsec(6, "Proven alternatives", "GPS-denied localisation is not unsolved &mdash; this just walks a different road.")}
+{rsec(7, "Proven alternatives", "GPS-denied localisation is not unsolved &mdash; this just walks a different road.")}
 <div class="pnote">
 <p>GPS-denied visual localization is not an unsolved problem. The
 established, field-tested family matches live camera frames against
