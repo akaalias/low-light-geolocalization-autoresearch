@@ -171,7 +171,10 @@ train.
 designs · `gallery/research-lineage.html` experiment lineage ·
 `gallery/research-evolution.html` how the research process itself branched
 (reconstructed from conversation transcripts) · `gallery/lab-notebook.html`
-dated narrative · `index.html` overview. `./infra/build_site.sh` refreshes the
+dated narrative · `gallery/flight-path.html` the flight-simulator test
+(rendered by `sim/render_flightpath.py` from `sim/out/`, not from the
+experiment DBs; its images live in `assets/sim/`, plain git, no LFS) ·
+`index.html` overview. `./infra/build_site.sh` refreshes the
 `_site/` preview copy, which does **not** update on its own.
 
 All five pages now span **every era**, driven by `lineage_history.sqlite`, and

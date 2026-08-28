@@ -22,6 +22,7 @@ metric. Full context: `CLAUDE.md`.
 | `runs/` | generated | per-experiment artifacts (models, metrics, heatmaps, samples) |
 | `experiments.sqlite` | generated | full experiment lineage: hypothesis, method, expected outcome, result, conclusion, all metrics |
 | `gallery/` | generated | self-refreshing pages: research log (`index.html`, samples + error heatmaps) and proposed inference paths (`inference-paths.html`, every experiment's pre-registered architecture figure) |
+| `sim/` | tool, not frozen | virtual UAV flight simulator (`flightsim.py`) — flies the exported champion from a to b with its fixes as the only position source — and the flight-path page renderer (`render_flightpath.py`). Reads the frozen pipeline, never modifies it |
 
 ## Quickstart (already proven end-to-end by the bootstrap run)
 
@@ -99,6 +100,35 @@ The rule that came out of that period and still holds: **one git writer,
 always.** The laptop commits; a remote may only train and hand back
 artifacts. Two writers on one branch was the root cause of the whole
 mess, not the provider.
+
+## Flight test (`sim/`) — does the champion actually get a UAV from a to b?
+
+A virtual-UAV flight simulator closes the loop on the mission score's own
+premise (§2: the vision fix is the only drift correction). A point-mass
+fixed-wing flies through wind, gusts and gyro bias its navigator cannot see;
+every fix interval the sim crops the reference raster at the aircraft's
+**true** pose, runs the exported champion ONNX, and hands the answer to a
+dead-reckoning navigator that accepts false fixes like any other. Arrival is
+declared on the navigator's estimate and scored against the truth. Honesty
+rules are documented at the top of `sim/flightsim.py`; the known best-case
+caveats (camera = the memorized reference imagery; fixed 1 m/px altitude) are
+stated on the results page rather than hidden.
+
+Headline (100 flights, seed 1): **91/100 arrive within 100 m**, median
+declared miss 45 m; the dead-reckoning control arrives 0/100. All three
+catastrophic failures had targets on the never-trained region-holdout
+diagnostic ground — an artifact of simulating over the research
+configuration, reported as flown. Results are rendered as the
+`gallery/flight-path.html` page (replay, estimation-error sawtooth,
+100-flight record).
+
+```bash
+.venv/bin/python -m sim.flightsim --seed 6 --start 350,350 --target 6800,6600 \
+    --save-crops --out sim/out/showcase.json      # the page's showcase flight
+.venv/bin/python -m sim.flightsim --flights 100 --seed 1 --out sim/out/mc.json
+.venv/bin/python -m sim.flightsim --flights 100 --seed 1 --no-vision --out sim/out/mc_dr.json
+.venv/bin/python -m sim.render_flightpath         # rebuild the page from sim/out/
+```
 
 ## Reference imagery (pipeline data v2) & licensing
 
