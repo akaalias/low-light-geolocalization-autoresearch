@@ -163,7 +163,8 @@ def main():
 .fp-map svg{{display:block;width:100%;height:auto;border:1px solid var(--rule)}}
 .fp-side{{flex:0 0 240px;position:sticky;top:14px}}
 .fp-cam{{border:1px solid var(--rule);background:#f7f4e6;padding:10px}}
-.fp-cam img{{width:100%;image-rendering:auto;display:block;border:1px solid var(--rule-soft)}}
+.fp-cam img{{width:100%;height:auto;aspect-ratio:1/1;image-rendering:auto;
+  display:block;border:1px solid var(--rule-soft)}}
 .fp-cam .cam-h{{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 7px}}
 .fp-cam .cam-out{{margin:8px 0 0;font:14px/1.5 var(--serif)}}
@@ -415,21 +416,24 @@ const estHalo=halo('',4.5), estLine=el('polyline',{fill:'none',stroke:OCHRE,'str
 const trueHalo=halo('',5), trueLine=el('polyline',{fill:'none',stroke:INK,'stroke-width':2.4,'vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
 const fixG=el('g',{},g);
 // start / target markers — must be findable at a glance
-const HALO_STYLE='paint-order:stroke;stroke:#fffff8;stroke-width:14px;stroke-linejoin:round';
+const HALO_STYLE='paint-order:stroke;stroke:#fffff8;stroke-width:20px;stroke-linejoin:round';
 const lab=(x,y,t,size,italic)=>{const e=el('text',{x:x,y:y,'font-size':size,
   'font-family':'Palatino,Georgia,serif','font-style':italic?'italic':'normal',
   'font-weight':italic?'400':'600',fill:INK,'text-anchor':'middle',
   style:HALO_STYLE+(italic?'':';letter-spacing:.08em')},g);e.textContent=t;return e};
 const endpoint=(x,y,color,letter,word,dx,dy)=>{
-  el('circle',{cx:x,cy:y,r:110,fill:'none',stroke:color,'stroke-width':22},g);
-  el('circle',{cx:x,cy:y,r:52,fill:color,stroke:PAPER,'stroke-width':18},g);
-  lab(x+dx,y+dy,letter,340,true);
-  lab(x+dx,y+dy+170,word,140,false);
+  el('circle',{cx:x,cy:y,r:320,fill:PAPER,'fill-opacity':.3},g);   // spotlight
+  const pulse=el('circle',{cx:x,cy:y,r:140,fill:'none',stroke:color,'stroke-width':18,opacity:.75},g);
+  el('animate',{attributeName:'r',values:'140;330',dur:'2.6s',repeatCount:'indefinite'},pulse);
+  el('animate',{attributeName:'opacity',values:'.75;0',dur:'2.6s',repeatCount:'indefinite'},pulse);
+  el('circle',{cx:x,cy:y,r:150,fill:'none',stroke:color,'stroke-width':30},g);
+  el('circle',{cx:x,cy:y,r:64,fill:color,stroke:PAPER,'stroke-width':26},g);
+  lab(x+dx,y+dy,word,200,false);
 };
-endpoint(F.start_px[0],F.start_px[1],INK,'a','START',330,-140);
-endpoint(F.target_px[0],F.target_px[1],ACCENT,'b','TARGET',-380,-220);
+endpoint(F.start_px[0],F.start_px[1],INK,'a','START',560,80);
+endpoint(F.target_px[0],F.target_px[1],ACCENT,'b','TARGET',-560,-240);
 // aircraft marker
-const ac=el('polygon',{points:'0,-160 95,130 0,70 -95,130',fill:INK,stroke:PAPER,'stroke-width':30},g);
+const ac=el('polygon',{points:'0,-160 95,130 0,70 -95,130',fill:INK,stroke:PAPER,'stroke-width':34},g);
 
 const fixMark=(fx,i)=>{
   const [x,y]=fx.true;let m;
@@ -475,7 +479,7 @@ function render(t){
   estHalo.setAttribute('points',estPts.slice(0,i+1).join(' '));
   const p=T[i], q=T[Math.max(0,i-1)];
   const angle=Math.atan2(p[1]-q[1],-(p[2]-q[2]))*180/Math.PI;
-  ac.setAttribute('transform',`translate(${p[1]},${p[2]}) rotate(${angle}) scale(0.55)`);
+  ac.setAttribute('transform',`translate(${p[1]},${p[2]}) rotate(${angle}) scale(0.95)`);
   // fixes reached so far
   fixG.replaceChildren();
   let last=null,counts={usable:0,abstain:0,false_fix:0};
