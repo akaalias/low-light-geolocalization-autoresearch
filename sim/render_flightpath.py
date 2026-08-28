@@ -249,26 +249,19 @@ frozen scorer&rsquo;s own thresholds.</p>
 {rsec(1, "One flight, replayed",
       "Corner to corner — 9.2 km in ten minutes, seven false fixes survived, arrival at 25.5 m.")}
 <div class="fp-note">
-<p>The scenario: take off in the <b>north-west corner</b> of the mapped box
-and reach a target in its <b>south-east corner</b>, 9 km away. At
-<b>t&thinsp;=&thinsp;85&thinsp;s</b> the dangerous case: a
-<b style="color:var(--accent)">false fix</b>, barely over the confidence
-threshold, claims the aircraft is <b>6.5 km away</b> from where it really is
-(the thin red line points to the claimed position, marked
-<span style="color:var(--accent)">&times;</span>) &mdash; and because the
-estimate was already stale, the navigator swallows it almost whole. Watch
-the dashed believed path leap across the city while the true path barely
-bends, then get hauled back fix by fix. On final approach the south-east
-corner produces a late burst of smaller false fixes; by then the estimate
-is fresh, so each one is blended in at low weight and does little harm.
-The flight ends <b>25.5 m</b> from the target.</p>
-<p style="font-size:13px;color:var(--muted)">Chosen for illustration
-(seed 6, disclosed): of six seeds flown on this route, three others
-overshot the corner target out of the mapped box and were lost &mdash; a
-target this close to the edge of the model&rsquo;s world is genuinely
-harder, because beyond the boundary there is no imagery and therefore no
-way back. The 100-flight record below uses random routes, failures
-included.</p></div>
+<p>North-west corner to south-east corner, 9 km. At
+<b>t&thinsp;=&thinsp;85&thinsp;s</b> a
+<b style="color:var(--accent)">false fix</b> &mdash; barely confident,
+<b>6.5 km wrong</b> (the red line points to its claim, marked
+<span style="color:var(--accent)">&times;</span>) &mdash; yanks the dashed
+believed path across the city while the true path barely bends; usable
+fixes haul it back. A late burst of false fixes on final approach does
+little harm: by then the estimate is fresh, so wrong answers get little
+weight. The flight lands <b>25.5 m</b> from the target.</p>
+<p style="font-size:13px;color:var(--muted)">Seed 6, disclosed: three of
+six seeds on this route overshot the corner out of the mapped box and were
+lost &mdash; beyond the edge there is no imagery and no way back. The
+100-flight record below uses random routes, failures included.</p></div>
 
 <div class="fp-legend">
 <span><i class="k-true"></i>true path</span>
@@ -601,6 +594,14 @@ function tip(e,html){tipEl.innerHTML=html;tipEl.style.display='block';
 function hideTip(){tipEl.style.display='none';}
 
 render(0);
+// autostart the replay the first time the map comes into view
+const io=new IntersectionObserver(es=>{
+  if(es.some(e=>e.isIntersecting)&&!playing&&cur===0){
+    playing=true;lastTs=0;playBtn.textContent='Pause';requestAnimationFrame(tick);
+    io.disconnect();
+  }
+},{threshold:0.45});
+io.observe(document.getElementById('map'));
 """
 
 
