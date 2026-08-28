@@ -4030,17 +4030,6 @@ one function: <i>estimate_position(frame) &rarr; (lat, lon,
 confidence)</i></span>
 </div>
 
-<div class="bl-h">What we tried</div>
-<p class="bottom-line">We tried: ImageNet-pretrained backbones, separate day
-and night specialists behind a dispatcher, contrastive pretraining on the
-imagery itself, retrieval against a stored fingerprint of the city, dense
-per-patch coordinate voting, learned relighting, calibrated abstention, and
-more.</p>
-
-<p class="bottom-line">Our first 76 experiments failed. Hard. The flaw was
-the harness itself; fixing it unlocked the &lsquo;memory-in-weights&rsquo;
-architecture.</p>
-
 {flight_html}
 
 {rsec(2, "The question", "One frame, no map, no internet &mdash; and it has to know when it doesn&rsquo;t know.")}
