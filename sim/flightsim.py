@@ -237,6 +237,10 @@ def main():
                     help="dead-reckoning-only control: no fixes taken at all")
     ap.add_argument("--start", help="fixed start 'x,y' raster px (default: random)")
     ap.add_argument("--target", help="fixed target 'x,y' raster px (default: random)")
+    ap.add_argument("--flight-dir", type=Path,
+                    help="also write each flight's FULL record (track included) "
+                         "as <dir>/f<id>.json before the compact multi-flight "
+                         "stripping is applied")
     ap.add_argument("--save-crops", action="store_true",
                     help="save each fix's camera crop next to the output JSON")
     ap.add_argument("--out", type=Path, required=True)
@@ -262,6 +266,10 @@ def main():
         f = simulate_flight(sess, img, meta, start, target, rng,
                             vision=not args.no_vision, save_crops_dir=crops_dir)
         f["flight_id"] = i
+        if args.flight_dir:
+            args.flight_dir.mkdir(parents=True, exist_ok=True)
+            with open(args.flight_dir / f"f{i}.json", "w") as fh:
+                json.dump(f, fh)
         if args.flights > 1:      # keep Monte Carlo output small
             f.pop("track")
             f["fixes"] = [{k: v for k, v in fx.items() if k != "crop"}

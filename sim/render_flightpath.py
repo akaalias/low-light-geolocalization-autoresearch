@@ -45,6 +45,7 @@ FP_CSS = """
 .k-usable{width:9px;height:9px;border-radius:50%;background:var(--ink)}
 .k-abstain{width:9px;height:9px;border-radius:50%;border:1.6px solid var(--faint);background:transparent}
 .k-false{width:9px;height:9px;border-radius:50%;border:2px solid var(--accent);background:transparent}
+.k-offmap{width:9px;height:9px;border:1.6px dashed var(--faint);background:transparent}
 .fp-stage{display:flex;gap:22px;align-items:flex-start;margin-top:12px}
 .fp-map{flex:1 1 640px;min-width:0;position:relative}
 .fp-map svg{display:block;width:100%;height:auto;border:1px solid var(--rule)}
@@ -62,7 +63,8 @@ FP_CSS = """
 .fp-read{margin-top:12px;font:13px/1.7 var(--serif);color:var(--muted)}
 .fp-read b{color:var(--ink);font-variant-numeric:lining-nums tabular-nums}
 .fp-controls{display:flex;gap:12px;align-items:center;margin:12px 0 0;
-  font:13px var(--serif);color:var(--muted)}
+  font:13px var(--serif);color:var(--muted);flex-wrap:wrap}
+.fp-controls #flightsel{max-width:46%}
 .fp-controls button{font:600 12px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.07em;color:var(--paper);
   background:var(--ink);border:none;padding:7px 16px;cursor:pointer}
@@ -158,6 +160,59 @@ def build_crops(fixes):
     return names
 
 
+MC_FLIGHTS_SRC = REPO_ROOT / "sim" / "out" / "mc_flights"
+
+
+def build_flight_assets():
+    """Slim the full per-flight Monte-Carlo records (sim/out/mc_flights/,
+    local-only — reproducible from seed 1, so not committed) into the
+    committed assets/sim/flights/ the page fetches on flight selection.
+    Track thinned to whole seconds, everything else kept verbatim. CI-safe:
+    without the source dir the committed assets are reused, same pattern as
+    the basemap."""
+    dst = ASSETS / "flights"
+    dst.mkdir(parents=True, exist_ok=True)
+    if not MC_FLIGHTS_SRC.exists():
+        if not any(dst.glob("f*.json")):
+            raise SystemExit(f"neither {MC_FLIGHTS_SRC} nor committed {dst}/f*.json exists")
+        return
+    for p in sorted(MC_FLIGHTS_SRC.glob("f*.json")):
+        f = json.loads(p.read_text())
+        slim = {k: f[k] for k in
+                ("flight_id", "start_px", "target_px", "direct_m", "flight_s",
+                 "wind", "result", "declared_miss_m", "final_true_dist_m",
+                 "fix_counts", "fixes")}
+        # Thin to ~1 s by INDEX (recorded cadence is 0.5 s), never by matching
+        # timestamps: the sim clock accumulates 0.1 s floats, so sample times
+        # phase-shift (x.0 -> x.1) mid-flight and a whole-second filter would
+        # silently truncate the track there. Always keep the final point.
+        slim["track"] = f["track"][::2]
+        if slim["track"][-1] is not f["track"][-1]:
+            slim["track"].append(f["track"][-1])
+        (dst / p.name).write_text(json.dumps(slim, separators=(",", ":")))
+
+
+def flight_selector_html():
+    """<select> over the showcase + all 100 Monte-Carlo flights, grouped by
+    outcome, labels carrying the true miss so failures are browsable too."""
+    rows = mc_compact(json.loads(MC.read_text()))
+    def opt(r):
+        return (f"<option value='{r['id']}'>flight {r['id']} &middot; "
+                f"{'timed out' if r['result'] == 'timeout' else 'lands'} "
+                f"{r['miss']:,.0f} m out &middot; {r['ff']} false</option>")
+    groups = (
+        ("arrived within 100 m", [r for r in rows if r["within"]]),
+        ("missed beyond 100 m", [r for r in rows if not r["within"] and r["result"] != "timeout"]),
+        ("timed out", [r for r in rows if r["result"] == "timeout"]),
+    )
+    body = "".join(
+        f"<optgroup label='{label} ({len(rs)})'>" + "".join(opt(r) for r in rs) + "</optgroup>"
+        for label, rs in groups if rs)
+    return ("<select id='flightsel' aria-label='choose a flight to replay'>"
+            "<option value='showcase' selected>showcase &middot; corner to corner "
+            "&middot; lands 25.5 m out</option>" + body + "</select>")
+
+
 def mc_compact(mc):
     """Per-flight rows for the dot strip + failure table, holdout attribution."""
     half = WINDOW_PX // 2 + 1
@@ -198,6 +253,7 @@ def flight_section(rel, record_note, n=1):
     meta_w, meta_h = 6939, 6828  # berlin raster (data/berlin/meta.json)
     data = {
         "w": meta_w, "h": meta_h,
+        "label": "showcase &middot; lands 25.5 m out",
         "flight": {k: showcase[k] for k in
                    ("start_px", "target_px", "direct_m", "flight_s", "wind",
                     "declared_miss_m", "fix_counts", "fixes", "track")},
@@ -227,6 +283,7 @@ lost &mdash; beyond the edge there is no imagery and no way back.
 <span><i class="k-abstain"></i>abstention</span>
 <span><i class="k-false"></i>false fix</span>
 <span><i style="color:var(--accent);font-weight:700">&times;</i>where the false fix claimed to be</span>
+<span><i class="k-offmap"></i>off the mapped box &mdash; no imagery, no fix</span>
 </div>
 
 <div class="fp-stage">
@@ -237,12 +294,13 @@ lost &mdash; beyond the edge there is no imagery and no way back.
 <g id="mapg"></g>
 </svg>
 <div class="fp-controls">
+{flight_selector_html()}
 <button id="play">Play</button>
 <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="flight time">
 <span class="t-read num" id="tread">0.0 s</span>
 <select id="speed" aria-label="replay speed">
 <option value="4">4&times;</option><option value="10" selected>10&times;</option>
-<option value="25">25&times;</option></select>
+<option value="25">25&times;</option><option value="50">50&times;</option></select>
 </div>
 </div>
 <div class="fp-side">
@@ -267,6 +325,7 @@ def main():
 
     build_basemap(meta_w, meta_h)
     build_crops(showcase["fixes"])
+    build_flight_assets()
 
     rows = mc_compact(mc)
     s = mc["summary"]
@@ -422,27 +481,20 @@ def replay_js(data_json, rel_json):
     return "(()=>{const D=" + data_json + ";const REL=" + rel_json + ";" + r"""
 const NS='http://www.w3.org/2000/svg';
 const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e};
-const F=D.flight, T=F.track, dur=T[T.length-1][0];
 const INK='#111111', OCHRE='#8a6a1e', ACCENT='#8c2f1f', FAINT='#9b998c', PAPER='#fffff8', MUTED='#6b6a60', RULE='#d9d5c3';
-const tickHooks=[];
 
-/* ---------- map ---------- */
+/* ---------- map (rebuilt per flight by initFlight) ---------- */
 const g=document.getElementById('mapg');
-const halo=(pts,w)=>el('polyline',{points:pts,fill:'none',stroke:PAPER,'stroke-width':w,'stroke-opacity':.75,'vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
-// 100 m arrival ring + endpoints
-el('circle',{cx:F.target_px[0],cy:F.target_px[1],r:100,fill:'none',stroke:INK,'stroke-dasharray':'4 4','vector-effect':'non-scaling-stroke','stroke-width':1.3},g);
-const truePts=T.map(p=>p[1]+','+p[2]), estPts=T.map(p=>p[3]+','+p[4]);
-halo('',''); // placeholder keeps z-order stable
-const estHalo=halo('',4.5), estLine=el('polyline',{fill:'none',stroke:OCHRE,'stroke-width':2.2,'stroke-dasharray':'6 5','vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
-const trueHalo=halo('',5), trueLine=el('polyline',{fill:'none',stroke:INK,'stroke-width':2.4,'vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
-const fixG=el('g',{},g);
+const halo=w=>el('polyline',{fill:'none',stroke:PAPER,'stroke-width':w,'stroke-opacity':.75,'vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
+let F,T,dur,truePts,estPts,trueLine,trueHalo,estLine,estHalo,fixG,ac,hasCrops,flightLabel;
+const flightHooks=[];
 // start / target markers — must be findable at a glance
 const HALO_STYLE='paint-order:stroke;stroke:#fffff8;stroke-width:20px;stroke-linejoin:round';
 const lab=(x,y,t,size,italic)=>{const e=el('text',{x:x,y:y,'font-size':size,
   'font-family':'Palatino,Georgia,serif','font-style':italic?'italic':'normal',
   'font-weight':italic?'400':'600',fill:INK,'text-anchor':'middle',
   style:HALO_STYLE+(italic?'':';letter-spacing:.08em')},g);e.textContent=t;return e};
-const endpoint=(x,y,color,letter,word,dx,dy)=>{
+const endpoint=(x,y,color,word,dx,dy)=>{
   el('circle',{cx:x,cy:y,r:320,fill:PAPER,'fill-opacity':.3},g);   // spotlight
   const pulse=el('circle',{cx:x,cy:y,r:140,fill:'none',stroke:color,'stroke-width':18,opacity:.75},g);
   el('animate',{attributeName:'r',values:'140;330',dur:'2.6s',repeatCount:'indefinite'},pulse);
@@ -451,15 +503,43 @@ const endpoint=(x,y,color,letter,word,dx,dy)=>{
   el('circle',{cx:x,cy:y,r:64,fill:color,stroke:PAPER,'stroke-width':26},g);
   lab(x+dx,y+dy,word,200,false);
 };
-endpoint(F.start_px[0],F.start_px[1],INK,'a','START',560,80);
-endpoint(F.target_px[0],F.target_px[1],ACCENT,'b','TARGET',-560,-240);
-// aircraft marker
-const ac=el('polygon',{points:'0,-160 95,130 0,70 -95,130',fill:INK,stroke:PAPER,'stroke-width':34},g);
+
+function initFlight(f,label){
+  F=f;T=f.track;dur=T[T.length-1][0];
+  flightLabel=label;
+  hasCrops=F.fixes.some(x=>x.crop);
+  playing=false;playBtn.textContent='Play';cur=0;lastTs=0;
+  g.replaceChildren();
+  el('circle',{cx:F.target_px[0],cy:F.target_px[1],r:100,fill:'none',stroke:INK,'stroke-dasharray':'4 4','vector-effect':'non-scaling-stroke','stroke-width':1.3},g);
+  truePts=T.map(p=>p[1]+','+p[2]); estPts=T.map(p=>p[3]+','+p[4]);
+  estHalo=halo(4.5); estLine=el('polyline',{fill:'none',stroke:OCHRE,'stroke-width':2.2,'stroke-dasharray':'6 5','vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
+  trueHalo=halo(5); trueLine=el('polyline',{fill:'none',stroke:INK,'stroke-width':2.4,'vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
+  fixG=el('g',{},g);
+  endpoint(F.start_px[0],F.start_px[1],INK,'START',560,80);
+  endpoint(F.target_px[0],F.target_px[1],ACCENT,'TARGET',-560,-240);
+  ac=el('polygon',{points:'0,-160 95,130 0,70 -95,130',fill:INK,stroke:PAPER,'stroke-width':34},g);
+  cam.style.display=hasCrops?'':'none';
+  camsub.innerHTML=hasCrops?'128&thinsp;&times;&thinsp;128 px &middot; 1 m/px &middot; ~100 m AGL'
+    :'camera frames are archived only for the showcase flight';
+  flightHooks.forEach(h=>h(F));
+  render(0);
+}
+
+async function loadFlight(val){
+  if(flightSel)flightSel.value=String(val);
+  if(val==='showcase'){initFlight(D.flight,D.label);startPlay();return;}
+  const f=await fetch(REL+'assets/sim/flights/f'+val+'.json').then(r=>r.json());
+  const miss=f.result==='arrived'?f.declared_miss_m:f.final_true_dist_m;
+  initFlight(f,'flight '+f.flight_id+' &middot; '+(f.result==='timeout'?'timed out':'declared arrival')+' '+fmt(miss)+' from target');
+  startPlay();
+}
+function startPlay(){playing=true;lastTs=0;playBtn.textContent='Pause';requestAnimationFrame(tick);}
 
 const fixMark=(fx,i)=>{
   const [x,y]=fx.true;let m;
   if(fx.outcome==='usable') m=el('circle',{cx:x,cy:y,r:28,fill:INK,stroke:PAPER,'stroke-width':10},fixG);
   else if(fx.outcome==='abstain') m=el('circle',{cx:x,cy:y,r:30,fill:PAPER,'fill-opacity':.5,stroke:FAINT,'stroke-width':14},fixG);
+  else if(fx.outcome==='off_map') m=el('rect',{x:x-30,y:y-30,width:60,height:60,fill:'none',stroke:FAINT,'stroke-width':12,'stroke-dasharray':'22 14'},fixG);
   else{ // false fix: ring at true pos + thin line to an x at the claimed position
     const px=fx.pred[0],py=fx.pred[1],s=52;
     el('line',{x1:x,y1:y,x2:px,y2:py,stroke:ACCENT,'stroke-width':1.2,'stroke-dasharray':'3 3','vector-effect':'non-scaling-stroke'},fixG);
@@ -489,7 +569,8 @@ let cur=0, playing=false, lastTs=0;
 const scrub=document.getElementById('scrub'), tread=document.getElementById('tread'),
       playBtn=document.getElementById('play'), speedSel=document.getElementById('speed'),
       cam=document.getElementById('cam'), camout=document.getElementById('camout'),
-      read=document.getElementById('read');
+      camsub=document.getElementById('camsub'), read=document.getElementById('read'),
+      flightSel=document.getElementById('flightsel');
 const idxAt=t=>{let lo=0,hi=T.length-1;while(lo<hi){const m=(lo+hi+1>>1);if(T[m][0]<=t)lo=m;else hi=m-1;}return lo;};
 function render(t){
   cur=Math.max(0,Math.min(dur,t));
@@ -508,18 +589,19 @@ function render(t){
   if(last){
     const [fx,j]=last;
     if(fx.crop)cam.src=REL+'assets/sim/crops/'+fx.crop;
-    const oCls=fx.outcome, oTxt={usable:'usable fix',abstain:'abstained — not confident',false_fix:'false fix — confidently wrong'}[oCls];
+    const oCls=fx.outcome, oTxt={usable:'usable fix',abstain:'abstained — not confident',false_fix:'false fix — confidently wrong',off_map:'off the mapped box — no image'}[oCls];
     camout.innerHTML=`t = ${fx.t.toFixed(0)} s · <b class="${oCls}">${oTxt}</b>`+
       (fx.err_m!==undefined&&fx.outcome!=='abstain'?`<br><span style="color:${MUTED}">model's answer was ${fmt(fx.err_m)} from the truth</span>`:'');
   } else { camout.innerHTML='&mdash; no fix yet'; }
   const err=Math.hypot(p[1]-p[3],p[2]-p[4]);
   const dist=Math.hypot(F.target_px[0]-p[1],F.target_px[1]-p[2]);
-  read.innerHTML=`estimate is <b>${fmt(err)}</b> from the truth<br>`+
+  read.innerHTML=`<span style="color:#111111;font-weight:600">${flightLabel}</span><br>`+
+    `estimate is <b>${fmt(err)}</b> from the truth<br>`+
     `<b>${fmt(dist)}</b> to the target (true)<br>`+
     `fixes so far: <b>${counts.usable}</b> usable · <b>${counts.abstain}</b> abstained · <b>${counts.false_fix}</b> false`;
   scrub.value=Math.round(1000*cur/dur);
   tread.textContent=cur.toFixed(1)+' s';
-  tickHooks.forEach(f=>f(cur));
+  if(window.FP&&window.FP.onTick)window.FP.onTick(cur);
 }
 function tick(ts){
   if(!playing)return;
@@ -531,8 +613,9 @@ function tick(ts){
 playBtn.addEventListener('click',()=>{
   if(playing){playing=false;playBtn.textContent='Play';return;}
   if(cur>=dur)cur=0;
-  playing=true;lastTs=0;playBtn.textContent='Pause';requestAnimationFrame(tick);
+  startPlay();
 });
+if(flightSel)flightSel.addEventListener('change',e=>loadFlight(e.target.value));
 scrub.addEventListener('input',()=>{playing=false;playBtn.textContent='Play';render(+scrub.value/1000*dur);});
 const seek=t=>{playing=false;playBtn.textContent='Play';render(t);};
 
@@ -544,17 +627,17 @@ function tip(e,html){tipEl.innerHTML=html;tipEl.style.display='block';
   tipEl.style.top=(e.clientY+16)+'px';}
 function hideTip(){tipEl.style.display='none';}
 
-render(0);
+window.FP={el,fmt,tip,hideTip,seek,loadFlight,flightHooks,flight:()=>F,onTick:null,
+           INK,OCHRE,ACCENT,FAINT,PAPER,MUTED,RULE};
+initFlight(D.flight,D.label);
 // autostart the replay the first time the map comes into view
 const io=new IntersectionObserver(es=>{
   if(es.some(e=>e.isIntersecting)&&!playing&&cur===0){
-    playing=true;lastTs=0;playBtn.textContent='Pause';requestAnimationFrame(tick);
+    startPlay();
     io.disconnect();
   }
 },{threshold:0.45});
 io.observe(document.getElementById('map'));
-window.FP={el,T,F,dur,idxAt,fmt,tip,hideTip,seek,tickHooks,
-           INK,OCHRE,ACCENT,FAINT,PAPER,MUTED,RULE};
 })();"""
 
 
@@ -563,15 +646,19 @@ def charts_js(rows_json):
     IIFE-wrapped like replay_js; everything shared comes in through the
     window.FP handle that script exports."""
     return ("(()=>{const MCROWS=" + rows_json + ";"
-            "const {el,T,F,dur,idxAt,fmt,tip,hideTip,seek,tickHooks,"
+            "const {el,fmt,tip,hideTip,seek,loadFlight,flightHooks,flight,"
             "INK,OCHRE,ACCENT,FAINT,PAPER,MUTED,RULE}=window.FP;" + r"""
-/* ---------- sawtooth: estimation error over time ---------- */
+/* ---------- sawtooth: estimation error over time (rebuilt per flight) ---------- */
+function buildSaw(F){
+const T=F.track, dur=T[T.length-1][0];
+const idxAt=t=>{let lo=0,hi=T.length-1;while(lo<hi){const m=(lo+hi+1>>1);if(T[m][0]<=t)lo=m;else hi=m-1;}return lo;};
 const CW=900, CH=290, ML=52, MR=14, MT=26, MB=34;
-const errAt0=i=>Math.hypot(T[i][1]-T[i][3],T[i][2]-T[i][4]);
-const EMAX=Math.max(...T.map((_,i)=>errAt0(i)))*1.04;
+const errAt=i=>Math.hypot(T[i][1]-T[i][3],T[i][2]-T[i][4]);
+const EMAX=Math.max(...T.map((_,i)=>errAt(i)))*1.04;
 const sq=v=>Math.sqrt(Math.min(v,EMAX)/EMAX);
 const X=t=>ML+(CW-ML-MR)*t/dur, Y=v=>MT+(CH-MT-MB)*(1-sq(v));
-const chart=el('svg',{viewBox:`0 0 ${CW} ${CH}`,role:'img','aria-label':'estimation error over time'},document.getElementById('chartbox'));
+const box=document.getElementById('chartbox'); box.replaceChildren();
+const chart=el('svg',{viewBox:`0 0 ${CW} ${CH}`,role:'img','aria-label':'estimation error over time'},box);
 const gl=[[10,'10'],[50,'50'],[100,'100 m'],[500,'500'],[2000,'2 km'],[5000,'5 km']]
   .filter(([v])=>v<=EMAX);
 gl.forEach(([v,l])=>{
@@ -584,20 +671,19 @@ Array.from({length:Math.floor(dur/tstep)+1},(_,k)=>k*tstep).forEach(tv=>{
   el('line',{x1:X(tv),x2:X(tv),y1:CH-MB,y2:CH-MB+4,stroke:MUTED,'stroke-width':1},chart);
   const tx=el('text',{x:X(tv),y:CH-MB+17,'text-anchor':'middle','font-size':11.5,fill:MUTED,'font-family':'Palatino,Georgia,serif'},chart);tx.textContent=tv+' s';
 });
-const errAt=errAt0;
 const errPts=T.map((p,i)=>X(p[0])+','+Y(errAt(i))).join(' ');
 el('polyline',{points:errPts,fill:'none',stroke:INK,'stroke-width':1.8,'stroke-linejoin':'round'},chart);
 // fix ticks along the top
-F.fixes.forEach((fx,i)=>{
+F.fixes.forEach(fx=>{
   const x=X(fx.t);
   if(fx.outcome==='usable')el('line',{x1:x,x2:x,y1:MT-14,y2:MT-4,stroke:INK,'stroke-width':1.6},chart);
   else if(fx.outcome==='abstain')el('circle',{cx:x,cy:MT-9,r:3,fill:'none',stroke:FAINT,'stroke-width':1.4},chart);
-  else el('circle',{cx:x,cy:MT-9,r:4,fill:'none',stroke:ACCENT,'stroke-width':2},chart);
+  else if(fx.outcome==='false_fix')el('circle',{cx:x,cy:MT-9,r:4,fill:'none',stroke:ACCENT,'stroke-width':2},chart);
 });
 const tl=el('text',{x:ML,y:12,'font-size':11,fill:MUTED,'font-family':'Palatino,Georgia,serif'},chart);
 tl.textContent='fixes:  | usable   ○ abstained   ○ false';
 const cursor=el('line',{x1:X(0),x2:X(0),y1:MT,y2:CH-MB,stroke:ACCENT,'stroke-width':1,'stroke-opacity':.7},chart);
-tickHooks.push(t=>{cursor.setAttribute('x1',X(t));cursor.setAttribute('x2',X(t));});
+window.FP.onTick=t=>{cursor.setAttribute('x1',X(t));cursor.setAttribute('x2',X(t));};
 // hover: nearest point + seek on click
 const hitRect=el('rect',{x:ML,y:MT,width:CW-ML-MR,height:CH-MT-MB,fill:'transparent'},chart);
 hitRect.style.cursor='crosshair';
@@ -611,6 +697,9 @@ hitRect.addEventListener('click',e=>{
   const r=chart.getBoundingClientRect(), t=(e.clientX-r.left)/r.width*CW;
   seek(Math.max(0,Math.min(dur,(t-ML)/(CW-ML-MR)*dur)));
 });
+}
+buildSaw(flight());
+flightHooks.push(buildSaw);
 
 /* ---------- Monte Carlo dot strip ---------- */
 const MW=900, MH=210, MML=16, MMR=16, MMT=40, MMB=40;
@@ -636,11 +725,15 @@ MCROWS.slice().sort((a,b)=>a.miss-b.miss).forEach(r=>{
   else if(r.within)m=el('circle',{...a,fill:INK,stroke:PAPER,'stroke-width':1},mc);
   else m=el('circle',{...a,fill:'none',stroke:ACCENT,'stroke-width':2},mc);
   const hit=el('circle',{cx:x,cy:y,r:9,fill:'transparent'},mc);
+  hit.style.cursor='pointer';
   hit.addEventListener('mousemove',e=>tip(e,
     `<div class="tt-h">flight ${r.id} — ${r.result==='timeout'?'timed out':'declared arrival'}</div>`+
     `<div class="tt-m">true miss ${fmt(r.miss)} · ${r.u} usable · ${r.a} abstained · ${r.ff} false`+
-    (r.ff_hold?` (${r.ff_hold} on never-trained ground)`:'')+`</div>`));
+    (r.ff_hold?` (${r.ff_hold} on never-trained ground)`:'')+
+    `</div><div class="tt-m" style="font-style:italic">click to replay this flight</div>`));
   hit.addEventListener('mouseleave',hideTip);
+  hit.addEventListener('click',()=>{hideTip();loadFlight(String(r.id));
+    document.getElementById('map').scrollIntoView({behavior:'smooth',block:'center'});});
 });
 })();""")
 

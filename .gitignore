@@ -17,3 +17,7 @@ render_cache/
 # scratch (100-144 MB training renders once slipped in via `git add -A
 # state/` and broke every push for ~10 h, 2026-07-23). Keep them untracked.
 state/quarantine/
+# Full per-flight Monte-Carlo records (0.5 s tracks) — reproducible exactly
+# via `python -m sim.flightsim --flights 100 --seed 1 --flight-dir ...`;
+# the committed, slimmed copies the site fetches live in assets/sim/flights/.
+sim/out/mc_flights/
