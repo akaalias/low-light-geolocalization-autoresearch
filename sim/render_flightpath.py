@@ -51,8 +51,11 @@ FP_CSS = """
 .fp-map svg{display:block;width:100%;height:auto;border:1px solid var(--rule)}
 .fp-side{flex:0 0 240px;position:sticky;top:14px}
 .fp-cam{border:1px solid var(--rule);background:#f7f4e6;padding:10px}
-.fp-cam img{width:100%;height:auto;aspect-ratio:1/1;image-rendering:auto;
-  display:block;border:1px solid var(--rule-soft)}
+/* shown at (near-)native size — stretching the 128 px crops, and especially
+   the 64 px reconstructions, to panel width just reads as blur */
+.fp-cam img,.fp-cam canvas{width:100%;max-width:132px;height:auto;
+  aspect-ratio:1/1;image-rendering:auto;display:block;margin:0 auto;
+  border:1px solid var(--rule-soft)}
 .fp-cam .cam-h{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 7px}
 .fp-cam .cam-out{margin:8px 0 0;font:14px/1.5 var(--serif)}
@@ -327,7 +330,7 @@ lost &mdash; beyond the edge there is no imagery and no way back.
 <div class="fp-cam">
 <p class="cam-h">Bottom camera &mdash; what the model saw</p>
 <img id="cam" src="{rel}assets/sim/crops/{first_crop}" alt="camera crop at the latest fix" width="128" height="128">
-<canvas id="camcv" width="128" height="128" style="display:none;width:100%;aspect-ratio:1/1;border:1px solid var(--rule-soft)"></canvas>
+<canvas id="camcv" width="128" height="128" style="display:none"></canvas>
 <p class="cam-out" id="camout">&mdash;</p>
 <p class="cam-sub" id="camsub">128&thinsp;&times;&thinsp;128 px &middot; 1 m/px &middot; ~100 m AGL</p>
 </div>
