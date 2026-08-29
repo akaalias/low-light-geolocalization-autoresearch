@@ -129,6 +129,10 @@ def build_basemap(meta_w, meta_h):
             raise SystemExit(f"neither {src} nor committed {out} exists")
         return out
     img = Image.open(src).convert("RGB")
+    # Full-color 2 m/px copy for the client-side camera-view reconstruction
+    # (lazy-loaded only when a non-showcase flight is selected).
+    zoom = img.resize((meta_w // 2, meta_h // 2), Image.LANCZOS)
+    zoom.save(ASSETS / "berlin-zoom.jpg", quality=58, optimize=True)
     img = img.resize((BASEMAP_W, round(meta_h * BASEMAP_W / meta_w)), Image.LANCZOS)
     img = ImageEnhance.Color(img).enhance(0.45)
     img = ImageEnhance.Brightness(img).enhance(1.12)
@@ -307,6 +311,7 @@ lost &mdash; beyond the edge there is no imagery and no way back.
 <div class="fp-cam">
 <p class="cam-h">Bottom camera &mdash; what the model saw</p>
 <img id="cam" src="{rel}assets/sim/crops/{first_crop}" alt="camera crop at the latest fix" width="128" height="128">
+<canvas id="camcv" width="128" height="128" style="display:none;width:100%;aspect-ratio:1/1;border:1px solid var(--rule-soft)"></canvas>
 <p class="cam-out" id="camout">&mdash;</p>
 <p class="cam-sub" id="camsub">128&thinsp;&times;&thinsp;128 px &middot; 1 m/px &middot; ~100 m AGL</p>
 </div>
@@ -519,8 +524,10 @@ function initFlight(f,label){
   endpoint(F.target_px[0],F.target_px[1],ACCENT,'TARGET',-560,-240);
   ac=el('polygon',{points:'0,-160 95,130 0,70 -95,130',fill:INK,stroke:PAPER,'stroke-width':34},g);
   cam.style.display=hasCrops?'':'none';
+  camcv.style.display=hasCrops?'none':'';
   camsub.innerHTML=hasCrops?'128&thinsp;&times;&thinsp;128 px &middot; 1 m/px &middot; ~100 m AGL'
-    :'camera frames are archived only for the showcase flight';
+    :'reconstructed view (2 m/px preview) &mdash; original frames are archived only for the showcase flight';
+  if(!hasCrops&&!zoomImg.src)zoomImg.src=REL+'assets/sim/berlin-zoom.jpg';
   flightHooks.forEach(h=>h(F));
   render(0);
 }
@@ -570,7 +577,23 @@ const scrub=document.getElementById('scrub'), tread=document.getElementById('tre
       playBtn=document.getElementById('play'), speedSel=document.getElementById('speed'),
       cam=document.getElementById('cam'), camout=document.getElementById('camout'),
       camsub=document.getElementById('camsub'), read=document.getElementById('read'),
-      flightSel=document.getElementById('flightsel');
+      flightSel=document.getElementById('flightsel'), camcv=document.getElementById('camcv');
+// Camera-view reconstruction for flights whose frames weren't archived:
+// crop the 2 m/px reference raster at the fix's true position, rotated so
+// the aircraft's direction of travel points up — same convention as the
+// real crops (heading approximated from the track, so it omits wind crab).
+const zoomImg=new Image(); let zoomReady=false;
+zoomImg.onload=()=>{zoomReady=true;render(cur);};
+function drawCam(fx){
+  if(!zoomReady){if(!zoomImg.src)zoomImg.src=REL+'assets/sim/berlin-zoom.jpg';return;}
+  const i=idxAt(fx.t), p=T[i], q=T[Math.max(0,i-1)];
+  const psi=Math.atan2(p[1]-q[1],-(p[2]-q[2]));
+  const zs=zoomImg.naturalWidth/D.w, ctx=camcv.getContext('2d');
+  ctx.clearRect(0,0,128,128);ctx.save();
+  ctx.translate(64,64);ctx.rotate(-psi);
+  ctx.drawImage(zoomImg,(fx.true[0]-91)*zs,(fx.true[1]-91)*zs,182*zs,182*zs,-91,-91,182,182);
+  ctx.restore();
+}
 const idxAt=t=>{let lo=0,hi=T.length-1;while(lo<hi){const m=(lo+hi+1>>1);if(T[m][0]<=t)lo=m;else hi=m-1;}return lo;};
 function render(t){
   cur=Math.max(0,Math.min(dur,t));
@@ -589,6 +612,7 @@ function render(t){
   if(last){
     const [fx,j]=last;
     if(fx.crop)cam.src=REL+'assets/sim/crops/'+fx.crop;
+    if(!hasCrops&&fx.outcome!=='off_map')drawCam(fx);
     const oCls=fx.outcome, oTxt={usable:'usable fix',abstain:'abstained — not confident',false_fix:'false fix — confidently wrong',off_map:'off the mapped box — no image'}[oCls];
     camout.innerHTML=`t = ${fx.t.toFixed(0)} s · <b class="${oCls}">${oTxt}</b>`+
       (fx.err_m!==undefined&&fx.outcome!=='abstain'?`<br><span style="color:${MUTED}">model's answer was ${fmt(fx.err_m)} from the truth</span>`:'');
