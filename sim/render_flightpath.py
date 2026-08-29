@@ -49,7 +49,7 @@ FP_CSS = """
 .fp-stage{display:flex;gap:22px;align-items:flex-start;margin-top:12px}
 .fp-map{flex:1 1 640px;min-width:0;position:relative}
 .fp-map svg{display:block;width:100%;height:auto;border:1px solid var(--rule)}
-.fp-side{flex:0 0 240px;position:sticky;top:14px}
+.fp-side{flex:0 0 158px;position:sticky;top:14px}
 .fp-cam{border:1px solid var(--rule);background:#f7f4e6;padding:10px}
 /* shown at (near-)native size — stretching the 128 px crops, and especially
    the 64 px reconstructions, to panel width just reads as blur */
@@ -58,7 +58,7 @@ FP_CSS = """
   border:1px solid var(--rule-soft)}
 .fp-cam .cam-h{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 7px}
-.fp-cam .cam-out{margin:8px 0 0;font:14px/1.5 var(--serif)}
+.fp-cam .cam-out{margin:8px 0 0;font:13px/1.5 var(--serif)}
 .fp-cam .cam-out b.usable{color:var(--ink)}
 .fp-cam .cam-out b.abstain{color:var(--faint)}
 .fp-cam .cam-out b.false_fix{color:var(--accent)}

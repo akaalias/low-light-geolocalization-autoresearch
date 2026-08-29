@@ -192,6 +192,7 @@ a:hover{border-bottom-color:var(--accent)}
 }
 
 .topnav{display:flex;gap:28px;justify-content:center;align-items:baseline;
+  flex-wrap:wrap;row-gap:8px;position:relative;
   border-bottom:1px solid var(--rule);padding:18px 0 12px;margin:0}
 .topnav .brand{font:italic 14px var(--serif);color:var(--faint)}
 /* Halo: mask any line passing behind a label — applies to every inline
@@ -242,6 +243,16 @@ h1.home-h1{margin:28px auto 32px}
   border-bottom:2px solid transparent;padding-bottom:3px}
 .topnav a:hover{color:var(--ink);border-bottom-color:transparent}
 .topnav a.on{color:var(--ink);border-bottom-color:var(--ink)}
+/* the flight-path page is the site's demo — it gets the one CTA in the nav.
+   Only pinned to the right edge when the centered links leave room for it;
+   below that it sits inline at the end of the (wrapping) centered row. */
+.topnav a.cta{color:#fffff8;background:var(--accent);padding:5px 12px 4px;
+  border-bottom:none;border-radius:2px}
+.topnav a.cta:hover{background:var(--ink);color:#fffff8}
+.topnav a.cta.on{background:var(--ink);color:#fffff8}
+@media(min-width:1330px){
+  .topnav a.cta{position:absolute;right:24px;top:-4px}
+}
 
 .paths-wrap{max-width:1080px;margin:0 auto;padding:14px 28px 96px}
 .paths-wrap h1.home-h1{font-weight:400;font-size:44px;line-height:1.15;
@@ -1131,8 +1142,8 @@ NAV_PAGES = (("overview", "overview"),
              ("paths", "model designs"),
              ("lineage", "experiment lineage"),
              ("evolution", "research evolution"),
-             ("flight", "flight path"),
-             ("notebook", "lab notebook"))
+             ("notebook", "lab notebook"),
+             ("flight", "flight path"))
 
 
 def research_status():
@@ -1563,7 +1574,9 @@ def topnav(active, root=False):
                           else "lab-notebook.html")}
     links = []
     for key, label in NAV_PAGES:
-        cls = " class='on'" if key == active else ""
+        classes = [c for c in (("on" if key == active else ""),
+                               ("cta" if key == "flight" else "")) if c]
+        cls = f" class='{' '.join(classes)}'" if classes else ""
         links.append(f"<a href='{hrefs[key]}'{cls}>{label}</a>")
     return ("<nav class='topnav'><span class='brand'>Beeline</span>"
             + "".join(links) + "</nav>")
