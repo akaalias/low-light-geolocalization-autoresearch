@@ -336,8 +336,8 @@ p.psub.lead{font-size:19px;max-width:900px;margin-bottom:14px}
   .stat > b{font-size:26px}
   .rsec{margin-top:40px}
   .rsec-t{font-size:21px}
-  .contract-row{flex-direction:column;align-items:center;gap:10px}
-  .contract-arrow{line-height:1.2;transform:rotate(90deg)}
+  /* contract-row mobile rules live AFTER its base rules below — an earlier
+     override here silently loses to the base line-height:260px. */
   .wex-imgs{flex-direction:column}
   .wex-arr{display:none}
   .tile-grid{grid-template-columns:1fr 1fr;gap:10px}
@@ -753,6 +753,14 @@ tr.detail td{background:#fcfbf2;padding:0;border-bottom:1px solid var(--rule)}
 .contract-note{max-width:780px;margin:14px auto 30px;font-size:13px;
   color:var(--muted);line-height:1.65;text-align:center}
 .contract-note b{color:var(--ink)}
+/* Stack the contract vertically once the three 260px cells no longer fit.
+   Must come AFTER the base rules: same specificity, so source order decides,
+   and the base .contract-arrow line-height:260px would otherwise win on
+   mobile and open a huge blank gap around the arrow. */
+@media(max-width:880px){
+  .contract-row{flex-direction:column;align-items:center;gap:12px}
+  .contract-arrow{line-height:1.2;transform:rotate(90deg)}
+}
 .wex-num{font-size:27px;line-height:1.1;color:var(--ink)}
 .wex-lab{font:600 10.5px var(--serif);font-feature-settings:"smcp" 1;
   text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:2px}

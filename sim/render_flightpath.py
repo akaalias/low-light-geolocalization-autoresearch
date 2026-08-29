@@ -81,10 +81,19 @@ FP_CSS = """
   font:12.5px/1.5 var(--serif);color:var(--ink);padding:7px 10px;display:none;max-width:250px}
 .fp-tip .tt-h{font-weight:600}
 .fp-tip .tt-m{color:var(--muted)}
+/* Slim viewports: the side panel would land far below the map, so it is
+   replaced by a compact camera preview overlaid on the map itself. */
+.fp-cam-mini{display:none;position:absolute;top:8px;right:8px;width:92px;
+  background:var(--paper);border:1px solid var(--rule);padding:4px;
+  box-shadow:0 1px 6px rgba(0,0,0,.18)}
+.fp-cam-mini img,.fp-cam-mini canvas{display:block;width:100%;height:auto;
+  aspect-ratio:1/1;border:1px solid var(--rule-soft)}
+.fp-cam-mini .mini-t{display:block;font:10.5px var(--serif);color:var(--muted);
+  text-align:center;margin-top:3px;font-variant-numeric:lining-nums tabular-nums}
 @media(max-width:820px){
   .fp-stage{flex-direction:column}
-  .fp-side{flex:none;width:100%;position:static;display:flex;gap:14px}
-  .fp-cam{flex:1}
+  .fp-side{display:none}
+  .fp-cam-mini{display:block}
 }
 """
 
@@ -299,6 +308,11 @@ lost &mdash; beyond the edge there is no imagery and no way back.
 <image href="{rel}assets/sim/berlin-base.jpg" x="0" y="0" width="{meta_w}" height="{meta_h}"/>
 <g id="mapg"></g>
 </svg>
+<div class="fp-cam-mini" id="cammini">
+<img id="miniimg" src="{rel}assets/sim/crops/{first_crop}" alt="camera crop at the latest fix" width="128" height="128">
+<canvas id="minicv" width="128" height="128" style="display:none"></canvas>
+<span class="mini-t" id="minit">&mdash;</span>
+</div>
 <div class="fp-controls">
 {flight_selector_html()}
 <button id="play">Play</button>
@@ -535,6 +549,9 @@ function initFlight(f,label){
   ac=el('polygon',{points:'0,-160 95,130 0,70 -95,130',fill:INK,stroke:PAPER,'stroke-width':34},g);
   cam.style.display=hasCrops?'':'none';
   camcv.style.display=hasCrops?'none':'';
+  miniImg.style.display=hasCrops?'':'none';
+  miniCv.style.display=hasCrops?'none':'';
+  miniT.innerHTML='&mdash;';
   camsub.innerHTML=hasCrops?'128&thinsp;&times;&thinsp;128 px &middot; 1 m/px &middot; ~100 m AGL'
     :'reconstructed view (2 m/px preview) &mdash; original frames are archived only for the showcase flight';
   if(!hasCrops&&!zoomImg.src)zoomImg.src=REL+'assets/sim/berlin-zoom.jpg';
@@ -587,7 +604,9 @@ const scrub=document.getElementById('scrub'), tread=document.getElementById('tre
       playBtn=document.getElementById('play'), speedSel=document.getElementById('speed'),
       cam=document.getElementById('cam'), camout=document.getElementById('camout'),
       camsub=document.getElementById('camsub'), read=document.getElementById('read'),
-      flightSel=document.getElementById('flightsel'), camcv=document.getElementById('camcv');
+      flightSel=document.getElementById('flightsel'), camcv=document.getElementById('camcv'),
+      miniImg=document.getElementById('miniimg'), miniCv=document.getElementById('minicv'),
+      miniT=document.getElementById('minit');
 // Camera-view reconstruction for flights whose frames weren't archived:
 // crop the 2 m/px reference raster at the fix's true position, rotated so
 // the aircraft's direction of travel points up — same convention as the
@@ -603,6 +622,8 @@ function drawCam(fx){
   ctx.translate(64,64);ctx.rotate(-psi);
   ctx.drawImage(zoomImg,(fx.true[0]-91)*zs,(fx.true[1]-91)*zs,182*zs,182*zs,-91,-91,182,182);
   ctx.restore();
+  const mctx=miniCv.getContext('2d');
+  mctx.clearRect(0,0,128,128);mctx.drawImage(camcv,0,0);
 }
 const idxAt=t=>{let lo=0,hi=T.length-1;while(lo<hi){const m=(lo+hi+1>>1);if(T[m][0]<=t)lo=m;else hi=m-1;}return lo;};
 function render(t){
@@ -622,8 +643,10 @@ function render(t){
   F.fixes.forEach((fx,j)=>{if(fx.t<=cur){fixMark(fx,j);last=[fx,j];if(counts[fx.outcome]!==undefined)counts[fx.outcome]++;}});
   if(last){
     const [fx,j]=last;
-    if(fx.crop)cam.src=REL+'assets/sim/crops/'+fx.crop;
+    if(fx.crop){cam.src=REL+'assets/sim/crops/'+fx.crop;miniImg.src=cam.src;}
     if(!hasCrops&&fx.outcome!=='off_map')drawCam(fx);
+    miniT.textContent=fx.t.toFixed(0)+' s · '+({usable:'usable',abstain:'abstained',false_fix:'false fix',off_map:'off map'}[fx.outcome]);
+    miniT.style.color=fx.outcome==='false_fix'?ACCENT:(fx.outcome==='usable'?INK:MUTED);
     const oCls=fx.outcome, oTxt={usable:'usable fix',abstain:'abstained — not confident',false_fix:'false fix — confidently wrong',off_map:'off the mapped box — no image'}[oCls];
     camout.innerHTML=`t = ${fx.t.toFixed(0)} s · <b class="${oCls}">${oTxt}</b>`+
       (fx.err_m!==undefined&&fx.outcome!=='abstain'?`<br><span style="color:${MUTED}">model's answer was ${fmt(fx.err_m)} from the truth</span>`:'');
