@@ -270,11 +270,13 @@ def flight_section(rel, record_note, n=1):
 <b>t&thinsp;=&thinsp;85&thinsp;s</b> a
 <b style="color:var(--accent)">false fix</b> &mdash; barely confident,
 <b>6.5 km wrong</b> (the red line points to its claim, marked
-<span style="color:var(--accent)">&times;</span>) &mdash; yanks the dashed
-believed path across the city while the true path barely bends; usable
-fixes haul it back. A late burst of false fixes on final approach does
-little harm: by then the estimate is fresh, so wrong answers get little
-weight. The flight lands <b>25.5 m</b> from the target.</p>
+<span style="color:var(--accent)">&times;</span>) &mdash; hijacks the
+navigator&rsquo;s belief. The aircraft never flies to the claimed spot:
+only its <i>estimate</i> teleports there, so the dashed believed path
+simply breaks off and rejoins once usable fixes haul the belief back
+within 300 m of the truth. A late burst of false fixes on final approach
+does little harm: by then the estimate is fresh, so wrong answers get
+little weight. The flight lands <b>25.5 m</b> from the target.</p>
 <p style="font-size:13px;color:var(--muted)">Seed 6, disclosed: three of
 six seeds on this route overshot the corner out of the mapped box and were
 lost &mdash; beyond the edge there is no imagery and no way back.
@@ -282,7 +284,7 @@ lost &mdash; beyond the edge there is no imagery and no way back.
 
 <div class="fp-legend">
 <span><i class="k-true"></i>true path</span>
-<span><i class="k-est"></i>believed path (navigator&rsquo;s estimate)</span>
+<span><i class="k-est"></i>believed path &mdash; drawn only while the estimate is within 300 m of the truth</span>
 <span><i class="k-usable"></i>usable fix</span>
 <span><i class="k-abstain"></i>abstention</span>
 <span><i class="k-false"></i>false fix</span>
@@ -491,7 +493,7 @@ const INK='#111111', OCHRE='#8a6a1e', ACCENT='#8c2f1f', FAINT='#9b998c', PAPER='
 /* ---------- map (rebuilt per flight by initFlight) ---------- */
 const g=document.getElementById('mapg');
 const halo=w=>el('polyline',{fill:'none',stroke:PAPER,'stroke-width':w,'stroke-opacity':.75,'vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
-let F,T,dur,truePts,estPts,trueLine,trueHalo,estLine,estHalo,fixG,ac,hasCrops,flightLabel;
+let F,T,dur,truePts,estCmds,trueLine,trueHalo,estLine,estHalo,fixG,ac,hasCrops,flightLabel;
 const flightHooks=[];
 // start / target markers — must be findable at a glance
 const HALO_STYLE='paint-order:stroke;stroke:#fffff8;stroke-width:20px;stroke-linejoin:round';
@@ -516,8 +518,16 @@ function initFlight(f,label){
   playing=false;playBtn.textContent='Play';cur=0;lastTs=0;
   g.replaceChildren();
   el('circle',{cx:F.target_px[0],cy:F.target_px[1],r:100,fill:'none',stroke:INK,'stroke-dasharray':'4 4','vector-effect':'non-scaling-stroke','stroke-width':1.3},g);
-  truePts=T.map(p=>p[1]+','+p[2]); estPts=T.map(p=>p[3]+','+p[4]);
-  estHalo=halo(4.5); estLine=el('polyline',{fill:'none',stroke:OCHRE,'stroke-width':2.2,'stroke-dasharray':'6 5','vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
+  truePts=T.map(p=>p[1]+','+p[2]);
+  // The believed path is drawn only while the estimate is within 300 m of
+  // the truth. A false fix teleports the BELIEF across the city — the
+  // aircraft never flies that excursion — so drawing it as a continuous
+  // line reads as physical flight. The break itself is the signal; the red
+  // claim-line and x mark what caused it.
+  const vis=T.map(p=>Math.hypot(p[1]-p[3],p[2]-p[4])<=300);
+  estCmds=T.map((p,i)=>vis[i]?((i>0&&vis[i-1])?'L':'M')+p[3]+' '+p[4]:'');
+  estHalo=el('path',{fill:'none',stroke:PAPER,'stroke-width':4.5,'stroke-opacity':.75,'vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
+  estLine=el('path',{fill:'none',stroke:OCHRE,'stroke-width':2.2,'stroke-dasharray':'6 5','vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
   trueHalo=halo(5); trueLine=el('polyline',{fill:'none',stroke:INK,'stroke-width':2.4,'vector-effect':'non-scaling-stroke','stroke-linejoin':'round'},g);
   fixG=el('g',{},g);
   endpoint(F.start_px[0],F.start_px[1],INK,'START',560,80);
@@ -600,8 +610,9 @@ function render(t){
   const i=idxAt(cur);
   trueLine.setAttribute('points',truePts.slice(0,i+1).join(' '));
   trueHalo.setAttribute('points',truePts.slice(0,i+1).join(' '));
-  estLine.setAttribute('points',estPts.slice(0,i+1).join(' '));
-  estHalo.setAttribute('points',estPts.slice(0,i+1).join(' '));
+  const dEst=estCmds.slice(0,i+1).join(' ');
+  estLine.setAttribute('d',dEst);
+  estHalo.setAttribute('d',dEst);
   const p=T[i], q=T[Math.max(0,i-1)];
   const angle=Math.atan2(p[1]-q[1],-(p[2]-q[2]))*180/Math.PI;
   ac.setAttribute('transform',`translate(${p[1]},${p[2]}) rotate(${angle}) scale(0.95)`);
